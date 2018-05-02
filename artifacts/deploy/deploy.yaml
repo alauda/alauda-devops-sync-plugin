@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    volume.beta.kubernetes.io/storage-provisioner: docker.io/hostpath
+  labels:
+    app: jenkins
+    chart: jenkins-0.14.3
+    release: jenkins
+  name: jenkins-home
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi
+  storageClassName: hostpath
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    component: jenkins-master
+  name: jenkins
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: jenkins-master
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        component: jenkins-master
+    spec:
+      containers:
+      - env:        
+        - name: JENKINS_PASSWORD
+          value: "123456"
+        image: index.alauda.cn/alaudaorg/jenkins:master
+        imagePullPolicy: IfNotPresent
+        name: jenkins
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 50000
+          name: slavelistener
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /var/jenkins_home
+          name: jenkins-home
+      initContainers:
+      - name: install-plugin
+        image: index.alauda.cn/alaudak8s/jenkins-plugin-injector:dev
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - mountPath: /var/jenkins_home
+          name: jenkins-home
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        runAsUser: 0
+      serviceAccount: default
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: jenkins-home
+        persistentVolumeClaim:
+          claimName: jenkins-home
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: jenkins
+  name: jenkins-nodeport
+  namespace: default
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  - name: jnlp
+    port: 50000
+    protocol: TCP
+    targetPort: 50000
+  selector:
+    component: jenkins-master
+  sessionAffinity: None
+  type: NodePort

@@ -1,0 +1,588 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Copyright (C) 2018 Alauda.io
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.jenkins-ci.plugins</groupId>
+    <artifactId>plugin</artifactId>
+    <version>2.15</version>
+    <relativePath />
+  </parent>
+  <groupId>io.alauda.jenkins.plugins</groupId>
+  <artifactId>alauda-sync</artifactId>
+  <version>0.2.4</version>
+  <packaging>hpi</packaging>
+
+  <properties>
+    <!-- Baseline Jenkins version you use to build the plugin. Users must have this version or newer to run. -->
+    <jenkins.version>1.651.2</jenkins.version>
+    <!-- Java Level to use. Java 7 required when using core >= 1.612 -->
+    <java.level>8</java.level>
+    <!-- Jenkins Test Harness version you use to test the plugin. -->
+    <!-- For Jenkins version >= 1.580.1 use JTH 2.x or higher. -->
+    <jenkins-test-harness.version>2.1</jenkins-test-harness.version>
+    <!-- Other properties you may want to use:
+         ~ hpi-plugin.version: The HPI Maven Plugin version used by the plugin..
+         ~ stapler-plugin.version: The Stapler Maven plugin version required by the plugin.
+    -->
+
+    <devops-client.version>0.2.4.1</devops-client.version>
+    <log.level>INFO</log.level>
+    <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
+    <findbugs.failOnError>false</findbugs.failOnError>
+
+    <sundrio.version>0.4.2</sundrio.version>
+    <exec-maven-plugin.version>1.5.0</exec-maven-plugin.version>
+    <jackson2.version>2.7.5</jackson2.version>
+    <jackson.version>2.7.7</jackson.version>
+    <okhttp.version>3.9.1</okhttp.version>
+    <org.json.version>20180130</org.json.version>
+    <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
+    <jsonschema2pojo.version>0.4.23</jsonschema2pojo.version>
+    <junit.version>4.12</junit.version>
+    <validation-api.version>1.1.0.Final</validation-api.version>
+    <lombok.version>1.16.10</lombok.version>
+  </properties>
+
+  <name>Alauda DevOps Sync</name>
+  <description>Syncs DevOps PipelineConfigs with Jenkins jobs</description>
+  <url>https://wiki.jenkins-ci.org/display/JENKINS/DevOps+Sync+Plugin</url>
+  <inceptionYear>2018</inceptionYear>
+
+  <organization>
+    <name>Alauda</name>
+    <url>http://alauda.io</url>
+  </organization>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>alaudaDevelopers</id>
+      <name>Alauda Developers</name>
+      <organization>alauda</organization>
+      <organizationUrl>http://alauda.io/</organizationUrl>
+      <email>devs@alauda.io</email>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</connection>
+    <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
+    <url>http://github.com/jenkinsci/${project.artifactId}-plugin/</url>
+    <tag>${project.version}</tag>
+  </scm>
+
+  <repositories>
+    <repository>
+      <id>repo.jenkins-ci.org</id>
+      <url>http://repo.jenkins-ci.org/public/</url>
+    </repository>
+    <repository>
+      <id>nexus-oss-snapshots</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repo.jenkins-ci.org</id>
+      <url>http://repo.jenkins-ci.org/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.alauda</groupId>
+      <artifactId>devops-client</artifactId>
+      <version>${devops-client.version}</version>
+    </dependency>
+
+    <dependency>
+       <groupId>io.jenkins.blueocean</groupId>
+       <artifactId>blueocean-rest</artifactId>
+       <version>1.5.0</version>
+    </dependency>
+
+    <dependency>
+       <groupId>org.jenkins-ci.plugins</groupId>
+       <artifactId>credentials</artifactId>
+       <version>2.1.9</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-job</artifactId>
+      <version>2.8</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>git</artifactId>
+      <version>3.0.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>git-client</artifactId>
+      <version>2.0.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-api</artifactId>
+      <version>2.5</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.pipeline-stage-view</groupId>
+      <artifactId>pipeline-rest-api</artifactId>
+      <version>2.9</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-cps</artifactId>
+      <version>2.21</version>
+    </dependency>
+
+    <!-- for multi-branch job detection -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-multibranch</artifactId>
+      <version>2.10</version>
+    </dependency>
+
+    <!--
+        These dependencies come in from the workflow-multibranch dependency:
+    -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>scm-api</artifactId>
+      <version>2.0.8</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>branch-api</artifactId>
+      <version>2.0.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>cloudbees-folder</artifactId>
+      <version>5.18</version>
+    </dependency>
+
+    <!--
+     DIRECT DEPENDENCY... should be fixed
+    -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.dataformat</groupId>
+      <artifactId>jackson-dataformat-yaml</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp</artifactId>
+      <version>${okhttp.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>logging-interceptor</artifactId>
+      <version>${okhttp.version}</version>
+    </dependency>
+
+    <!-- parse json -->
+    <dependency>
+      <groupId>org.json</groupId>
+      <artifactId>json</artifactId>
+      <version>${org.json.version}</version>
+    </dependency>
+
+    
+    <!-- testing -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-step-api</artifactId>
+      <version>2.4</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-durable-task-step</artifactId>
+      <version>2.5</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-cps-global-lib</artifactId>
+      <version>2.4</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-basic-steps</artifactId>
+      <version>2.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-scm-step</artifactId>
+      <version>2.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-support</artifactId>
+      <version>2.10</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>structs</artifactId>
+      <version>1.5</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.pipeline-stage-view</groupId>
+      <artifactId>pipeline-stage-view</artifactId>
+      <version>2.1</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+    <dependency>
+      <groupId>com.openshift.jenkins</groupId>
+      <artifactId>openshift-pipeline</artifactId>
+      <version>1.0.28</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.openshift</groupId>
+          <artifactId>openshift-restclient-java</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.squareup.okhttp3</groupId>
+          <artifactId>okhttp</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>io.fabric8.jenkins.plugins</groupId>
+          <artifactId>openshift-sync</artifactId>
+        </exclusion>
+      </exclusions>
+      <scope>test</scope>
+    </dependency>
+    -->
+
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>4.5.2</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>oic-auth</artifactId>
+      <version>1.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>github-organization-folder</artifactId>
+      <version>1.6</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>pipeline-github-lib</artifactId>
+      <version>1.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>github-branch-source</artifactId>
+      <version>2.0.3</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.coravy.hudson.plugins.github</groupId>
+      <artifactId>github</artifactId>
+      <version>1.26.1</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+       <groupId>org.csanchez.jenkins.plugins</groupId>
+       <artifactId>kubernetes</artifactId>
+       <version>1.5</version>
+       <exclusions>
+         <exclusion>
+           <groupId>io.fabric8</groupId>
+           <artifactId>kubernetes-client</artifactId>
+         </exclusion>
+       </exclusions>
+    </dependency>
+
+    <!--<dependency>-->
+      <!--<groupId>org.w3c</groupId>-->
+      <!--<artifactId>dom</artifactId>-->
+      <!--<version>2.3.0-jaxb-1.0.6</version>-->
+    <!--</dependency>-->
+
+    <!--<dependency>-->
+      <!--<groupId>xml-apis</groupId>-->
+      <!--<artifactId>xml-apis</artifactId>-->
+      <!--<version>1.4.01</version>-->
+    <!--</dependency>-->
+
+    <!--<dependency>-->
+      <!--<groupId>org.lucee</groupId>-->
+      <!--<artifactId>xml-apis-ext</artifactId>-->
+      <!--<version>1.3.04</version>-->
+    <!--</dependency>-->
+
+    <!-- dependencies from kubernetes-model: should change once we have the package published -->
+
+      <!--<dependency>-->
+        <!--<groupId>com.fasterxml.jackson.module</groupId>-->
+        <!--<artifactId>jackson-module-jaxb-annotations</artifactId>-->
+        <!--<version>${jackson2.version}</version>-->
+      <!--</dependency>-->
+    <!--<dependency>-->
+      <!--<groupId>com.fasterxml.jackson.dataformat</groupId>-->
+      <!--<artifactId>jackson-dataformat-yaml</artifactId>-->
+      <!--<version>2.7.7</version>-->
+    <!--</dependency>-->
+      <!--<dependency>-->
+        <!--<groupId>javax.validation</groupId>-->
+        <!--<artifactId>validation-api</artifactId>-->
+        <!--<version>${validation-api.version}</version>-->
+      <!--</dependency>-->
+      <!--<dependency>-->
+        <!--<groupId>io.sundr</groupId>-->
+        <!--<artifactId>builder-annotations</artifactId>-->
+        <!--<version>${sundrio.version}</version>-->
+        <!--<scope>provided</scope>-->
+      <!--</dependency>-->
+      <!--<dependency>-->
+        <!--<groupId>junit</groupId>-->
+        <!--<artifactId>junit</artifactId>-->
+        <!--<version>${junit.version}</version>-->
+      <!--</dependency>-->
+      <!--<dependency>-->
+        <!--<groupId>org.projectlombok</groupId>-->
+        <!--<artifactId>lombok</artifactId>-->
+        <!--<version>${lombok.version}</version>-->
+      <!--</dependency>-->
+    <!-- dependencies from kubernetes-model: should change once we have the package published -->
+
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>findbugs-maven-plugin</artifactId>
+          <version>${findbugs-maven-plugin.version}</version>
+          <configuration>
+              <xmlOutput>true</xmlOutput>
+              <failOnError>${findbugs.failOnError}</failOnError>
+          </configuration>
+          <executions>
+              <execution>
+                  <id>run-findbugs</id>
+                  <phase>verify</phase>
+                  <goals>
+                      <goal>check</goal>
+                  </goals>
+              </execution>
+          </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jenkins-ci.tools</groupId>
+        <artifactId>maven-hpi-plugin</artifactId>
+        <configuration>
+          <pluginFirstClassLoader>true</pluginFirstClassLoader>
+          <loggers>
+            <io.fabric8>${log.level}</io.fabric8>
+            <okhttp3>${log.level}</okhttp3>
+          </loggers>
+          <webApp>
+            <contextPath>/</contextPath>
+          </webApp>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jvnet.localizer</groupId>
+        <artifactId>maven-localizer-plugin</artifactId>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <fileMask>Messages.properties</fileMask>
+              <outputDirectory>target/generated-sources/localizer</outputDirectory>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.mycila</groupId>
+        <artifactId>license-maven-plugin</artifactId>
+        <version>2.11</version>
+        <configuration>
+          <aggregate>true</aggregate>
+          <header>header.txt</header>
+          <properties>
+            <owner>Red Hat, Inc.</owner>
+          </properties>
+          <excludes>
+            <exclude>LICENSE</exclude>
+            <exclude>work/**</exclude>
+          </excludes>
+          <headerDefinitions>
+            <headerDefinition>license-headers-config.xml</headerDefinition>
+          </headerDefinitions>
+          <mapping>
+            <jelly>XML_STYLE</jelly>
+            <editorconfig>SEMICOLON_STYLE</editorconfig>
+            <groovy>GROOVY_STYLE</groovy>
+            <Jenkinsfile>GROOVY_STYLE</Jenkinsfile>
+          </mapping>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>1.6</version>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>enforce-no-snapshots</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <rules>
+                    <requireReleaseDeps>
+                      <message>No Snapshots Allowed!</message>
+                    </requireReleaseDeps>
+                  </rules>
+                  <fail>true</fail>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>attach-javadocs</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <configuration>
+                  <additionalparam>${javadoc.opts}</additionalparam>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-source-plugin</artifactId>
+            <version>2.4</version>
+            <executions>
+              <execution>
+                <id>attach-sources</id>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+
+    <profile>
+      <id>doclint-java8-disable</id>
+      <activation>
+        <jdk>[1.8,)</jdk>
+      </activation>
+      <properties>
+        <javadoc.opts>-Xdoclint:none</javadoc.opts>
+      </properties>
+    </profile>
+  </profiles>
+</project>
