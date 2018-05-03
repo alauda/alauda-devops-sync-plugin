@@ -29,7 +29,6 @@ import org.json.*;
 
 import static hudson.Util.fixNull;
 import static io.alauda.jenkins.devops.sync.Constants.*;
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.getAuthenticatedAlaudaClient;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 public class CredentialsUtils {
