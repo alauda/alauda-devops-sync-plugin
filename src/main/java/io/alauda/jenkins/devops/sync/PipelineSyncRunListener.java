@@ -174,11 +174,23 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   public synchronized void onDeleted(Run run) {
     if (shouldPollRun(run)) {
       runsToPoll.remove(run);
-      pollRun(run);
+
       logger.info("onDeleted " + run.getUrl());
-      JenkinsUtils.maybeScheduleNext(((WorkflowRun) run).getParent());
     }
-    super.onDeleted(run);
+
+    JenkinsPipelineCause cause = (JenkinsPipelineCause) run.getCause(JenkinsPipelineCause.class);
+    if(run instanceof WorkflowRun && cause != null) {
+      String namespace = cause.getNamespace();
+      String pipelineName = cause.getName();
+
+      boolean result = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
+        .inNamespace(namespace)
+        .withName(pipelineName)
+        .delete();
+
+      int buildNum = run.getNumber();
+      logger.info("Delete `Pipeline` result is: " + result + "; name is: " + pipelineName + "; buildNum is: " + buildNum);
+    }
   }
 
   @Override
