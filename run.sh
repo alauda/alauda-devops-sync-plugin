@@ -11,5 +11,5 @@ if [ "$JENKINS_CONTAINER" == "" ]; then
   exit 1;
 fi
 mvn install -DskipTests
-docker cp target/alauda-sync.hpi $JENKINS_CONTAINER:/var/jenkins_home/plugins
+docker cp target/jenkins-sync.hpi $JENKINS_CONTAINER:/var/jenkins_home/plugins
 ./restart.sh
