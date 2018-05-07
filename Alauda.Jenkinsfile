@@ -160,9 +160,3 @@ pipeline {
         }
     }
 }
-
-properties([
-	pipelineTriggers([
-		scm('*/1 * * *')
-	])
-])
