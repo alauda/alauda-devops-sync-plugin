@@ -28,12 +28,8 @@ pipeline {
 
         // 不允许并行执行
         disableConcurrentBuilds()
-
-
-        pipelineTriggers([
-            scm('*/2 * * *')
-        ])
     }
+
     //(optional) 环境变量
     environment {
       // for building an scanning
