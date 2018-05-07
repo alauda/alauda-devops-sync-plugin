@@ -1,6 +1,9 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.watcher;
 
 import hudson.triggers.SafeTimerTask;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
+import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.kubernetes.api.model.Namespace;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher.Action;

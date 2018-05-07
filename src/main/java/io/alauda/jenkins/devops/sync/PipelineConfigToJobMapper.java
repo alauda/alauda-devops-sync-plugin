@@ -22,6 +22,7 @@ import hudson.plugins.git.UserRemoteConfig;
 import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.scm.SCM;
 import hudson.triggers.Trigger;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.*;
 
 import jenkins.branch.Branch;
@@ -40,7 +41,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.CredentialsUtils.updateSourceCredentials;
+import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 public class PipelineConfigToJobMapper {

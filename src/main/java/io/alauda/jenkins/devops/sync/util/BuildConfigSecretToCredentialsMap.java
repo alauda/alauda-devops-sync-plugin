@@ -13,24 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.util;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PipelineConfigSecretToCredentialsMap {
+public class BuildConfigSecretToCredentialsMap {
+    
+    private static Map<String,String> buildConfigSecretToCredentialMap = new ConcurrentHashMap<String,String>();
 
-  private static Map<String,String> pipelineConfigSecretToCredentialMap = new ConcurrentHashMap<String,String>();
-
-  private PipelineConfigSecretToCredentialsMap() {
-  }
-
-  static synchronized void linkPCSecretToCredential(String bc, String credential) {
-    pipelineConfigSecretToCredentialMap.put(bc, credential);
-  }
-
-  static synchronized String unlinkPCSecretToCrendential(String bc) {
-    return pipelineConfigSecretToCredentialMap.remove(bc);
-  }
+    private BuildConfigSecretToCredentialsMap() {
+    }
+    
+    static synchronized void linkBCSecretToCredential(String bc, String credential) {
+        buildConfigSecretToCredentialMap.put(bc, credential);
+    }
+    
+    static synchronized String unlinkBCSecretToCrendential(String bc) {
+        return buildConfigSecretToCredentialMap.remove(bc);
+    }
 
 }

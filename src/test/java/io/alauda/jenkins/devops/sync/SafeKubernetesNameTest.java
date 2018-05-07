@@ -16,6 +16,7 @@
  */
 package io.alauda.jenkins.devops.sync;
 
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

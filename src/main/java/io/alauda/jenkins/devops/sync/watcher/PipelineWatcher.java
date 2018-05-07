@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
+import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
@@ -39,7 +41,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 
-import static io.alauda.jenkins.devops.sync.JenkinsUtils.cancelPipeline;
+import static io.alauda.jenkins.devops.sync.util.JenkinsUtils.cancelPipeline;
 import static java.util.logging.Level.WARNING;
 
 public class PipelineWatcher extends BaseWatcher {

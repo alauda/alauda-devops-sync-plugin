@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.watcher;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 
@@ -26,6 +26,11 @@ import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
 import hudson.triggers.Trigger;
 import hudson.util.XStream2;
+import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
+import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.api.model.PipelineConfigList;
 
@@ -50,7 +55,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.*;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static java.util.logging.Level.SEVERE;
 
 /**

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.listener;
 
 import com.cloudbees.workflow.rest.external.AtomFlowNodeExt;
 import com.cloudbees.workflow.rest.external.FlowNodeExt;
@@ -33,6 +33,9 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
+import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import io.jenkins.blueocean.rest.factory.BlueRunFactory;
@@ -66,10 +69,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.getCurrentTimestamp;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getCurrentTimestamp;
 import static io.alauda.jenkins.devops.sync.Constants.*;
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.formatTimestamp;
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.getAuthenticatedAlaudaClient;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.formatTimestamp;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.logging.Level.*;
 
