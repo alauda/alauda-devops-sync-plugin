@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.listener;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
@@ -24,6 +24,11 @@ import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.listeners.ItemListener;
 
+import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
+import io.alauda.jenkins.devops.sync.watcher.PipelineConfigWatcher;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import org.apache.commons.lang.StringUtils;
