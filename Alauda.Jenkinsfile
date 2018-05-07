@@ -55,7 +55,8 @@ pipeline {
               env.GIT_BRANCH = scmVars.GIT_BRANCH
               GIT_COMMIT = "${scmVars.GIT_COMMIT}"
               GIT_BRANCH = "${scmVars.GIT_BRANCH}"
-              RELEASE_VERSION = readFile('.version').trim()
+              pom = readMavenPom file: 'pom.xml'
+              RELEASE_VERSION = pom.version
               RELEASE_BUILD = "${RELEASE_VERSION}.${env.BUILD_NUMBER}"
               if (GIT_BRANCH != "master") {
                   def branch = GIT_BRANCH.replace("/","-").replace("_","-")
