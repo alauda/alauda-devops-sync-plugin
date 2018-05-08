@@ -64,7 +64,7 @@
 
   <name>Alauda DevOps Sync</name>
   <description>Syncs DevOps PipelineConfigs with Jenkins jobs</description>
-  <url>https://wiki.jenkins-ci.org/display/JENKINS/DevOps+Sync+Plugin</url>
+  <url>https://wiki.jenkins-ci.org/display/JENKINS/Alauda+DevOps+Sync+Plugin</url>
   <inceptionYear>2018</inceptionYear>
 
   <organization>
