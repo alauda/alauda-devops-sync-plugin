@@ -9,7 +9,7 @@ import io.alauda.kubernetes.api.model.*;
 import java.util.List;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.getAuthenticatedAlaudaClient;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
 import static io.alauda.jenkins.devops.sync.Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
 import static io.alauda.jenkins.devops.sync.Constants.PIPELINE_TRIGGER_TYPE_CRON;
 import static io.alauda.jenkins.devops.sync.Constants.PIPELINE_TRIGGER_TYPE_MANUAL;

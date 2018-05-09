@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.util;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -25,6 +25,9 @@ import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.Annotations;
+import io.alauda.jenkins.devops.sync.Constants;
+import io.alauda.jenkins.devops.sync.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
 
 import io.alauda.kubernetes.client.Config;
@@ -43,9 +46,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,7 +53,6 @@ import java.util.logging.Logger;
 import static io.alauda.jenkins.devops.sync.PipelinePhases.PENDING;
 import static io.alauda.jenkins.devops.sync.PipelinePhases.RUNNING;
 import static io.alauda.jenkins.devops.sync.Constants.FOLDER_DESCRIPTION;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.PipelinePhases.QUEUED;
 import static java.util.logging.Level.FINE;
 
@@ -631,7 +630,7 @@ public class AlaudaUtils {
     /**
      * Lets convert the string to btw a valid kubernetes resource name
      */
-    static String convertNameToValidResourceName(String text) {
+    public static String convertNameToValidResourceName(String text) {
         String lower = text.toLowerCase();
         StringBuilder builder = new StringBuilder();
         boolean started = false;

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.util;
 
 import antlr.ANTLRException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -23,6 +23,7 @@ import hudson.plugins.git.RevisionParameterAction;
 import hudson.security.ACL;
 import hudson.slaves.Cloud;
 import hudson.triggers.*;
+import io.alauda.jenkins.devops.sync.*;
 import io.alauda.kubernetes.api.model.*;
 import io.fabric8.openshift.api.model.JenkinsPipelineBuildStrategy;
 import jenkins.model.Jenkins;
@@ -52,13 +53,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.PipelinePhases.QUEUED;
-import static io.alauda.jenkins.devops.sync.PipelineConfigToJobMap.getJobFromPipelineConfig;
-import static io.alauda.jenkins.devops.sync.PipelineConfigToJobMap.putJobWithPipelineConfig;
+import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.getJobFromPipelineConfig;
+import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.putJobWithPipelineConfig;
 import static io.alauda.jenkins.devops.sync.PipelinePhases.CANCELLED;
-import static io.alauda.jenkins.devops.sync.PipelineWatcher.addEventToJenkinsJobRun;
+import static io.alauda.jenkins.devops.sync.watcher.PipelineWatcher.addEventToJenkinsJobRun;
 import static io.alauda.jenkins.devops.sync.Constants.*;
-import static io.alauda.jenkins.devops.sync.CredentialsUtils.updateSourceCredentials;
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.*;
+import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static java.util.Collections.sort;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;

@@ -15,6 +15,7 @@
  */
 package io.alauda.jenkins.devops.sync;
 
+import io.alauda.jenkins.devops.sync.watcher.BaseWatcher;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import io.alauda.kubernetes.client.Watcher;
 
