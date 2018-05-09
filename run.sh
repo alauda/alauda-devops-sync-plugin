@@ -10,6 +10,6 @@ if [ "$JENKINS_CONTAINER" == "" ]; then
   echo "Jenkins container not found"
   exit 1;
 fi
-mvn install -DskipTests
-docker cp target/jenkins-sync.hpi $JENKINS_CONTAINER:/var/jenkins_home/plugins
+mvn clean install -DskipTests
+docker cp target/alauda-devops-sync.hpi $JENKINS_CONTAINER:/var/jenkins_home/plugins
 ./restart.sh
