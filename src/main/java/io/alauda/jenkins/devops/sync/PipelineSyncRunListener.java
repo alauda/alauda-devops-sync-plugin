@@ -62,6 +62,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -237,6 +238,10 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         return;
       }
       throw e;
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    } catch (TimeoutException e) {
+        e.printStackTrace();
     }
   }
 
@@ -276,7 +281,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     return false;
   }
 
-  private void upsertPipeline(Run run, RunExt wfRunExt, BlueRun blueRun) {
+  private void upsertPipeline(Run run, RunExt wfRunExt, BlueRun blueRun) throws TimeoutException, InterruptedException {
     if (run == null) {
       return;
     }
@@ -598,7 +603,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
   // annotate the Build with pending input JSON so consoles can do the
   // Proceed/Abort stuff if they want
-  private String getPendingActionsJson(WorkflowRun run) {
+  private String getPendingActionsJson(WorkflowRun run) throws TimeoutException, InterruptedException {
     List<PendingInputActionsExt> pendingInputActions = new ArrayList<PendingInputActionsExt>();
     InputAction inputAction = run.getAction(InputAction.class);
 
