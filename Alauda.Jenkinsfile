@@ -4,6 +4,7 @@
 // global variables for pipeline
 def GIT_BRANCH
 def GIT_COMMIT
+def FOLDER = "."
 // image can be used for promoting...
 def IMAGE
 def CURRENT_VERSION
@@ -36,7 +37,6 @@ pipeline {
       REPOSITORY = "jenkins-sync-plugin"
       OWNER = "mathildetech"
       IMAGE_TAG = "dev"
-      FOLDER = ""
       // sonar feedback user
       // needs to change together with the credentialsID
       SCM_FEEDBACK_ACCOUNT = "alaudabot"
