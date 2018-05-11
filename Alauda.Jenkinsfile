@@ -4,6 +4,7 @@
 // global variables for pipeline
 def GIT_BRANCH
 def GIT_COMMIT
+def FOLDER = "."
 // image can be used for promoting...
 def IMAGE
 def CURRENT_VERSION
@@ -38,8 +39,8 @@ pipeline {
       IMAGE_TAG = "dev"
       // sonar feedback user
       // needs to change together with the credentialsID
-      BITBUCKET_FEEDBACK_ACCOUNT = "alaudabot"
-      SONARQUBE_BITBUCKET_CREDENTIALS = "alaudabot"
+      SCM_FEEDBACK_ACCOUNT = "alaudabot"
+      SONARQUBE_SCM_CREDENTIALS = "alaudabot"
       DEPLOYMENT = "jenkins-sync-plugin"
       DINGDING_BOT = "devops-chat-bot"
       TAG_CREDENTIALS = "alaudabot-bitbucket"
@@ -137,6 +138,21 @@ pipeline {
           }
       }
 
+      // sonar scan
+      stage('Sonar') {
+        steps {
+          script {
+            deploy.scan(
+                REPOSITORY,
+                GIT_BRANCH,
+                SONARQUBE_SCM_CREDENTIALS,
+                FOLDER,
+                DEBUG,
+                OWNER,
+                SCM_FEEDBACK_ACCOUNT).startToSonar()
+          }
+        }
+      }
     }
 
     // (optional)
