@@ -290,6 +290,11 @@ public class PipelineConfigWatcher extends BaseWatcher {
     }
   }
 
+  /**
+   * Update or create PipelineConfig
+   * @param pipelineConfig PipelineConfig
+   * @throws Exception
+   */
   private void upsertJob(final PipelineConfig pipelineConfig) throws Exception {
     if (AlaudaUtils.isPipelineStrategyPipelineConfig(pipelineConfig)) {
       // sync on intern of name should guarantee sync on same actual obj
@@ -335,10 +340,14 @@ public class PipelineConfigWatcher extends BaseWatcher {
               long updatedBCResourceVersion = AlaudaUtils.parseResourceVersion(pipelineConfig);
               long oldBCResourceVersion = parseResourceVersion(pipelineConfigProjectProperty.getResourceVersion());
               PipelineConfigProjectProperty newProperty = new PipelineConfigProjectProperty(pipelineConfig);
-              if (updatedBCResourceVersion <= oldBCResourceVersion && newProperty.getUid().equals(pipelineConfigProjectProperty.getUid()) && newProperty.getNamespace().equals(pipelineConfigProjectProperty.getNamespace())
-                && newProperty.getName().equals(pipelineConfigProjectProperty.getName()) && newProperty.getPipelineRunPolicy().equals(pipelineConfigProjectProperty.getPipelineRunPolicy())) {
+              if (updatedBCResourceVersion <= oldBCResourceVersion
+                      && newProperty.getUid().equals(pipelineConfigProjectProperty.getUid())
+                      && newProperty.getNamespace().equals(pipelineConfigProjectProperty.getNamespace())
+                      && newProperty.getName().equals(pipelineConfigProjectProperty.getName())
+                      && newProperty.getPipelineRunPolicy().equals(pipelineConfigProjectProperty.getPipelineRunPolicy())) {
                 return null;
               }
+
               pipelineConfigProjectProperty.setUid(newProperty.getUid());
               pipelineConfigProjectProperty.setNamespace(newProperty.getNamespace());
               pipelineConfigProjectProperty.setName(newProperty.getName());
@@ -355,7 +364,7 @@ public class PipelineConfigWatcher extends BaseWatcher {
             job.setConcurrentBuild(!(pipelineConfig.getSpec().getRunPolicy().equals(PipelineRunPolicy.SERIAL)));
 
             // Setting triggers according to pipeline config
-            List<Trigger<?>> triggers = JenkinsUtils.addJobTriggers(job, pipelineConfig.getSpec().getTriggers());
+            JenkinsUtils.addJobTriggers(job, pipelineConfig.getSpec().getTriggers());
 
             InputStream jobStream = new StringInputStream(new XStream2().toXML(job));
 

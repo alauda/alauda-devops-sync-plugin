@@ -166,6 +166,8 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
       LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
     } else {
       try {
+        stopWatchersAndClient();
+
         AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
         this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
         Runnable task = new SafeTimerTask() {
@@ -219,14 +221,17 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   private void stopWatchersAndClient() {
     if (this.pipelineWatcher != null) {
       this.pipelineWatcher.stop();
+      this.pipelineWatcher = null;
     }
 
     if (this.pipelineConfigWatcher != null) {
       this.pipelineConfigWatcher.stop();
+      this.pipelineConfigWatcher = null;
     }
 
     if (this.secretWatcher != null) {
       this.secretWatcher.stop();
+      this.secretWatcher = null;
     }
 
     AlaudaUtils.shutdownAlaudaClient();

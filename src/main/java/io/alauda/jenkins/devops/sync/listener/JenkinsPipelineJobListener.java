@@ -91,11 +91,16 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
   @Override
   public void onUpdated(Item item) {
-    if (!GlobalPluginConfiguration.isItEnabled())
-      return;
+    if (!GlobalPluginConfiguration.isItEnabled()) {
+        return;
+    }
+
     reconfigure();
-    super.onUpdated(item);
+
     upsertItem(item);
+
+    // super class's method should be the last call
+    super.onUpdated(item);
   }
 
   @Override
@@ -173,6 +178,10 @@ public class JenkinsPipelineJobListener extends ItemListener {
     }
   }
 
+  /**
+   * Update or insert target workflow job
+   * @param job target workflow job
+   */
   private void upsertWorkflowJob(WorkflowJob job) {
     PipelineConfigProjectProperty property = pipelineConfigProjectForJob(job);
     if (property != null && (!PipelineConfigWatcher.isDeleteInProgress(property.getNamespace() + property.getName()))) {
@@ -227,7 +236,9 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
   private void upsertPipelineConfigForJob(WorkflowJob job, PipelineConfigProjectProperty pipelineConfigProjectProperty) {
     boolean create = false;
-    PipelineConfig jobPipelineConfig = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(pipelineConfigProjectProperty.getNamespace()).withName(pipelineConfigProjectProperty.getName()).get();
+    PipelineConfig jobPipelineConfig = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
+            .inNamespace(pipelineConfigProjectProperty.getNamespace())
+            .withName(pipelineConfigProjectProperty.getName()).get();
     if (jobPipelineConfig == null) {
       create = true;
       // TODO: Adjust this part
@@ -274,7 +285,11 @@ public class JenkinsPipelineJobListener extends ItemListener {
       }
     } else {
       try {
-        AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(jobPipelineConfig.getMetadata().getNamespace()).withName(jobPipelineConfig.getMetadata().getName()).cascading(false).replace(jobPipelineConfig);
+        AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
+                .inNamespace(jobPipelineConfig.getMetadata().getNamespace())
+                .withName(jobPipelineConfig.getMetadata().getName())
+                .cascading(false)
+                .replace(jobPipelineConfig);
       } catch (Exception e) {
         logger.log(Level.WARNING, "Failed to update PipelineConfig: " + NamespaceName.create(jobPipelineConfig) + ". " + e, e);
       }

@@ -61,10 +61,17 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
         LOGGER.info("Got this namespace " + namespace + " from this pipelineConfigProjectProperty: " + pipelineConfigProjectProperty + " with run policy: " + pipelineConfigProjectProperty.getPipelineRunPolicy());
         // TODO: Add trigger API for pipelineconfig (like above)
-        PipelineConfig config = AlaudaUtils.getAuthenticatedAlaudaClient()
-          .pipelineConfigs()
-          .inNamespace(namespace)
-          .withName(pipelineConfigProjectProperty.getName()).get();
+
+        PipelineConfig config = null;
+        try {
+          config = AlaudaUtils.getAuthenticatedAlaudaClient()
+                  .pipelineConfigs()
+                  .inNamespace(namespace)
+                  .withName(pipelineConfigProjectProperty.getName()).get();
+        } catch (KubernetesClientException e) {
+          LOGGER.warning(() -> e.getMessage() + "; cause: " + e.getCause().getMessage());
+        }
+
         if (config == null) {
           LOGGER.warning("Config is null");
           return false;
