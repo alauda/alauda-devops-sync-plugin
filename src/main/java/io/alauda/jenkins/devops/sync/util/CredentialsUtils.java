@@ -9,11 +9,11 @@ import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 import hudson.model.Fingerprint;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
+import io.alauda.devops.api.model.BuildConfig;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.api.model.Secret;
-import io.fabric8.openshift.api.model.BuildConfig;
 import jenkins.model.Jenkins;
 
 import org.acegisecurity.context.SecurityContext;
@@ -123,22 +123,6 @@ public class CredentialsUtils {
     }
     return credID;
   }
-
-    public static synchronized void deleteSourceCredentials(
-            BuildConfig buildConfig) throws IOException {
-        Secret sourceSecret = getSourceCredentials(buildConfig);
-        if (sourceSecret != null) {
-            String labelValue = sourceSecret.getMetadata().getLabels()
-                    .get(Constants.OPENSHIFT_LABELS_SECRET_CREDENTIAL_SYNC);
-            boolean watching = labelValue != null
-                    && labelValue.equalsIgnoreCase(Constants.VALUE_SECRET_SYNC);
-            // for a bc delete, if we are watching this secret, do not delete
-            // credential until secret is actually deleted
-            if (watching)
-                return;
-            deleteCredential(sourceSecret);
-        }
-    }
 
   public static synchronized void deleteSourceCredentials(
     PipelineConfig pipelineConfig) throws IOException {

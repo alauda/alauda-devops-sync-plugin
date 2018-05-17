@@ -69,7 +69,7 @@ public class AlaudaUtils {
     
     static {
         jenkinsPodNamespace = System
-                .getProperty(Constants.OPENSHIFT_PROJECT_ENV_VAR_NAME);
+                .getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
         if (jenkinsPodNamespace != null && jenkinsPodNamespace.trim().length() > 0) {
             jenkinsPodNamespace = jenkinsPodNamespace.trim();
         } else {

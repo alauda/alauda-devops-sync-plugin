@@ -379,8 +379,6 @@ public class PipelineConfigWatcher extends BaseWatcher {
 
                 logger.info("Created job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
               } catch (IllegalArgumentException e) {
-                // see
-                // https://github.com/openshift/jenkins-sync-plugin/issues/117,
                 // jenkins might reload existing jobs on
                 // startup between the
                 // newJob check above and when we make
@@ -459,7 +457,7 @@ public class PipelineConfigWatcher extends BaseWatcher {
 
   }
 
-  // in response to receiving an openshift delete build config event, this
+  // in response to receiving an alauda delete build config event, this
   // method will drive
   // the clean up of the Jenkins job the build config is mapped one to one
   // with; as part of that

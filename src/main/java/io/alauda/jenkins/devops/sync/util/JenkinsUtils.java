@@ -25,7 +25,7 @@ import hudson.slaves.Cloud;
 import hudson.triggers.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.kubernetes.api.model.*;
-import io.fabric8.openshift.api.model.JenkinsPipelineBuildStrategy;
+import io.alauda.devops.api.model.JenkinsPipelineBuildStrategy;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;

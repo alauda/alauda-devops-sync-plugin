@@ -30,13 +30,6 @@ public interface Constants {
 	String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON = "alauda.io/jenkins-status-json";
   String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON = "alauda.io/jenkins-stages-json";
 	String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE = "alauda.io/jenkins-namespace";
-  // see PR https://github.com/openshift/jenkins-sync-plugin/pull/189, there was a issue with having "/"
-	// in a label we construct a watch over, where usual UTF-8 encoding of the label name (which becomes part of 
-	// a query param on the REST invocation) was causing okhttp3 to complain (there is even more history/discussion
-	// in the PR as to issues with fixing).
-	// so we avoid use of "/" for this label
-  String OPENSHIFT_LABELS_SECRET_CREDENTIAL_SYNC = "credential.sync.jenkins.openshift.io";
-  String VALUE_SECRET_SYNC = "true";
 
 	String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
 	String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";
@@ -48,7 +41,7 @@ public interface Constants {
 	String ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE = "Opaque";
 	String ALAUDA_DEVOPS_PIPELINE_STATUS_FIELD = "status";
 	
-	String OPENSHIFT_PROJECT_ENV_VAR_NAME = "PROJECT_NAME";
+	String ALAUDA_PROJECT_ENV_VAR_NAME = "PROJECT_NAME";
   String KUBERNETES_SERVICE_ACCOUNT_NAMESPACE = "/run/secrets/kubernetes.io/serviceaccount/namespace";
 
 
