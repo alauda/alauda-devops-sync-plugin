@@ -84,15 +84,23 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     return config != null ? config.isEnabled() : false;
   }
 
+  @Override
   public String getDisplayName() {
     return "Alauda Jenkins Sync";
   }
 
+  @Override
   public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
     req.bindJSON(this, json);
-    this.configChange();
-    this.save();
-    return true;
+
+    try {
+      this.configChange();
+
+      this.save();
+      return true;
+    } catch (KubernetesClientException e) {
+      return false;
+    }
   }
 
   public boolean isEnabled() {
@@ -194,12 +202,14 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
           }
         };
         Timer.get().schedule(task, 1L, TimeUnit.SECONDS);
-      } catch (KubernetesClientException var2) {
-        if (var2.getCause() != null) {
-          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + var2.getCause());
+      } catch (KubernetesClientException e) {
+        if (e.getCause() != null) {
+          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e.getCause());
         } else {
-          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + var2);
+          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e);
         }
+
+        throw e;
       }
     }
   }
