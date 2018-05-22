@@ -63,7 +63,7 @@ public class SecretWatcher extends BaseWatcher {
                         logger.fine("listing Secrets resources");
 //                        secrets = getAuthenticatedAlaudaClient().secrets()
 //                                .inNamespace(namespace)
-//                                .withLabel(Constants.OPENSHIFT_LABELS_SECRET_CREDENTIAL_SYNC, Constants.VALUE_SECRET_SYNC).list();
+//                                .withLabel(Constants.ALAUDA_LABELS_SECRET_CREDENTIAL_SYNC, Constants.VALUE_SECRET_SYNC).list();
                         secrets = AlaudaUtils.getAuthenticatedAlaudaClient().secrets()
                           .inNamespace(namespace).list();
                         onInitialSecrets(secrets);
@@ -84,17 +84,6 @@ public class SecretWatcher extends BaseWatcher {
                                 logger.info("creating Secret watch for namespace "
                                         + namespace + " and resource version"
                                         + resourceVersion);
-//                                watches.put(
-//                                        namespace,
-//                                        getAuthenticatedAlaudaClient()
-//                                        .secrets()
-//                                        .inNamespace(namespace)
-//                                        .withLabel(Constants.OPENSHIFT_LABELS_SECRET_CREDENTIAL_SYNC,
-//                                                Constants.VALUE_SECRET_SYNC)
-//                                                .withResourceVersion(
-//                                                        resourceVersion)
-//                                                        .watch(new WatcherCallback<Secret>(SecretWatcher.this,
-//                                                                namespace)));
                               watches.put(
                                 namespace,
                                 AlaudaUtils.getAuthenticatedAlaudaClient()

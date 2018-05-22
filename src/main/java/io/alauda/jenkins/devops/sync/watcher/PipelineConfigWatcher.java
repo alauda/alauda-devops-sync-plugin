@@ -290,6 +290,11 @@ public class PipelineConfigWatcher extends BaseWatcher {
     }
   }
 
+  /**
+   * Update or create PipelineConfig
+   * @param pipelineConfig PipelineConfig
+   * @throws Exception
+   */
   private void upsertJob(final PipelineConfig pipelineConfig) throws Exception {
     if (AlaudaUtils.isPipelineStrategyPipelineConfig(pipelineConfig)) {
       // sync on intern of name should guarantee sync on same actual obj
@@ -335,10 +340,14 @@ public class PipelineConfigWatcher extends BaseWatcher {
               long updatedBCResourceVersion = AlaudaUtils.parseResourceVersion(pipelineConfig);
               long oldBCResourceVersion = parseResourceVersion(pipelineConfigProjectProperty.getResourceVersion());
               PipelineConfigProjectProperty newProperty = new PipelineConfigProjectProperty(pipelineConfig);
-              if (updatedBCResourceVersion <= oldBCResourceVersion && newProperty.getUid().equals(pipelineConfigProjectProperty.getUid()) && newProperty.getNamespace().equals(pipelineConfigProjectProperty.getNamespace())
-                && newProperty.getName().equals(pipelineConfigProjectProperty.getName()) && newProperty.getPipelineRunPolicy().equals(pipelineConfigProjectProperty.getPipelineRunPolicy())) {
+              if (updatedBCResourceVersion <= oldBCResourceVersion
+                      && newProperty.getUid().equals(pipelineConfigProjectProperty.getUid())
+                      && newProperty.getNamespace().equals(pipelineConfigProjectProperty.getNamespace())
+                      && newProperty.getName().equals(pipelineConfigProjectProperty.getName())
+                      && newProperty.getPipelineRunPolicy().equals(pipelineConfigProjectProperty.getPipelineRunPolicy())) {
                 return null;
               }
+
               pipelineConfigProjectProperty.setUid(newProperty.getUid());
               pipelineConfigProjectProperty.setNamespace(newProperty.getNamespace());
               pipelineConfigProjectProperty.setName(newProperty.getName());
@@ -355,7 +364,7 @@ public class PipelineConfigWatcher extends BaseWatcher {
             job.setConcurrentBuild(!(pipelineConfig.getSpec().getRunPolicy().equals(PipelineRunPolicy.SERIAL)));
 
             // Setting triggers according to pipeline config
-            List<Trigger<?>> triggers = JenkinsUtils.addJobTriggers(job, pipelineConfig.getSpec().getTriggers());
+            JenkinsUtils.addJobTriggers(job, pipelineConfig.getSpec().getTriggers());
 
             InputStream jobStream = new StringInputStream(new XStream2().toXML(job));
 
@@ -370,8 +379,6 @@ public class PipelineConfigWatcher extends BaseWatcher {
 
                 logger.info("Created job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
               } catch (IllegalArgumentException e) {
-                // see
-                // https://github.com/openshift/jenkins-sync-plugin/issues/117,
                 // jenkins might reload existing jobs on
                 // startup between the
                 // newJob check above and when we make
@@ -450,7 +457,7 @@ public class PipelineConfigWatcher extends BaseWatcher {
 
   }
 
-  // in response to receiving an openshift delete build config event, this
+  // in response to receiving an alauda delete build config event, this
   // method will drive
   // the clean up of the Jenkins job the build config is mapped one to one
   // with; as part of that

@@ -69,7 +69,7 @@ public class AlaudaUtils {
     
     static {
         jenkinsPodNamespace = System
-                .getProperty(Constants.OPENSHIFT_PROJECT_ENV_VAR_NAME);
+                .getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
         if (jenkinsPodNamespace != null && jenkinsPodNamespace.trim().length() > 0) {
             jenkinsPodNamespace = jenkinsPodNamespace.trim();
         } else {
@@ -114,24 +114,23 @@ public class AlaudaUtils {
      */
     public synchronized static void initializeAlaudaDevOpsClient(String serverUrl) {
       AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
-        if (serverUrl != null && !serverUrl.isEmpty()) {
-            configBuilder.withMasterUrl(serverUrl);
-        }
-        Config config = configBuilder.build();
-        if (config != null) {
-          if (Jenkins.getInstance().getPluginManager() != null && Jenkins.getInstance().getPluginManager()
-            .getPlugin(PLUGIN_NAME) != null) {
-            config.setUserAgent(PLUGIN_NAME + "-plugin-"
-              + Jenkins.getInstance().getPluginManager()
-              .getPlugin(PLUGIN_NAME).getVersion() + "/alauda-devops-"
-              + Version.clientVersion());
-          }
-          alaudaClient = new DefaultAlaudaDevOpsClient(config);
-        } else {
-          logger.warning("Config builder could not build a onfiguration for Alauda Connection");
-        }
+      if (serverUrl != null && !serverUrl.isEmpty()) {
+          configBuilder.withMasterUrl(serverUrl);
+      }
 
-
+      Config config = configBuilder.build();
+      if (config != null) {
+        if (Jenkins.getInstance().getPluginManager() != null && Jenkins.getInstance().getPluginManager()
+          .getPlugin(PLUGIN_NAME) != null) {
+          config.setUserAgent(PLUGIN_NAME + "-plugin-"
+            + Jenkins.getInstance().getPluginManager()
+            .getPlugin(PLUGIN_NAME).getVersion() + "/alauda-devops-"
+            + Version.clientVersion());
+        }
+        alaudaClient = new DefaultAlaudaDevOpsClient(config);
+      } else {
+        logger.warning("Config builder could not build a configuration for Alauda Connection");
+      }
     }
 
     public synchronized static AlaudaDevOpsClient getAlaudaClient() {
@@ -154,7 +153,6 @@ public class AlaudaUtils {
     public synchronized static void shutdownAlaudaClient() {
         if (alaudaClient != null) {
             alaudaClient.close();
-            alaudaClient = null;
         }
     }
 

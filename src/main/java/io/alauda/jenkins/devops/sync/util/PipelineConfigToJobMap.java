@@ -39,12 +39,12 @@ public class PipelineConfigToJobMap {
     }
   }
 
-  public static synchronized WorkflowJob getJobFromPipelineConfig(
-    PipelineConfig pipelineConfig) {
+  public static synchronized WorkflowJob getJobFromPipelineConfig(PipelineConfig pipelineConfig) {
     ObjectMeta meta = pipelineConfig.getMetadata();
     if (meta == null) {
       return null;
     }
+
     return getJobFromPipelineConfigUid(meta.getUid());
   }
 
@@ -52,6 +52,7 @@ public class PipelineConfigToJobMap {
     if (isBlank(uid)) {
       return null;
     }
+
     return pipelineConfigToJobMap.get(uid);
   }
 
@@ -68,6 +69,7 @@ public class PipelineConfigToJobMap {
       throw new IllegalArgumentException(
         "PipelineConfig must contain valid metadata");
     }
+
     putJobWithPipelineConfigUid(job, meta.getUid());
   }
 

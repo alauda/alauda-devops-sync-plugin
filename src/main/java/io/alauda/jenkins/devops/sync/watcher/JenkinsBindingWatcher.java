@@ -22,6 +22,7 @@ import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.kubernetes.api.model.JenkinsBinding;
 import io.alauda.kubernetes.api.model.JenkinsBindingList;
+import io.alauda.kubernetes.client.KubernetesClientException;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 
@@ -57,11 +58,23 @@ public class JenkinsBindingWatcher extends BaseWatcher {
       }
 
       for (String namespace : namespaces) {
-        watches.put(namespace, getWatch(namespace));
+        try {
+          Watch watch = getWatch(namespace);
+
+          watches.put(namespace, watch);
+        } catch (KubernetesClientException e) {
+          LOGGER.warning(() -> "Something happened when communicate with k8s. Cause : " + e.getCause());
+        }
       }
     }
 
-    private Watch getWatch(String namespace) {
+    /**
+     * Create the watcher of the namespace
+     * @param namespace namespace resource name
+     * @return watcher
+     * @throws KubernetesClientException in case of client execute failure
+     */
+    private Watch getWatch(String namespace) throws KubernetesClientException {
       JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings().inNamespace(namespace).list();
 
       String resourceVersion = "0";

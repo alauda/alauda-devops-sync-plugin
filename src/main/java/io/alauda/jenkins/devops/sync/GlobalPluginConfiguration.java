@@ -84,15 +84,23 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     return config != null ? config.isEnabled() : false;
   }
 
+  @Override
   public String getDisplayName() {
     return "Alauda Jenkins Sync";
   }
 
+  @Override
   public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
     req.bindJSON(this, json);
-    this.configChange();
-    this.save();
-    return true;
+
+    try {
+      this.configChange();
+
+      this.save();
+      return true;
+    } catch (KubernetesClientException e) {
+      return false;
+    }
   }
 
   public boolean isEnabled() {
@@ -166,6 +174,8 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
       LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
     } else {
       try {
+        stopWatchersAndClient();
+
         AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
         this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
         Runnable task = new SafeTimerTask() {
@@ -192,12 +202,14 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
           }
         };
         Timer.get().schedule(task, 1L, TimeUnit.SECONDS);
-      } catch (KubernetesClientException var2) {
-        if (var2.getCause() != null) {
-          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + var2.getCause());
+      } catch (KubernetesClientException e) {
+        if (e.getCause() != null) {
+          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e.getCause());
         } else {
-          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + var2);
+          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e);
         }
+
+        throw e;
       }
     }
   }
@@ -219,14 +231,17 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   private void stopWatchersAndClient() {
     if (this.pipelineWatcher != null) {
       this.pipelineWatcher.stop();
+      this.pipelineWatcher = null;
     }
 
     if (this.pipelineConfigWatcher != null) {
       this.pipelineConfigWatcher.stop();
+      this.pipelineConfigWatcher = null;
     }
 
     if (this.secretWatcher != null) {
       this.secretWatcher.stop();
+      this.secretWatcher = null;
     }
 
     AlaudaUtils.shutdownAlaudaClient();

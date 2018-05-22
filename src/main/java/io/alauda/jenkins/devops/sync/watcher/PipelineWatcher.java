@@ -135,9 +135,9 @@ public class PipelineWatcher extends BaseWatcher {
     }
 
     public void start() {
-        PipelineToActionMapper.initialize();
+      PipelineToActionMapper.initialize();
       logger.info("Now handling startup pipelines");
-        super.start();
+      super.start();
     }
 
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")

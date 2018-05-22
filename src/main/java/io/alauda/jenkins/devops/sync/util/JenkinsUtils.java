@@ -25,7 +25,7 @@ import hudson.slaves.Cloud;
 import hudson.triggers.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.kubernetes.api.model.*;
-import io.fabric8.openshift.api.model.JenkinsPipelineBuildStrategy;
+import io.alauda.devops.api.model.JenkinsPipelineBuildStrategy;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
@@ -229,48 +229,67 @@ public class JenkinsUtils {
     return paramMap;
   }
 
-
   public static List<Trigger<?>> addJobTriggers(WorkflowJob job, List<PipelineTrigger> triggers) throws IOException {
 	  List<Trigger<?>> jenkinsTriggers = new ArrayList<>();
 	  if (triggers == null || triggers.size() == 0) {
 	    return jenkinsTriggers;
     }
-    for (PipelineTrigger trgr : triggers) {
+
+    LOGGER.info(() -> "PipelineTrigger's count is " + triggers.size());
+
+    for (PipelineTrigger trigger : triggers) {
       Trigger triggerDescr = null;
-	    switch (trgr.getType()) {
+	    switch (trigger.getType()) {
         case PIPELINE_TRIGGER_TYPE_CODE_CHANGE:
-          if (trgr.getCodeChange() == null || !trgr.getCodeChange().getEnabled()) {
+          PipelineTriggerCodeChange codeTrigger = trigger.getCodeChange();
+
+          if (codeTrigger == null || !codeTrigger.getEnabled()) {
             LOGGER.warning("Trigger type `"+PIPELINE_TRIGGER_TYPE_CODE_CHANGE+"` has empty description or is disabled...");
             break;
           }
+
           try {
-            triggerDescr = new SCMTrigger(trgr.getCodeChange().getPeriodicCheck());
+            triggerDescr = new SCMTrigger(codeTrigger.getPeriodicCheck());
           } catch (ANTLRException exc) {
             LOGGER.severe("Error processing trigger type `"+PIPELINE_TRIGGER_TYPE_CODE_CHANGE+"`: "+exc);
           }
+
+          LOGGER.info(() -> "Add CodeChangeTrigger.");
+
           break;
         case PIPELINE_TRIGGER_TYPE_CRON:
-          if (trgr.getCron() == null || !trgr.getCron().getEnabled()) {
+          PipelineTriggerCron cronTrigger = trigger.getCron();
+          if (cronTrigger == null || !cronTrigger.getEnabled()) {
             LOGGER.warning("Trigger type `"+PIPELINE_TRIGGER_TYPE_CRON+"` has empty description or is disabled...");
             break;
           }
+
           try {
-            triggerDescr = new TimerTrigger(trgr.getCron().getRule());
+            triggerDescr = new TimerTrigger(cronTrigger.getRule());
           } catch (ANTLRException exc) {
             LOGGER.severe("Error processing trigger type `"+PIPELINE_TRIGGER_TYPE_CRON+"`: "+exc);
           }
+
+          LOGGER.info(() -> "Add CronTrigger.");
+
           break;
         default:
-          LOGGER.warning("Trigger type `"+trgr.getType()+"` is not supported... skipping...");
+          LOGGER.warning("Trigger type `"+trigger.getType()+"` is not supported... skipping...");
       }
+
       if (triggerDescr != null) {
 	      jenkinsTriggers.add(triggerDescr);
       }
     }
+
     job.setTriggers(jenkinsTriggers);
 	  job.save();
+
+	  LOGGER.info(() -> "Job trigger save done.");
+
     return jenkinsTriggers;
   }
+
 	public static List<Action> setJobRunParamsFromEnv(WorkflowJob job, List<PipelineParameter> pipelineParameters,
 			List<Action> buildActions) {
 //		List<EnvVar> envs = pipelineParameters.getEnv();
