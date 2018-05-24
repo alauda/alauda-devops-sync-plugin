@@ -34,7 +34,7 @@ import jenkins.util.Timer;
 public abstract class BaseWatcher {
     private final Logger LOGGER = Logger.getLogger(BaseWatcher.class.getName());
 
-    protected ScheduledFuture relister;
+    protected ScheduledFuture register;
     protected final String[] namespaces;
     protected Map<String, Watch> watches;
 
@@ -54,20 +54,30 @@ public abstract class BaseWatcher {
         // io.alauda.jenkins.devops.sync.GlobalPluginConfiguration to support
         // a circular dependency, but it is not an interface.
         Runnable task = getStartTimerTask();
-        relister = Timer.get().scheduleAtFixedRate(task, 100, // still do the
-                                                              // first run 100
-                                                              // milliseconds in
-                5 * 60 * 1000, // 1000 ms * 60 seconds * 5 minutes between
-                               // subsequent runs
-                TimeUnit.MILLISECONDS);
+        register = Timer.get().schedule(task, 500, TimeUnit.MILLISECONDS);
+//        register = Timer.get().scheduleAtFixedRate(task, 100, // still do the
+//                                                              // first run 100
+//                                                              // milliseconds in
+//                5 * 60 * 1000, // 1000 ms * 60 seconds * 5 minutes between
+//                               // subsequent runs
+//                TimeUnit.MILLISECONDS);
     }
 
     public synchronized void stop() {
-      if (relister != null && !relister.isDone()) {
-          relister.cancel(true);
-          relister = null;
+      if (register != null && !register.isDone()) {
+          register.cancel(true);
+          while(!register.isDone()) {
+              LOGGER.info("Waiting register to stop...");
+              try {
+                  Thread.sleep(500);
+              } catch (InterruptedException e) {
+                  e.printStackTrace();
+              }
+          }
+          register = null;
       }
 
+      // stop all watchers and clean the cache
       Iterator<String> iterator = watches.keySet().iterator();
       while(iterator.hasNext()) {
         String namespace = iterator.next();

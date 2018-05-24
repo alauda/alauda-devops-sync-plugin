@@ -27,7 +27,13 @@ import io.alauda.jenkins.devops.sync.watcher.NamespaceWatcher;
 import io.alauda.jenkins.devops.sync.watcher.PipelineConfigWatcher;
 import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
 import io.alauda.jenkins.devops.sync.watcher.SecretWatcher;
+import io.alauda.kubernetes.api.model.Namespace;
+import io.alauda.kubernetes.api.model.NamespaceList;
 import io.alauda.kubernetes.client.KubernetesClientException;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -55,6 +61,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   private transient SecretWatcher secretWatcher;
 //  private transient JenkinsBindingWatcher jenkinsBindingWatcher;
   private transient NamespaceWatcher namespaceWatcher;
+  private boolean initial = false;
 
   @DataBoundConstructor
   public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId, String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
@@ -159,7 +166,12 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.skipBranchSuffix = skipBranchSuffix;
   }
 
-  public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
+    public String[] getNamespaces()
+    {
+        return namespaces;
+    }
+
+    public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
     Jenkins jenkins = Jenkins.getInstance();
     if (jenkins == null) {
       return (ListBoxModel)null;
@@ -168,6 +180,30 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     }
   }
 
+  public void reloadNamespaces() {
+    this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
+  }
+
+  /***
+   * Just for re-watch all the namespaces
+   */
+  public void reWatchAllNamespace(String namespace) {
+    stopWatchers();
+
+    reloadNamespaces();
+
+    // put the new guy at first
+    List<String> namespaceList = Arrays.asList(namespaces);
+    namespaceList.remove(namespace);
+    namespaceList.add(0, namespace);
+    namespaces = namespaceList.toArray(new String[]{});
+
+    startWatchers();
+  }
+
+  /**
+   * Only call when the plugin configuration is really changed.
+   */
   public void configChange() {
     if (!this.enabled) {
       this.stopWatchersAndClient();
@@ -176,8 +212,13 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
       try {
         stopWatchersAndClient();
 
-        AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
-        this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
+        if(!initial) {
+          AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
+          initial = true;
+        }
+
+        reloadNamespaces();
+
         Runnable task = new SafeTimerTask() {
           protected void doRun() throws Exception {
             GlobalPluginConfiguration.LOGGER.info("Waiting for Jenkins to be started");
@@ -214,7 +255,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     }
   }
 
-  private void startWatchers() {
+  public void startWatchers() {
     this.pipelineWatcher = new PipelineWatcher(this.namespaces);
     this.pipelineWatcher.start();
     this.pipelineConfigWatcher = new PipelineConfigWatcher(this.namespaces);
@@ -223,12 +264,22 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.secretWatcher.start();
 
     if(this.namespaceWatcher == null) {
-      namespaceWatcher = new NamespaceWatcher(this.namespaces);
+      // NamespaceWatcher should watch everything
+      List<String> allNamespaces = new ArrayList<>(Arrays.asList(namespaces));
+      NamespaceList namespaceList = AlaudaUtils.getAuthenticatedAlaudaClient().namespaces().list();
+      if(namespaceList != null) {
+        for(Namespace namespace : namespaceList.getItems()) {
+          if(!allNamespaces.contains(namespace.getMetadata().getName())) {
+            allNamespaces.add(0, namespace.getMetadata().getName());
+          }
+        }
+      }
+      namespaceWatcher = new NamespaceWatcher(allNamespaces.toArray(new String[]{}));
       namespaceWatcher.start();
     }
   }
 
-  private void stopWatchersAndClient() {
+  public void stopWatchers() {
     if (this.pipelineWatcher != null) {
       this.pipelineWatcher.stop();
       this.pipelineWatcher = null;
@@ -243,6 +294,10 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
       this.secretWatcher.stop();
       this.secretWatcher = null;
     }
+  }
+
+  public void stopWatchersAndClient() {
+    stopWatchers();
 
     AlaudaUtils.shutdownAlaudaClient();
   }

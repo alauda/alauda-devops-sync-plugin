@@ -5,6 +5,7 @@ import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.kubernetes.api.model.Namespace;
+import io.alauda.kubernetes.api.model.NamespaceList;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher.Action;
 
@@ -21,7 +22,7 @@ public class NamespaceWatcher extends BaseWatcher {
   public NamespaceWatcher(String[] namespaces) {
     super(namespaces);
 
-    namespaceList = new CopyOnWriteArrayList<>();
+    namespaceList = new CopyOnWriteArrayList<>(Arrays.asList(namespaces));
   }
 
   public Runnable getStartTimerTask() {
@@ -33,13 +34,23 @@ public class NamespaceWatcher extends BaseWatcher {
     String name = namespace.getMetadata().getName();
     this.LOGGER.info("namespace : " + name + "; action : " + action.name());
 
+//    if(!AlaudaUtils.isBindingToCurrentJenkins(name)) {
+//      return;
+//    }
+
     switch (action) {
       case DELETED:
         namespaceList.remove(name);
         break;
       case ADDED:
-        namespaceList.add(name);
+        if(namespaceList.contains(name)) {
+          return;
+        }
+
+        namespaceList.add(0, name);
     }
+
+    LOGGER.info("Watch a new namespace: " + name + "; prepare to re-watch JenkinsBinding");
 
     restartJenkinsBindingWatcher(namespaceList.toArray(new String[]{}));
   }
@@ -54,13 +65,21 @@ public class NamespaceWatcher extends BaseWatcher {
       } else {
         NamespaceWatcher.this.watches.put("namespace", this.getWatch((String)null));
 
-        namespaceList.addAll(Arrays.asList(namespaces));
         restartJenkinsBindingWatcher(namespaces);
       }
     }
 
     private Watch getWatch(String namespace) {
-      return (Watch)AlaudaUtils.getAuthenticatedAlaudaClient().namespaces().watch(new WatcherCallback(NamespaceWatcher.this, namespace));
+      NamespaceList namespaceListObj = AlaudaUtils.getAuthenticatedAlaudaClient().namespaces().list();
+      String resourceVersion = "0";
+      if(namespaceListObj != null) {
+        resourceVersion = namespaceListObj.getMetadata().getResourceVersion();
+      }
+
+      return (Watch)AlaudaUtils.getAuthenticatedAlaudaClient()
+              .namespaces()
+              .withResourceVersion(resourceVersion)
+              .watch(new WatcherCallback(NamespaceWatcher.this, namespace));
     }
   }
 

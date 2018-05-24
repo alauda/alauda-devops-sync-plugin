@@ -108,7 +108,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
           LOGGER.fine("Get null CauseAction in task : " + taskName);
         }
 
-        return false;
+        return true;
       }
     }
 
