@@ -36,6 +36,10 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * In this handler, we just handle the case of triggered by user. We will pass of other cases.
+ * @author suren
+ */
 @Extension
 public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
@@ -44,20 +48,15 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
   @Override
   public boolean shouldSchedule(Queue.Task p, List<Action> actions) {
     if (p instanceof WorkflowJob && !isAlaudaDevOpsPipelineCause(actions)) {
-      WorkflowJob wj = (WorkflowJob) p;
+      // in case of triggered by users
+      WorkflowJob workflowJob = (WorkflowJob) p;
       String taskName = p.getName();
-      PipelineConfigProjectProperty pipelineConfigProjectProperty = wj
-        .getProperty(PipelineConfigProjectProperty.class);
-      if (pipelineConfigProjectProperty != null
-        && StringUtils.isNotBlank(pipelineConfigProjectProperty
-        .getNamespace())
-        && StringUtils.isNotBlank(pipelineConfigProjectProperty
-        .getName())) {
-
+      PipelineConfigProjectProperty pipelineConfigProjectProperty = workflowJob.getProperty(PipelineConfigProjectProperty.class);
+      if (hasValidProperty(workflowJob)) {
         String namespace = pipelineConfigProjectProperty.getNamespace();
         String jobURL = PipelineSyncRunListener.joinPaths(
           AlaudaUtils.getJenkinsURL(AlaudaUtils.getAuthenticatedAlaudaClient(),
-            namespace), wj.getUrl());
+            namespace), workflowJob.getUrl());
 
         LOGGER.info("Got this namespace " + namespace + " from this pipelineConfigProjectProperty: " + pipelineConfigProjectProperty + " with run policy: " + pipelineConfigProjectProperty.getPipelineRunPolicy());
         // TODO: Add trigger API for pipelineconfig (like above)
@@ -82,6 +81,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
         Pipeline pipeline = null;
         try {
+          // create k8s resource(Pipeline)
           pipeline = PipelineGenerator.buildPipeline(config, jobURL, actions);
         } catch (KubernetesClientException e) {
           LOGGER.warning(config.getMetadata().getName() + " got error : " + e.getMessage());
@@ -108,11 +108,22 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
           LOGGER.fine("Get null CauseAction in task : " + taskName);
         }
 
-        return true;
+        // we already create k8s resource, and waiting next round
+        return false;
       }
     }
 
     return true;
+  }
+
+  private boolean hasValidProperty(WorkflowJob workflowJob) {
+    PipelineConfigProjectProperty property = workflowJob.getProperty(PipelineConfigProjectProperty.class);
+
+    if(property == null) {
+      return false;
+    }
+
+    return (StringUtils.isNotBlank(property.getNamespace()) && StringUtils.isNotBlank(property.getName()));
   }
 
   private static boolean isAlaudaDevOpsPipelineCause(List<Action> actions) {
@@ -129,7 +140,12 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
     return false;
   }
 
-  private static CauseAction dumpCause(List<Action> actions) {
+  /**
+   * Just for find the first CauseAction and print debug info
+   * @param actions action list
+   * @return causeAction
+   */
+  private CauseAction dumpCause(List<Action> actions) {
     for (Action action : actions) {
       if (action instanceof CauseAction) {
         CauseAction causeAction = (CauseAction) action;
