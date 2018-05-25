@@ -24,7 +24,6 @@ import hudson.model.Job;
 import hudson.model.ParameterDefinition;
 import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
-import hudson.triggers.Trigger;
 import hudson.util.XStream2;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
@@ -34,6 +33,7 @@ import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.api.model.PipelineConfigList;
 
+import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
@@ -63,7 +63,7 @@ import static java.util.logging.Level.SEVERE;
  * ensure there is a suitable Jenkins Job object defined with the correct
  * configuration
  */
-public class PipelineConfigWatcher extends BaseWatcher {
+public class PipelineConfigWatcher implements BaseWatcher {
   private final Logger logger = Logger.getLogger(getClass().getName());
 
   // for coordinating between ItemListener.onUpdate and onDeleted both
@@ -85,90 +85,53 @@ public class PipelineConfigWatcher extends BaseWatcher {
     deletesInProgress.remove(pcID);
   }
 
-  @SuppressFBWarnings("EI_EXPOSE_REP2")
-  public PipelineConfigWatcher(String[] namespaces) {
-    super(namespaces);
-    logger.info("PipelineWatcher got these namespaces: "+namespaces);
-  }
+  private Watch watcher;
 
+  @Override
   public void watch() {
+      if (!CredentialsUtils.hasCredentials()) {
+          logger.info("No Alauda Kubernetes Token credential defined.");
+          return;
+      }
+
     PipelineConfigList list = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().list();
     String ver = "0";
     if(list != null) {
       ver = list.getMetadata().getResourceVersion();
     }
 
-    AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
+    watcher = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
             .inAnyNamespace()
             .withResourceVersion(ver)
             .watch(new WatcherCallback<PipelineConfig>(this, null));
   }
 
-  public Runnable getStartTimerTask() {
-    return new SafeTimerTask() {
-      @Override
-      public void doRun() {
-        if (!CredentialsUtils.hasCredentials()) {
-          logger.info("No Alauda Kubernetes Token credential defined.");
-          return;
-        }
+    @Override
+    public void stop() {
+      if(watcher != null) {
+          watcher.close();
+      }
+    }
 
-        if (namespaces == null || namespaces.length == 0) {
-          logger.info("No namespaces for pipeline config watcher...");
-        }
+    @Override
+    public void init(String[] namespaces) {
+        PipelineConfigToJobMap.initializePipelineConfigToJobMap();
 
         for (String namespace : namespaces) {
-          logger.info("Looking for pipeline configs in namespace "+namespace);
-          PipelineConfigList pipelineConfigs = null;
-          try {
-            logger.info("listing PipelineConfigs resources");
-            pipelineConfigs = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(namespace).list();
-            onInitialPipelineConfigs(pipelineConfigs);
-            logger.info("handled PipelineConfigs resources");
-          } catch (Exception e) {
-            logger.log(SEVERE, "Failed to load PipelineConfigs: " + e, e);
-          }
-
-//          try {
-//            String resourceVersion = "0";
-//            if (pipelineConfigs == null) {
-//              logger.warning("Unable to get pipeline config list; impacts resource version used for watch");
-//            } else {
-//              resourceVersion = pipelineConfigs.getMetadata().getResourceVersion();
-//            }
-//            synchronized(PipelineConfigWatcher.this) {
-//              if (watches.get(namespace) == null) {
-//                logger.info("creating PipelineConfig watch for namespace " + namespace + " and resource version " + resourceVersion);
-//                watches.put(namespace, AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().
-//                  inNamespace(namespace).withResourceVersion(resourceVersion).
-//                  watch(new WatcherCallback<PipelineConfig>(PipelineConfigWatcher.this, namespace)));
-//              }
-//            }
-//          } catch (Exception e) {
-//            logger.log(SEVERE, "Failed to load PipelineConfigs: " + e, e);
-//          }
+            logger.info("Looking for pipeline configs in namespace "+namespace);
+            PipelineConfigList pipelineConfigs = null;
+            try {
+                logger.info("listing PipelineConfigs resources");
+                pipelineConfigs = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(namespace).list();
+                onInitialPipelineConfigs(pipelineConfigs);
+                logger.info("handled PipelineConfigs resources");
+            } catch (Exception e) {
+                logger.log(SEVERE, "Failed to load PipelineConfigs: " + e, e);
+            }
         }
+    }
 
-        System.out.println("sdf");
-        // poke the PipelineWatcher builds with no BC list and see if we
-        // can create job
-        // runs for premature builds
-
-        // TODO: Change to PipelineWatcher
-//        PipelineWatcher.flushPipelinesWithNoPCList();
-
-      }
-    };
-  }
-
-  public synchronized void start() {
-    PipelineConfigToJobMap.initializePipelineConfigToJobMap();
-    logger.info("Now handling startup pipeline configs!!");
-    super.start();
-
-  }
-
-  private synchronized void onInitialPipelineConfigs(PipelineConfigList pipelineConfigs) {
+    private synchronized void onInitialPipelineConfigs(PipelineConfigList pipelineConfigs) {
     if (pipelineConfigs == null) {
       return;
     }
@@ -177,10 +140,9 @@ public class PipelineConfigWatcher extends BaseWatcher {
     if (items != null) {
       for (PipelineConfig pipelineConfig : items) {
         try {
-//          if(!isBoundPipelineConfig(pipelineConfig)) {
-            if(!Cache.getInstance().isBinding(pipelineConfig)) {
-            continue;
-          }
+            if(!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
+                continue;
+              }
 
           upsertJob(pipelineConfig);
         } catch (Exception e) {
@@ -192,8 +154,7 @@ public class PipelineConfigWatcher extends BaseWatcher {
 
   @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
   public synchronized void eventReceived(Watcher.Action action, PipelineConfig pipelineConfig) {
-//      if(!isBoundPipelineConfig(pipelineConfig)) {
-    if(!Cache.getInstance().isBinding(pipelineConfig)) {
+    if(!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
       return;
     }
 

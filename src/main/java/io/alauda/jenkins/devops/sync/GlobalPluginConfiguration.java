@@ -24,17 +24,7 @@ import hudson.triggers.SafeTimerTask;
 import hudson.util.ListBoxModel;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.watcher.*;
-import io.alauda.kubernetes.api.model.JenkinsBinding;
-import io.alauda.kubernetes.api.model.Namespace;
-import io.alauda.kubernetes.api.model.NamespaceList;
 import io.alauda.kubernetes.client.KubernetesClientException;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import jenkins.util.Timer;
@@ -43,6 +33,15 @@ import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * @author suren
+ */
 @Extension
 public class GlobalPluginConfiguration extends GlobalConfiguration {
   private static final Logger LOGGER = Logger.getLogger(GlobalPluginConfiguration.class.getName());
@@ -57,9 +56,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   private transient PipelineWatcher pipelineWatcher;
   private transient PipelineConfigWatcher pipelineConfigWatcher;
   private transient SecretWatcher secretWatcher;
-//  private transient JenkinsBindingWatcher jenkinsBindingWatcher;
-  private transient NamespaceWatcher namespaceWatcher;
-  private boolean initial = false;
+  private boolean clientInitial = false;
 
   @DataBoundConstructor
   public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId, String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
@@ -72,13 +69,15 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.skipBranchSuffix = skipBranchSuffix;
     this.configChange();
 
-    Cache.getInstance().setJenkinsService(jenkinsService);
+    ResourcesCache.getInstance().setJenkinsService(jenkinsService);
   }
 
   public GlobalPluginConfiguration() {
+    clientInitial = false;
     this.load();
+    System.out.println("prepare to config change");
     this.configChange();
-    Cache.getInstance().setJenkinsService(jenkinsService);
+    ResourcesCache.getInstance().setJenkinsService(jenkinsService);
 
     LOGGER.info("Alauda GlobalPluginConfiguration is started.");
   }
@@ -185,7 +184,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
 
     for(String namespace : namespaces) {
-      Cache.getInstance().addNamespace(namespace);
+      ResourcesCache.getInstance().addNamespace(namespace);
     }
   }
 
@@ -216,12 +215,16 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     } else {
       try {
         stopWatchersAndClient();
+        System.out.println("stop client and watchers" + "-inital: " + clientInitial);
 
-        if(!initial) {
+        if(!clientInitial) {
+          System.out.println("prepare to init client");
           AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
-          initial = true;
+          System.out.println("client init ok");
+          clientInitial = true;
         }
 
+        System.out.println("reload namespaces");
         reloadNamespaces();
 
         Runnable task = new SafeTimerTask() {
@@ -261,30 +264,19 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   }
 
   public void startWatchers() {
-    this.pipelineWatcher = new PipelineWatcher(this.namespaces);
+    this.pipelineWatcher = new PipelineWatcher();
     this.pipelineWatcher.watch();
-    this.pipelineWatcher.start();
-    this.pipelineConfigWatcher = new PipelineConfigWatcher(this.namespaces);
-    this.pipelineConfigWatcher.watch();
-    this.pipelineConfigWatcher.start();
-    this.secretWatcher = new SecretWatcher(this.namespaces);
-    this.secretWatcher.start();
-    new JenkinsBindingWatcher(this.namespaces).start();
+    this.pipelineWatcher.init(namespaces);
 
-//    if(this.namespaceWatcher == null) {
-//      // NamespaceWatcher should watch everything
-//      List<String> allNamespaces = new ArrayList<>(Arrays.asList(namespaces));
-//      NamespaceList namespaceList = AlaudaUtils.getAuthenticatedAlaudaClient().namespaces().list();
-//      if(namespaceList != null) {
-//        for(Namespace namespace : namespaceList.getItems()) {
-//          if(!allNamespaces.contains(namespace.getMetadata().getName())) {
-//            allNamespaces.add(0, namespace.getMetadata().getName());
-//          }
-//        }
-//      }
-//      namespaceWatcher = new NamespaceWatcher(allNamespaces.toArray(new String[]{}));
-//      namespaceWatcher.start();
-//    }
+    this.pipelineConfigWatcher = new PipelineConfigWatcher();
+    this.pipelineConfigWatcher.watch();
+    this.pipelineConfigWatcher.init(namespaces);
+
+    this.secretWatcher = new SecretWatcher();
+    this.secretWatcher.watch();
+    this.secretWatcher.init(namespaces);
+
+    new JenkinsBindingWatcher().watch();
   }
 
   public void stopWatchers() {

@@ -8,18 +8,21 @@ import io.alauda.kubernetes.api.model.Secret;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-public class Cache {
+/**
+ * @author suren
+ */
+public class ResourcesCache {
     private String jenkinsService;
 
     private Set<String> namespaces = new CopyOnWriteArraySet<>();
     private Set<String> pipelineConfigs = new CopyOnWriteArraySet<>();
 
-    private static final Cache cache = new Cache();
+    private static final ResourcesCache RESOURCES_CACHE = new ResourcesCache();
 
-    private Cache(){}
+    private ResourcesCache(){}
 
-    public static Cache getInstance() {
-        return cache;
+    public static ResourcesCache getInstance() {
+        return RESOURCES_CACHE;
     }
 
     public void setJenkinsService(String jenkinsService) {

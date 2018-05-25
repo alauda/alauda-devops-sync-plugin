@@ -24,8 +24,7 @@ public class WatcherCallback<T> implements Watcher<T> {
     private final BaseWatcher watcher;
     private final String namespace;
 
-    public WatcherCallback(BaseWatcher w,
-            String n) {
+    public WatcherCallback(BaseWatcher w, String n) {
         watcher = w;
         namespace = n;
     }
@@ -37,7 +36,7 @@ public class WatcherCallback<T> implements Watcher<T> {
 
     @Override
     public void onClose(KubernetesClientException cause) {
-        watcher.onClose(cause, namespace);
+//        watcher.onClose(cause, namespace);
     }
 
 }

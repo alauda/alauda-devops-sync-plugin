@@ -91,8 +91,8 @@ pipeline {
 
                     // currently is building code inside the container
                     IMAGE = deploy.dockerBuild(
-                        ".tmp/Dockerfile", //Dockerfile
-                        ".tmp", // build context
+                        "./artifacts/images/Dockerfile", //Dockerfile
+                        "./artifacts/images", // build context
                         "index.alauda.cn/alaudak8s/jenkins-plugin-injector", // repo address
                         "${RELEASE_BUILD}", // tag
                         "alaudak8s", // credentials for pushing
@@ -102,13 +102,12 @@ pipeline {
                     // TODO: change to commit when we have a 
                     // more final solution
                     IMAGE.start().push().push(IMAGE_TAG)
-
                   }
-
               }
           }
         }
       }
+
       // after build it should start deploying
       stage('Promoting') {
           // limit this stage to master only

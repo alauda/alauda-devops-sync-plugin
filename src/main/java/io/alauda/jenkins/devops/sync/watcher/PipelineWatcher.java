@@ -21,6 +21,7 @@ import hudson.triggers.SafeTimerTask;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
+import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
@@ -32,7 +33,6 @@ import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,7 +44,10 @@ import java.util.logging.Logger;
 import static io.alauda.jenkins.devops.sync.util.JenkinsUtils.cancelPipeline;
 import static java.util.logging.Level.WARNING;
 
-public class PipelineWatcher extends BaseWatcher {
+/**
+ * @author suren
+ */
+public class PipelineWatcher implements BaseWatcher {
     private static final Logger logger = Logger.getLogger(PipelineWatcher.class
             .getName());
 
@@ -59,105 +62,60 @@ public class PipelineWatcher extends BaseWatcher {
     // minute delay
     // before the job run gets kicked off
     private static final HashSet<Pipeline> pipelinesWithNoPCList = new HashSet<Pipeline>();
+    private Watch watcher;
 
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
-    public PipelineWatcher(String[] namespaces) {
-        super(namespaces);
-    }
-
+    @Override
     public void watch() {
         PipelineList list = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines().list();
         String ver = "0";
         if(list != null) {
             ver = list.getMetadata().getResourceVersion();
         }
-        AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
+
+        watcher = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
                 .inAnyNamespace()
                 .withResourceVersion(ver)
                 .watch(new WatcherCallback<Pipeline>(this, null));
     }
 
     @Override
-    public Runnable getStartTimerTask() {
-        return new SafeTimerTask() {
-            @Override
-            public void doRun() {
-                if (!CredentialsUtils.hasCredentials()) {
-                    logger.fine("No Alauda Kubernetes Token credential defined.");
-                    return;
+    public void stop() {
+        if(watcher != null) {
+            watcher.close();
+        }
+    }
+
+    @Override
+    public void init(String[] namespaces) {
+        PipelineWatcher.flushPipelinesWithNoPCList();
+        for (String namespace : namespaces) {
+            try {
+                logger.fine("listing Pipeline resources");
+
+                // TODO: Filter directly in the API
+                PipelineList newPipelines = filterNew(AlaudaUtils.getAuthenticatedAlaudaClient()
+                        .pipelines()
+                        .inNamespace(namespace)
+                        .list());
+
+                if(newPipelines == null || newPipelines.getItems() == null
+                        || newPipelines.getItems().size() == 0) {
+                    continue;
                 }
 
-                // prior to finding new builds poke the PipelineWatcher builds with
-                // no BC list and see if we
-                // can create job runs for premature builds we already know
-                // about
-                PipelineWatcher.flushPipelinesWithNoPCList();
-                for (String namespace : namespaces) {
-                    try {
-                        logger.fine("listing Pipeline resources");
+                onInitialPipelines(newPipelines);
 
-                        // TODO: Filter directly in the API
-                        PipelineList newPipelines = filterNew(AlaudaUtils.getAuthenticatedAlaudaClient()
-                                .pipelines()
-                                .inNamespace(namespace)
-                                .list());
-
-                        if(newPipelines == null || newPipelines.getItems() == null
-                                || newPipelines.getItems().size() == 0) {
-                            continue;
-                        }
-
-                        onInitialPipelines(newPipelines);
-
-                        logger.fine("handled Pipeline resources");
-                    } catch (Exception e) {
-                        logger.log(Level.SEVERE, "Failed to load initial Builds: " + e, e);
-                    }
-//                    try {
-//                        String resourceVersion = "0";
-//                        if (newPipelines == null) {
-//                            logger.warning("Unable to get build list; impacts resource version used for watch");
-//                        } else {
-//                            resourceVersion = newPipelines.getMetadata()
-//                                    .getResourceVersion();
-//                        }
-//                        synchronized(PipelineWatcher.this) {
-//                            if (watches.get(namespace) == null) {
-//                                logger.info("creating Pipeline watch for namespace "
-//                                        + namespace
-//                                        + " and resource version "
-//                                        + resourceVersion);
-//                                watches.put(
-//                                        namespace,
-//                                        AlaudaUtils.getAuthenticatedAlaudaClient()
-//                                                .pipelines()
-//                                                .inNamespace(namespace)
-//                                                .withResourceVersion(
-//                                                        resourceVersion)
-//                                                .watch(new WatcherCallback<Pipeline>(
-//                                                        PipelineWatcher.this,
-//                                                        namespace)));
-//                            }
-//                        }
-//                    } catch (Exception e) {
-//                        logger.log(Level.SEVERE,
-//                                "Failed to load initial Builds: " + e, e);
-//                    }
-                }
-
-                reconcileRunsAndPipelines();
+                logger.fine("handled Pipeline resources");
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Failed to load initial Builds: " + e, e);
             }
-        };
+        }
+
+        reconcileRunsAndPipelines();
     }
 
     private PipelineList filterNew(PipelineList list) {
       return JenkinsUtils.filterNew(list);
-    }
-
-    public void start() {
-      PipelineToActionMapper.initialize();
-      logger.info("Now handling startup pipelines");
-      super.start();
     }
 
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
@@ -165,7 +123,7 @@ public class PipelineWatcher extends BaseWatcher {
         if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline))
             return;
 
-        if(!Cache.getInstance().isBinding(pipeline)) {
+        if(!ResourcesCache.getInstance().isBinding(pipeline)) {
             return;
         }
 
@@ -211,7 +169,7 @@ public class PipelineWatcher extends BaseWatcher {
             if (!AlaudaUtils.isPipelineStrategyPipeline(pipe))
                 continue;
 
-            if(!Cache.getInstance().isBinding(pipe)) {
+            if(!ResourcesCache.getInstance().isBinding(pipe)) {
                 continue;
             }
 
