@@ -8,7 +8,7 @@ mkdir .tmp
 cp artifacts/images/* .tmp
 cp target/*.hpi .tmp
 
-if [ "$@" != "" ]; then
+if [ $# -lt 0 ]; then
   docker build -t jenkins-plugin-injector .tmp
   docker tag jenkins-plugin-injector index.alauda.cn/alaudak8s/jenkins-plugin-injector:dev
   docker push index.alauda.cn/alaudak8s/jenkins-plugin-injector:dev

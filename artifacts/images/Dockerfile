@@ -4,5 +4,5 @@ COPY copy.sh /
 RUN chmod +x copy.sh
 CMD ["/copy.sh"]
 
-COPY ../../target/alauda-devops-sync.hpi /plugin/
+COPY alauda-devops-sync.hpi /plugin/
 
