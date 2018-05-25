@@ -41,8 +41,10 @@ public class NamespaceWatcher extends BaseWatcher {
     switch (action) {
       case DELETED:
         namespaceList.remove(name);
+//        Cache.getInstance().removeNamespace(name);
         break;
       case ADDED:
+//        Cache.getInstance().addNamespace(name);
         if(namespaceList.contains(name)) {
           return;
         }
@@ -52,7 +54,7 @@ public class NamespaceWatcher extends BaseWatcher {
 
     LOGGER.info("Watch a new namespace: " + name + "; prepare to re-watch JenkinsBinding");
 
-    restartJenkinsBindingWatcher(namespaceList.toArray(new String[]{}));
+//    restartJenkinsBindingWatcher(namespaceList.toArray(new String[]{}));
   }
 
   private class NamespaceWatcherTask extends SafeTimerTask {
@@ -65,7 +67,7 @@ public class NamespaceWatcher extends BaseWatcher {
       } else {
         NamespaceWatcher.this.watches.put("namespace", this.getWatch((String)null));
 
-        restartJenkinsBindingWatcher(namespaces);
+//        restartJenkinsBindingWatcher(namespaces);
       }
     }
 
@@ -76,19 +78,19 @@ public class NamespaceWatcher extends BaseWatcher {
         resourceVersion = namespaceListObj.getMetadata().getResourceVersion();
       }
 
-      return (Watch)AlaudaUtils.getAuthenticatedAlaudaClient()
+      return AlaudaUtils.getAuthenticatedAlaudaClient()
               .namespaces()
               .withResourceVersion(resourceVersion)
               .watch(new WatcherCallback(NamespaceWatcher.this, namespace));
     }
   }
 
-  private void restartJenkinsBindingWatcher(String[] namespaces) {
-    if(jenkinsBindingWatcher != null) {
-      jenkinsBindingWatcher.stop();
-    }
-
-    jenkinsBindingWatcher = new JenkinsBindingWatcher(namespaces);
-    jenkinsBindingWatcher.start();
-  }
+//  private void restartJenkinsBindingWatcher(String[] namespaces) {
+//    if(jenkinsBindingWatcher != null) {
+//      jenkinsBindingWatcher.stop();
+//    }
+//
+//    jenkinsBindingWatcher = new JenkinsBindingWatcher(namespaces);
+//    jenkinsBindingWatcher.start();
+//  }
 }

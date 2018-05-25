@@ -61,8 +61,7 @@ import static java.util.logging.Level.FINE;
  */
 public class AlaudaUtils {
 
-    private final static Logger logger = Logger.getLogger(AlaudaUtils.class
-            .getName());
+    private final static Logger logger = Logger.getLogger(AlaudaUtils.class.getName());
 
     private static AlaudaDevOpsClient alaudaClient;
     private static String jenkinsPodNamespace = null;

@@ -40,35 +40,39 @@ public class JenkinsBindingWatcher extends BaseWatcher {
     return new JenkinsBindingWatcherTask();
   }
 
-  @Override
   public <T> void eventReceived(Watcher.Action action, T resource) {
     JenkinsBinding jenkinsBinding = (JenkinsBinding) resource;
 
     LOGGER.info("JenkinsBindingWatcher receive action : " + action + "; resource : " + jenkinsBinding.getMetadata().getName());
 
-    GlobalPluginConfiguration pluginConfig = GlobalPluginConfiguration.get();
-
-    String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
-    String jenkinsService = pluginConfig.getJenkinsService();
-    if(!AlaudaUtils.isBindingToCurrentJenkins(jenkinsBinding)) {
-      LOGGER.info("Omit. Current Jenkins config service is: " + jenkinsService + ", receive JenkinsBinding is: " + jenkinsName);
-      return;
-    }
-
-    String namespace = jenkinsBinding.getMetadata().getNamespace();
-    String[] existsNamespaces = pluginConfig.getNamespaces();
-    if(existsNamespaces != null) {
-      for(String existsNamespace : existsNamespaces) {
-        if(existsNamespace.equals(namespace)) {
-          LOGGER.info("Namespace: " + namespace + " already exists, skip.");
-          return;
-        }
-      }
-    }
+//    GlobalPluginConfiguration pluginConfig = GlobalPluginConfiguration.get();
+//
+//    String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
+//    String jenkinsService = pluginConfig.getJenkinsService();
+//    if(!AlaudaUtils.isBindingToCurrentJenkins(jenkinsBinding)) {
+//      LOGGER.info("Omit. Current Jenkins config service is: " + jenkinsService + ", receive JenkinsBinding is: " + jenkinsName);
+//      return;
+//    }
+//
+//    String namespace = jenkinsBinding.getMetadata().getNamespace();
+//    String[] existsNamespaces = pluginConfig.getNamespaces();
+//    if(existsNamespaces != null) {
+//      for(String existsNamespace : existsNamespaces) {
+//        if(existsNamespace.equals(namespace)) {
+//          LOGGER.info("Namespace: " + namespace + " already exists, skip.");
+//          return;
+//        }
+//      }
+//    }
 
     switch (action) {
       case ADDED:
-        GlobalPluginConfiguration.get().reWatchAllNamespace(namespace);
+        Cache.getInstance().addNamespace(jenkinsBinding);
+        break;
+      case DELETED:
+        Cache.getInstance().removeNamespace(jenkinsBinding);
+        break;
+//        GlobalPluginConfiguration.get().reWatchAllNamespace(namespace);
     }
   }
 
@@ -85,22 +89,34 @@ public class JenkinsBindingWatcher extends BaseWatcher {
       LOGGER.info("Prepare to add watcher for " + total + " namespaces.");
 
 
-      for (int i = 0; i < total; i++) {
-//        if(!AlaudaUtils.isBindingToCurrentJenkins(namespace)) {
-//          continue;
-//        }
-        String namespace = namespaces[i];
+        JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
+                .list();
 
-        try {
-          Watch watch = getWatch(namespace);
-
-          watches.put(namespace, watch);
-
-          LOGGER.info("Add JenkinsBindingWatcher for " + namespace + ". --" + i);
-        } catch (KubernetesClientException e) {
-          LOGGER.warning(() -> "Something happened when communicate with k8s. Cause : " + e.getCause());
+        String resourceVersion = "0";
+        if(jenkinsBindingList != null) {
+            resourceVersion = jenkinsBindingList.getMetadata().getResourceVersion();
         }
-      }
+
+        AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
+                .withResourceVersion(resourceVersion)
+                .watch(new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null));
+
+//      for (int i = 0; i < total; i++) {
+////        if(!AlaudaUtils.isBindingToCurrentJenkins(namespace)) {
+////          continue;
+////        }
+//        String namespace = namespaces[i];
+//
+//        try {
+//          Watch watch = getWatch(namespace);
+//
+//          watches.put(namespace, watch);
+//
+//          LOGGER.info("Add JenkinsBindingWatcher for " + namespace + ". --" + i);
+//        } catch (KubernetesClientException e) {
+//          LOGGER.warning(() -> "Something happened when communicate with k8s. Cause : " + e.getCause());
+//        }
+//      }
 
       long endTime = System.currentTimeMillis();
       LOGGER.info("The process of adding watch for JenkinsBinding, take " + (endTime - beginTime) + "ms.");

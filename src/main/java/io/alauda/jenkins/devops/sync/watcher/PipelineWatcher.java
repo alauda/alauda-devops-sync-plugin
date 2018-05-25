@@ -65,6 +65,18 @@ public class PipelineWatcher extends BaseWatcher {
         super(namespaces);
     }
 
+    public void watch() {
+        PipelineList list = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines().list();
+        String ver = "0";
+        if(list != null) {
+            ver = list.getMetadata().getResourceVersion();
+        }
+        AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
+                .inAnyNamespace()
+                .withResourceVersion(ver)
+                .watch(new WatcherCallback<Pipeline>(this, null));
+    }
+
     @Override
     public Runnable getStartTimerTask() {
         return new SafeTimerTask() {
@@ -74,57 +86,65 @@ public class PipelineWatcher extends BaseWatcher {
                     logger.fine("No Alauda Kubernetes Token credential defined.");
                     return;
                 }
+
                 // prior to finding new builds poke the PipelineWatcher builds with
                 // no BC list and see if we
                 // can create job runs for premature builds we already know
                 // about
                 PipelineWatcher.flushPipelinesWithNoPCList();
                 for (String namespace : namespaces) {
-                    PipelineList newPipelines = null;
                     try {
                         logger.fine("listing Pipeline resources");
+
                         // TODO: Filter directly in the API
-                        newPipelines = filterNew(AlaudaUtils.getAuthenticatedAlaudaClient()
+                        PipelineList newPipelines = filterNew(AlaudaUtils.getAuthenticatedAlaudaClient()
                                 .pipelines()
                                 .inNamespace(namespace)
                                 .list());
+
+                        if(newPipelines == null || newPipelines.getItems() == null
+                                || newPipelines.getItems().size() == 0) {
+                            continue;
+                        }
+
                         onInitialPipelines(newPipelines);
+
                         logger.fine("handled Pipeline resources");
                     } catch (Exception e) {
-                        logger.log(Level.SEVERE,
-                                "Failed to load initial Builds: " + e, e);
+                        logger.log(Level.SEVERE, "Failed to load initial Builds: " + e, e);
                     }
-                    try {
-                        String resourceVersion = "0";
-                        if (newPipelines == null) {
-                            logger.warning("Unable to get build list; impacts resource version used for watch");
-                        } else {
-                            resourceVersion = newPipelines.getMetadata()
-                                    .getResourceVersion();
-                        }
-                        synchronized(PipelineWatcher.this) {
-                            if (watches.get(namespace) == null) {
-                                logger.info("creating Pipeline watch for namespace "
-                                        + namespace
-                                        + " and resource version "
-                                        + resourceVersion);
-                                watches.put(
-                                        namespace,
-                                        AlaudaUtils.getAuthenticatedAlaudaClient()
-                                                .pipelines()
-                                                .inNamespace(namespace)
-                                                .withResourceVersion(
-                                                        resourceVersion)
-                                                .watch(new WatcherCallback<Pipeline>(
-                                                        PipelineWatcher.this,
-                                                        namespace)));
-                            }
-                        }
-                    } catch (Exception e) {
-                        logger.log(Level.SEVERE,
-                                "Failed to load initial Builds: " + e, e);
-                    }
+//                    try {
+//                        String resourceVersion = "0";
+//                        if (newPipelines == null) {
+//                            logger.warning("Unable to get build list; impacts resource version used for watch");
+//                        } else {
+//                            resourceVersion = newPipelines.getMetadata()
+//                                    .getResourceVersion();
+//                        }
+//                        synchronized(PipelineWatcher.this) {
+//                            if (watches.get(namespace) == null) {
+//                                logger.info("creating Pipeline watch for namespace "
+//                                        + namespace
+//                                        + " and resource version "
+//                                        + resourceVersion);
+//                                watches.put(
+//                                        namespace,
+//                                        AlaudaUtils.getAuthenticatedAlaudaClient()
+//                                                .pipelines()
+//                                                .inNamespace(namespace)
+//                                                .withResourceVersion(
+//                                                        resourceVersion)
+//                                                .watch(new WatcherCallback<Pipeline>(
+//                                                        PipelineWatcher.this,
+//                                                        namespace)));
+//                            }
+//                        }
+//                    } catch (Exception e) {
+//                        logger.log(Level.SEVERE,
+//                                "Failed to load initial Builds: " + e, e);
+//                    }
                 }
+
                 reconcileRunsAndPipelines();
             }
         };
@@ -144,6 +164,11 @@ public class PipelineWatcher extends BaseWatcher {
     public synchronized void eventReceived(Watcher.Action action, Pipeline pipeline) {
         if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline))
             return;
+
+        if(!Cache.getInstance().isBinding(pipeline)) {
+            return;
+        }
+
         logger.info("Pipeline event: "+action+" - pipeline "+pipeline.getMetadata().getName());
         try {
             switch (action) {
@@ -167,6 +192,7 @@ public class PipelineWatcher extends BaseWatcher {
             logger.log(WARNING, "Caught: " + e, e);
         }
     }
+
     @Override
     public <T> void eventReceived(Watcher.Action action, T resource) {
         Pipeline pipeline = (Pipeline)resource;
@@ -174,124 +200,82 @@ public class PipelineWatcher extends BaseWatcher {
     }
 
     public synchronized static void onInitialPipelines(PipelineList pipelineList) {
-        if (pipelineList == null)
-            return;
         List<Pipeline> items = pipelineList.getItems();
-        if (items != null) {
+        Collections.sort(items, new PipelineComparator());
 
-            Collections.sort(items, new Comparator<Pipeline>() {
-                @Override
-                public int compare(Pipeline p1, Pipeline p2) {
-                    if (p1.getMetadata().getAnnotations() == null
-                            || p1.getMetadata().getAnnotations()
-                                    .get(Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER) == null) {
-                        logger.warning("cannot compare pipeline "
-                                + p1.getMetadata().getName()
-                                + " from namespace "
-                                + p1.getMetadata().getNamespace()
-                                + ", has bad annotations: "
-                                + p1.getMetadata().getAnnotations());
-                        return 0;
-                    }
-                    if (p2.getMetadata().getAnnotations() == null
-                            || p2.getMetadata().getAnnotations()
-                                    .get(Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER) == null) {
-                        logger.warning("cannot compare pipeline "
-                                + p2.getMetadata().getName()
-                                + " from namespace "
-                                + p2.getMetadata().getNamespace()
-                                + ", has bad annotations: "
-                                + p2.getMetadata().getAnnotations());
-                        return 0;
-                    }
-                    int rc = 0;
-                    try {
-                        rc = Long.compare(
+        // We need to sort the builds into their build configs so we can
+        // handle build run policies correctly.
+        Map<String, PipelineConfig> pipelineConfigMap = new HashMap<>();
+        Map<PipelineConfig, List<Pipeline>> pipelineConfigBuildMap = new HashMap<>(items.size());
+        for (Pipeline pipe : items) {
+            if (!AlaudaUtils.isPipelineStrategyPipeline(pipe))
+                continue;
 
-                                Long.parseLong(p1
-                                        .getMetadata()
-                                        .getAnnotations()
-                                        .get(Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER)),
-                                Long.parseLong(p2
-                                        .getMetadata()
-                                        .getAnnotations()
-                                        .get(Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER)));
-                    } catch (Throwable t) {
-                        logger.log(Level.FINE, "onInitialPipelines", t);
-                    }
-                    return rc;
-                }
-            });
+            if(!Cache.getInstance().isBinding(pipe)) {
+                continue;
+            }
 
-            // We need to sort the builds into their build configs so we can
-            // handle build run policies correctly.
-            Map<String, PipelineConfig> pipelineConfigMap = new HashMap<>();
-            Map<PipelineConfig, List<Pipeline>> pipelineConfigBuildMap = new HashMap<>(
-                    items.size());
-            for (Pipeline pipe : items) {
-                if (!AlaudaUtils.isPipelineStrategyPipeline(pipe))
-                    continue;
-                String pipelineConfigName = pipe.getSpec().getPipelineConfig().getName();
-                if (StringUtils.isEmpty(pipelineConfigName)) {
-                    continue;
-                }
-                String namespace = pipe.getMetadata().getNamespace();
-                String configMapKey = namespace + "/" + pipelineConfigName;
-                PipelineConfig pc = pipelineConfigMap.get(configMapKey);
+            String pipelineConfigName = pipe.getSpec().getPipelineConfig().getName();
+            if (StringUtils.isEmpty(pipelineConfigName)) {
+                continue;
+            }
+
+            String namespace = pipe.getMetadata().getNamespace();
+            String configMapKey = namespace + "/" + pipelineConfigName;
+            PipelineConfig pc = pipelineConfigMap.get(configMapKey);
+            if (pc == null) {
+                pc = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
+                        .inNamespace(namespace).withName(pipelineConfigName)
+                        .get();
                 if (pc == null) {
-                    pc = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
-                            .inNamespace(namespace).withName(pipelineConfigName)
-                            .get();
-                    if (pc == null) {
-                        // if the pc is not there via a REST get, then it is not
-                        // going to be, and we are not handling manual creation
-                        // of pipeline objects, so don't bother with "no pc list"
-                        continue;
-                    }
-                    pipelineConfigMap.put(configMapKey, pc);
+                    // if the pc is not there via a REST get, then it is not
+                    // going to be, and we are not handling manual creation
+                    // of pipeline objects, so don't bother with "no pc list"
+                    continue;
                 }
-                List<Pipeline> pcPipelines = pipelineConfigBuildMap.get(pc);
-                if (pcPipelines == null) {
-                    pcPipelines = new ArrayList<>();
-                    pipelineConfigBuildMap.put(pc, pcPipelines);
-                }
-                pcPipelines.add(pipe);
+                pipelineConfigMap.put(configMapKey, pc);
             }
+            List<Pipeline> pcPipelines = pipelineConfigBuildMap.get(pc);
+            if (pcPipelines == null) {
+                pcPipelines = new ArrayList<>();
+                pipelineConfigBuildMap.put(pc, pcPipelines);
+            }
+            pcPipelines.add(pipe);
+        }
 
-            // Now handle the pipelines.
-            for (Map.Entry<PipelineConfig, List<Pipeline>> pipelineConfigPipelines : pipelineConfigBuildMap
-                    .entrySet()) {
-              PipelineConfig pc = pipelineConfigPipelines.getKey();
-                if (pc.getMetadata() == null) {
-                    // Should never happen but let's be safe...
-                    continue;
-                }
-                WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pc);
-                if (job == null) {
-                    List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
-                    for (Pipeline p : pipelines) {
-                        logger.info("skipping listed new pipeline "
-                                + p.getMetadata().getName()
-                                + " no job at this time");
-                        addPipelineToNoPCList(p);
-                    }
-                    continue;
-                }
-                PipelineConfigProjectProperty bcp = job
-                        .getProperty(PipelineConfigProjectProperty.class);
-                if (bcp == null) {
-                    List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
-                    for (Pipeline pipe : pipelines) {
-                        logger.info("skipping listed new pipeline "
-                                + pipe.getMetadata().getName()
-                                + " no prop at this time");
-                        addPipelineToNoPCList(pipe);
-                    }
-                    continue;
-                }
-                List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
-                JenkinsUtils.handlePipelineList(job, pipelines, bcp);
+        // Now handle the pipelines.
+        for (Map.Entry<PipelineConfig, List<Pipeline>> pipelineConfigPipelines : pipelineConfigBuildMap
+                .entrySet()) {
+          PipelineConfig pc = pipelineConfigPipelines.getKey();
+            if (pc.getMetadata() == null) {
+                // Should never happen but let's be safe...
+                continue;
             }
+            WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pc);
+            if (job == null) {
+                List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
+                for (Pipeline p : pipelines) {
+                    logger.info("skipping listed new pipeline "
+                            + p.getMetadata().getName()
+                            + " no job at this time");
+                    addPipelineToNoPCList(p);
+                }
+                continue;
+            }
+            PipelineConfigProjectProperty bcp = job
+                    .getProperty(PipelineConfigProjectProperty.class);
+            if (bcp == null) {
+                List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
+                for (Pipeline pipe : pipelines) {
+                    logger.info("skipping listed new pipeline "
+                            + pipe.getMetadata().getName()
+                            + " no prop at this time");
+                    addPipelineToNoPCList(pipe);
+                }
+                continue;
+            }
+            List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
+            JenkinsUtils.handlePipelineList(job, pipelines, bcp);
         }
     }
 
@@ -393,6 +377,9 @@ public class PipelineWatcher extends BaseWatcher {
                         @Override
                         public Void call() throws Exception {
                             JenkinsUtils.cancelPipeline(job, pipeline, true);
+
+                            JenkinsUtils.deleteRun(job, pipeline);
+
                             return null;
                         }
                     });
@@ -474,5 +461,4 @@ public class PipelineWatcher extends BaseWatcher {
       }
     }
   }
-
 }

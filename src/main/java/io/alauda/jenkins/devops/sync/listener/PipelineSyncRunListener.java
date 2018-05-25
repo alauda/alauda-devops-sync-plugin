@@ -84,8 +84,7 @@ import static java.util.logging.Level.*;
  */
 @Extension
 public class PipelineSyncRunListener extends RunListener<Run> {
-  private static final Logger logger = Logger
-    .getLogger(PipelineSyncRunListener.class.getName());
+  private static final Logger logger = Logger.getLogger(PipelineSyncRunListener.class.getName());
 
   private long pollPeriodMs = 1000 * 5;  // 5 seconds
   private long delayPollPeriodMs = 1000; // 1 seconds
@@ -183,7 +182,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
 
     JenkinsPipelineCause cause = (JenkinsPipelineCause) run.getCause(JenkinsPipelineCause.class);
-    if(run instanceof WorkflowRun && cause != null) {
+    if(cause != null && run instanceof WorkflowRun) {
       String namespace = cause.getNamespace();
       String pipelineName = cause.getName();
 
