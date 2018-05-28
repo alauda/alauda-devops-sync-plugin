@@ -75,7 +75,6 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   public GlobalPluginConfiguration() {
     clientInitial = false;
     this.load();
-    System.out.println("prepare to config change");
     this.configChange();
     ResourcesCache.getInstance().setJenkinsService(jenkinsService);
 
@@ -215,16 +214,12 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     } else {
       try {
         stopWatchersAndClient();
-        System.out.println("stop client and watchers" + "-inital: " + clientInitial);
 
         if(!clientInitial) {
-          System.out.println("prepare to init client");
           AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
-          System.out.println("client init ok");
           clientInitial = true;
         }
 
-        System.out.println("reload namespaces");
         reloadNamespaces();
 
         Runnable task = new SafeTimerTask() {

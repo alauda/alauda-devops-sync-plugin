@@ -128,11 +128,9 @@ public class AlaudaUtils {
             + Version.clientVersion());
         }
         alaudaClient = new DefaultAlaudaDevOpsClient(config);
-          System.out.println("Alauda client is created well.");
         logger.info("Alauda client is created well.");
       } else {
           logger.warning("Config builder could not build a configuration for Alauda Connection");
-          System.out.println("Config builder could not build a configuration for Alauda Connection");
       }
     }
 
