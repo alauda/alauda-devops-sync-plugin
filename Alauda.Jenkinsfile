@@ -98,8 +98,8 @@ pipeline {
 
                     // currently is building code inside the container
                     IMAGE = deploy.dockerBuild(
-                        "./tmp/Dockerfile", //Dockerfile
-                        "./tmp", // build context
+                        ".tmp/Dockerfile", //Dockerfile
+                        ".tmp", // build context
                         "index.alauda.cn/alaudak8s/jenkins-plugin-injector", // repo address
                         "${RELEASE_BUILD}", // tag
                         "alaudak8s", // credentials for pushing
