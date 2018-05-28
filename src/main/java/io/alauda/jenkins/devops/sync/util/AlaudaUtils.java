@@ -27,6 +27,7 @@ import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.Annotations;
 import io.alauda.jenkins.devops.sync.Constants;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
 
@@ -60,8 +61,7 @@ import static java.util.logging.Level.FINE;
  */
 public class AlaudaUtils {
 
-    private final static Logger logger = Logger.getLogger(AlaudaUtils.class
-            .getName());
+    private final static Logger logger = Logger.getLogger(AlaudaUtils.class.getName());
 
     private static AlaudaDevOpsClient alaudaClient;
     private static String jenkinsPodNamespace = null;
@@ -128,8 +128,9 @@ public class AlaudaUtils {
             + Version.clientVersion());
         }
         alaudaClient = new DefaultAlaudaDevOpsClient(config);
+        logger.info("Alauda client is created well.");
       } else {
-        logger.warning("Config builder could not build a configuration for Alauda Connection");
+          logger.warning("Config builder could not build a configuration for Alauda Connection");
       }
     }
 
@@ -692,6 +693,31 @@ public class AlaudaUtils {
             return metadata.getName();
         }
         return null;
+    }
+
+    public static boolean isBindingToCurrentJenkins(JenkinsBinding jenkinsBinding) {
+        GlobalPluginConfiguration pluginConfig = GlobalPluginConfiguration.get();
+
+        String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
+        String jenkinsService = pluginConfig.getJenkinsService();
+
+        return (jenkinsName.equals(jenkinsService));
+    }
+
+    public static boolean isBindingToCurrentJenkins(String namespace) {
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        String jenkinsService = GlobalPluginConfiguration.get().getJenkinsService();
+
+        JenkinsBindingList jenkinsBindings = client.jenkinsBindings().inNamespace(namespace).list();
+        if(jenkinsBindings != null) {
+            for(JenkinsBinding binding : jenkinsBindings.getItems()) {
+                if(binding.getSpec().getJenkins().getName().equals(jenkinsService)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     abstract class StatelessReplicationControllerMixIn extends

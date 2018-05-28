@@ -557,8 +557,8 @@ public class JenkinsUtils {
             putJobWithPipelineConfig(job, pipelineConfig);
           LOGGER.info("pipeline config update with job: "+pipeline.getMetadata().getName()+" pipeline config "+pipelineConfig.getMetadata().getName());
 
-            if (job.scheduleBuild2(0,
-                    pipelineActions.toArray(new Action[pipelineActions.size()])) != null) {
+            Action[] actionArray = pipelineActions.toArray(new Action[pipelineActions.size()]);
+            if (job.scheduleBuild2(0, actionArray) != null) {
 
                 updatePipelinePhase(pipeline, QUEUED);
                 // If builds are queued too quickly, Jenkins can add the cause
@@ -588,11 +588,13 @@ public class JenkinsUtils {
 
 	public synchronized static void cancelPipeline(WorkflowJob job, Pipeline pipeline, boolean deleted) {
 		if (!cancelQueuedPipeline(job, pipeline)) {
-      cancelRunningPipeline(job, pipeline);
+            cancelRunningPipeline(job, pipeline);
 		}
+
 		if (deleted) {
 			return;
 		}
+
 		try {
 			updatePipelinePhase(pipeline, CANCELLED);
 		} catch (Exception e) {
@@ -617,13 +619,20 @@ public class JenkinsUtils {
 		return null;
 	}
 
+	public static void deleteRun(WorkflowJob workflowJob, Pipeline pipeline) {
+        WorkflowRun run = JenkinsUtils.getRun(workflowJob, pipeline);
+        if(run != null) {
+            JenkinsUtils.deleteRun(run);
+        }
+    }
+
 	public synchronized static void deleteRun(WorkflowRun run) {
-			try {
-			  LOGGER.info("Deleting run: " + run.toString());
-				run.delete();
-			} catch (IOException e) {
-				LOGGER.warning("Unable to delete run " + run.toString() + ":" + e.getMessage());
-			}
+        try {
+          LOGGER.info("Deleting run: " + run.toString());
+            run.delete();
+        } catch (IOException e) {
+            LOGGER.warning("Unable to delete run " + run.toString() + ":" + e.getMessage());
+        }
 	}
 
 	private static boolean cancelRunningPipeline(WorkflowJob job, Pipeline pipeline) {

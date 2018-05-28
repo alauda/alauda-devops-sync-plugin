@@ -15,75 +15,68 @@
  */
 package io.alauda.jenkins.devops.sync.watcher;
 
-import hudson.triggers.SafeTimerTask;
+import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
-import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.kubernetes.api.model.JenkinsBinding;
 import io.alauda.kubernetes.api.model.JenkinsBindingList;
-import io.alauda.kubernetes.client.KubernetesClientException;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 
 import java.util.logging.Logger;
 
-public class JenkinsBindingWatcher extends BaseWatcher {
+/**
+ * @author suren
+ */
+public class JenkinsBindingWatcher implements BaseWatcher {
   private final Logger LOGGER = Logger.getLogger(JenkinsBindingWatcher.class.getName());
+    private Watch watcher;
 
-  public JenkinsBindingWatcher(String[] namespaces) {
-    super(namespaces);
-  }
-
-  @Override
-  public Runnable getStartTimerTask() {
-    return new JenkinsBindingWatcherTask();
-  }
-
-  @Override
+    @Override
   public <T> void eventReceived(Watcher.Action action, T resource) {
     JenkinsBinding jenkinsBinding = (JenkinsBinding) resource;
 
-    LOGGER.info("JenkinsBindingWatcher receive action : " + action.name() + "; resource : " + jenkinsBinding.getMetadata().getName());
+    LOGGER.info("JenkinsBindingWatcher receive action : " + action + "; resource : " + jenkinsBinding.getMetadata().getName());
 
-    GlobalPluginConfiguration.get().configChange();
+    switch (action) {
+      case ADDED:
+        ResourcesCache.getInstance().addNamespace(jenkinsBinding);
+        break;
+      case DELETED:
+        ResourcesCache.getInstance().removeNamespace(jenkinsBinding);
+        break;
+    }
   }
 
-  private class JenkinsBindingWatcherTask extends SafeTimerTask {
+  @Override
+  public void watch() {
+    if (!CredentialsUtils.hasCredentials()) {
+      LOGGER.info("No Alauda Kubernetes Token credential defined.");
+      return;
+    }
+
+    JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient()
+            .jenkinsBindings().list();
+
+    String resourceVersion = "0";
+    if(jenkinsBindingList != null) {
+      resourceVersion = jenkinsBindingList.getMetadata().getResourceVersion();
+    }
+
+    watcher = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
+            .withResourceVersion(resourceVersion)
+            .watch(new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null));
+  }
+
     @Override
-    protected void doRun() throws Exception {
-      if (!CredentialsUtils.hasCredentials()) {
-        LOGGER.info("No Alauda Kubernetes Token credential defined.");
-        return;
-      }
+    public void init(String[] namespaces){
+        //don't need init anything here
+    }
 
-      for (String namespace : namespaces) {
-        try {
-          Watch watch = getWatch(namespace);
-
-          watches.put(namespace, watch);
-        } catch (KubernetesClientException e) {
-          LOGGER.warning(() -> "Something happened when communicate with k8s. Cause : " + e.getCause());
+    @Override
+    public void stop(){
+        if(watcher != null) {
+            watcher.close();
         }
-      }
     }
-
-    /**
-     * Create the watcher of the namespace
-     * @param namespace namespace resource name
-     * @return watcher
-     * @throws KubernetesClientException in case of client execute failure
-     */
-    private Watch getWatch(String namespace) throws KubernetesClientException {
-      JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings().inNamespace(namespace).list();
-
-      String resourceVersion = "0";
-      if(jenkinsBindingList != null) {
-        jenkinsBindingList.getMetadata().getResourceVersion();
-      }
-
-      return AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings().inNamespace(namespace).withResourceVersion(resourceVersion).watch(
-          new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, namespace));
-    }
-  }
 }

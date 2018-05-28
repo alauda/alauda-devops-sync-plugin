@@ -86,7 +86,14 @@ pipeline {
                   script {
                     sh """
                         mvn clean install
-                        ./build.sh
+
+                        if [ -d .tmp ]; then
+                          rm -rf .tmp
+                        fi;
+
+                        mkdir .tmp
+                        cp artifacts/images/* .tmp
+                        cp target/*.hpi .tmp
                     """
 
                     // currently is building code inside the container
@@ -102,13 +109,12 @@ pipeline {
                     // TODO: change to commit when we have a 
                     // more final solution
                     IMAGE.start().push().push(IMAGE_TAG)
-
                   }
-
               }
           }
         }
       }
+
       // after build it should start deploying
       stage('Promoting') {
           // limit this stage to master only

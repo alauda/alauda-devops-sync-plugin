@@ -23,14 +23,8 @@ import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
 import hudson.util.ListBoxModel;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.jenkins.devops.sync.watcher.NamespaceWatcher;
-import io.alauda.jenkins.devops.sync.watcher.PipelineConfigWatcher;
-import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
-import io.alauda.jenkins.devops.sync.watcher.SecretWatcher;
+import io.alauda.jenkins.devops.sync.watcher.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.Jenkins;
 import jenkins.util.Timer;
@@ -39,6 +33,15 @@ import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * @author suren
+ */
 @Extension
 public class GlobalPluginConfiguration extends GlobalConfiguration {
   private static final Logger LOGGER = Logger.getLogger(GlobalPluginConfiguration.class.getName());
@@ -53,8 +56,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   private transient PipelineWatcher pipelineWatcher;
   private transient PipelineConfigWatcher pipelineConfigWatcher;
   private transient SecretWatcher secretWatcher;
-//  private transient JenkinsBindingWatcher jenkinsBindingWatcher;
-  private transient NamespaceWatcher namespaceWatcher;
+  private boolean clientInitial = false;
 
   @DataBoundConstructor
   public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId, String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
@@ -66,11 +68,15 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.skipOrganizationPrefix = skipOrganizationPrefix;
     this.skipBranchSuffix = skipBranchSuffix;
     this.configChange();
+
+    ResourcesCache.getInstance().setJenkinsService(jenkinsService);
   }
 
   public GlobalPluginConfiguration() {
+    clientInitial = false;
     this.load();
     this.configChange();
+    ResourcesCache.getInstance().setJenkinsService(jenkinsService);
 
     LOGGER.info("Alauda GlobalPluginConfiguration is started.");
   }
@@ -159,7 +165,12 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.skipBranchSuffix = skipBranchSuffix;
   }
 
-  public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
+    public String[] getNamespaces()
+    {
+        return namespaces;
+    }
+
+    public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
     Jenkins jenkins = Jenkins.getInstance();
     if (jenkins == null) {
       return (ListBoxModel)null;
@@ -168,6 +179,34 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     }
   }
 
+  public void reloadNamespaces() {
+    this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
+
+    for(String namespace : namespaces) {
+      ResourcesCache.getInstance().addNamespace(namespace);
+    }
+  }
+
+  /***
+   * Just for re-watch all the namespaces
+   */
+  public void reWatchAllNamespace(String namespace) {
+    stopWatchers();
+
+    reloadNamespaces();
+
+    // put the new guy at first
+    List<String> namespaceList = Arrays.asList(namespaces);
+    namespaceList.remove(namespace);
+    namespaceList.add(0, namespace);
+    namespaces = namespaceList.toArray(new String[]{});
+
+    startWatchers();
+  }
+
+  /**
+   * Only call when the plugin configuration is really changed.
+   */
   public void configChange() {
     if (!this.enabled) {
       this.stopWatchersAndClient();
@@ -176,8 +215,13 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
       try {
         stopWatchersAndClient();
 
-        AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
-        this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
+        if(!clientInitial) {
+          AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
+          clientInitial = true;
+        }
+
+        reloadNamespaces();
+
         Runnable task = new SafeTimerTask() {
           protected void doRun() throws Exception {
             GlobalPluginConfiguration.LOGGER.info("Waiting for Jenkins to be started");
@@ -214,21 +258,23 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     }
   }
 
-  private void startWatchers() {
-    this.pipelineWatcher = new PipelineWatcher(this.namespaces);
-    this.pipelineWatcher.start();
-    this.pipelineConfigWatcher = new PipelineConfigWatcher(this.namespaces);
-    this.pipelineConfigWatcher.start();
-    this.secretWatcher = new SecretWatcher(this.namespaces);
-    this.secretWatcher.start();
+  public void startWatchers() {
+    this.pipelineWatcher = new PipelineWatcher();
+    this.pipelineWatcher.watch();
+    this.pipelineWatcher.init(namespaces);
 
-    if(this.namespaceWatcher == null) {
-      namespaceWatcher = new NamespaceWatcher(this.namespaces);
-      namespaceWatcher.start();
-    }
+    this.pipelineConfigWatcher = new PipelineConfigWatcher();
+    this.pipelineConfigWatcher.watch();
+    this.pipelineConfigWatcher.init(namespaces);
+
+    this.secretWatcher = new SecretWatcher();
+    this.secretWatcher.watch();
+    this.secretWatcher.init(namespaces);
+
+    new JenkinsBindingWatcher().watch();
   }
 
-  private void stopWatchersAndClient() {
+  public void stopWatchers() {
     if (this.pipelineWatcher != null) {
       this.pipelineWatcher.stop();
       this.pipelineWatcher = null;
@@ -243,6 +289,10 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
       this.secretWatcher.stop();
       this.secretWatcher = null;
     }
+  }
+
+  public void stopWatchersAndClient() {
+    stopWatchers();
 
     AlaudaUtils.shutdownAlaudaClient();
   }
