@@ -86,7 +86,14 @@ pipeline {
                   script {
                     sh """
                         mvn clean install
-                        ./build.sh
+
+                        if [ -d .tmp ]; then
+                          rm -rf .tmp
+                        fi;
+
+                        mkdir .tmp
+                        cp artifacts/images/* .tmp
+                        cp target/*.hpi .tmp
                     """
 
                     // currently is building code inside the container
