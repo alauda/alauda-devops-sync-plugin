@@ -5,7 +5,9 @@ import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.api.model.Secret;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
@@ -16,6 +18,7 @@ public class ResourcesCache {
 
     private Set<String> namespaces = new CopyOnWriteArraySet<>();
     private Set<String> pipelineConfigs = new CopyOnWriteArraySet<>();
+    private Map<String, String> bindingMap = new ConcurrentHashMap<>();
 
     private static final ResourcesCache RESOURCES_CACHE = new ResourcesCache();
 
@@ -39,6 +42,8 @@ public class ResourcesCache {
             String namespace = jenkinsBinding.getMetadata().getNamespace();
 
             addNamespace(namespace);
+
+            addJenkinsBinding(jenkinsBinding);
         }
     }
 
@@ -52,6 +57,8 @@ public class ResourcesCache {
             String namespace = jenkinsBinding.getMetadata().getNamespace();
 
             removeNamespace(namespace);
+
+            removeJenkinsBinding(jenkinsBinding);
         }
     }
 
@@ -61,28 +68,34 @@ public class ResourcesCache {
     }
 
     public void addJenkinsBinding(JenkinsBinding jenkinsBinding) {
+        bindingMap.put(jenkinsBinding.getMetadata().getName(),
+                jenkinsBinding.getSpec().getJenkins().getName());
+    }
+
+    public void removeJenkinsBinding(JenkinsBinding jenkinsBinding) {
+        bindingMap.remove(jenkinsBinding.getMetadata().getName());
     }
 
     public boolean isBinding(PipelineConfig pipelineConfig) {
-        String binding = pipelineConfig.getSpec().getJenkinsBinding().getName();
-        if(!binding.equals(jenkinsService)) {
-            return false;
-        }
-
+        String bindingName = pipelineConfig.getSpec().getJenkinsBinding().getName();
         String namespace = pipelineConfig.getMetadata().getNamespace();
 
-        return namespaces.contains(namespace);
+        return isBinding(bindingName, namespace);
     }
 
     public boolean isBinding(Pipeline pipeline) {
-        String binding = pipeline.getSpec().getJenkinsBinding().getName();
-        if(!binding.equals(jenkinsService)) {
-            return false;
-        }
-
+        String bindingName = pipeline.getSpec().getJenkinsBinding().getName();
         String namespace = pipeline.getMetadata().getNamespace();
 
-        return namespaces.contains(namespace);
+        return isBinding(bindingName, namespace);
+    }
+
+    private boolean isBinding(String bindingName, String namespace) {
+        String bindingService = bindingMap.get(bindingName);
+        return (bindingService != null
+                && bindingService.equals(jenkinsService)
+                && namespaces.contains(namespace)
+        );
     }
 
     public boolean isBinding(Secret secret) {
