@@ -52,7 +52,8 @@ public class SecretWatcher implements BaseWatcher {
         }
 
         String resourceVersion = "0";
-        SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient().secrets().list();
+        SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient()
+                .secrets().inAnyNamespace().list();
         if(secrets != null) {
             resourceVersion = secrets.getMetadata().getResourceVersion();
         }

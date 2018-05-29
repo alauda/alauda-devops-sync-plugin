@@ -94,7 +94,8 @@ public class PipelineConfigWatcher implements BaseWatcher {
           return;
       }
 
-    PipelineConfigList list = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().list();
+    PipelineConfigList list = AlaudaUtils.getAuthenticatedAlaudaClient()
+            .pipelineConfigs().inAnyNamespace().list();
     String ver = "0";
     if(list != null) {
       ver = list.getMetadata().getResourceVersion();
@@ -154,10 +155,12 @@ public class PipelineConfigWatcher implements BaseWatcher {
 
   @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
   public synchronized void eventReceived(Watcher.Action action, PipelineConfig pipelineConfig) {
-    logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineConfig.getMetadata().getName());
+      String pipelineName = pipelineConfig.getMetadata().getName();
+    logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
 
     if(!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
-      return;
+        logger.info(pipelineName + " is not binding to current Jenkins.");
+        return;
     }
 
     try {

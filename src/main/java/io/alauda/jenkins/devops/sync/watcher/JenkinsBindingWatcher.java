@@ -58,25 +58,33 @@ public class JenkinsBindingWatcher implements BaseWatcher {
         }
 
         JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient()
-                .jenkinsBindings().list();
+                .jenkinsBindings().inAnyNamespace().list();
 
         String resourceVersion = "0";
         if(jenkinsBindingList != null) {
             resourceVersion = jenkinsBindingList.getMetadata().getResourceVersion();
 
             cacheBindings(jenkinsBindingList);
+        } else {
+            LOGGER.warning("Can not found JenkinsBindingList.");
         }
 
         watcher = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
+                .inAnyNamespace()
                 .withResourceVersion(resourceVersion)
                 .watch(new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null));
+
+        LOGGER.info("JenkinsBindingWatcher already added.");
     }
 
     private void cacheBindings(JenkinsBindingList jenkinsBindingList) {
         List<JenkinsBinding> items = jenkinsBindingList.getItems();
         if(items == null || items.size() == 0) {
+            LOGGER.warning("JenkinsBindingList is empty!");
             return;
         }
+
+        LOGGER.info("Find JenkinsBinding " + items.size());
 
         for(JenkinsBinding binding : items) {
             ResourcesCache.getInstance().addJenkinsBinding(binding);

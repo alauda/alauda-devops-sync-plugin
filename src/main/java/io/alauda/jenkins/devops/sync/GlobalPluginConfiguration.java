@@ -56,6 +56,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   private transient PipelineWatcher pipelineWatcher;
   private transient PipelineConfigWatcher pipelineConfigWatcher;
   private transient SecretWatcher secretWatcher;
+  private transient JenkinsBindingWatcher jenkinsBindingWatcher;
 
   @DataBoundConstructor
   public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId, String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
@@ -268,7 +269,8 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.secretWatcher.watch();
     this.secretWatcher.init(namespaces);
 
-    new JenkinsBindingWatcher().watch();
+    this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
+    this.jenkinsBindingWatcher.watch();
   }
 
   public void stopWatchers() {
@@ -285,6 +287,11 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     if (this.secretWatcher != null) {
       this.secretWatcher.stop();
       this.secretWatcher = null;
+    }
+
+    if(jenkinsBindingWatcher != null) {
+        jenkinsBindingWatcher.stop();
+        jenkinsBindingWatcher = null;
     }
   }
 
