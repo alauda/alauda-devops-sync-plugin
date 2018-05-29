@@ -154,6 +154,8 @@ public class PipelineConfigWatcher implements BaseWatcher {
 
   @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
   public synchronized void eventReceived(Watcher.Action action, PipelineConfig pipelineConfig) {
+    logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineConfig.getMetadata().getName());
+
     if(!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
       return;
     }

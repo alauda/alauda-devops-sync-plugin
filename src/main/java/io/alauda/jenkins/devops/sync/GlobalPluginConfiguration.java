@@ -56,7 +56,6 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   private transient PipelineWatcher pipelineWatcher;
   private transient PipelineConfigWatcher pipelineConfigWatcher;
   private transient SecretWatcher secretWatcher;
-  private boolean clientInitial = false;
 
   @DataBoundConstructor
   public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId, String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
@@ -73,7 +72,6 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   }
 
   public GlobalPluginConfiguration() {
-    clientInitial = false;
     this.load();
     this.configChange();
     ResourcesCache.getInstance().setJenkinsService(jenkinsService);
@@ -208,16 +206,15 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
    * Only call when the plugin configuration is really changed.
    */
   public void configChange() {
-    if (!this.enabled) {
+    if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
       this.stopWatchersAndClient();
       LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
     } else {
       try {
         stopWatchersAndClient();
 
-        if(!clientInitial) {
+        if(AlaudaUtils.getAlaudaClient() == null) {
           AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
-          clientInitial = true;
         }
 
         reloadNamespaces();
