@@ -154,6 +154,7 @@ public class AlaudaUtils {
     public synchronized static void shutdownAlaudaClient() {
         if (alaudaClient != null) {
             alaudaClient.close();
+            alaudaClient = null;
         }
     }
 

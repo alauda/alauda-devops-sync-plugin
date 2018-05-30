@@ -56,7 +56,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   private transient PipelineWatcher pipelineWatcher;
   private transient PipelineConfigWatcher pipelineConfigWatcher;
   private transient SecretWatcher secretWatcher;
-  private boolean clientInitial = false;
+  private transient JenkinsBindingWatcher jenkinsBindingWatcher;
 
   @DataBoundConstructor
   public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId, String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
@@ -73,7 +73,6 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   }
 
   public GlobalPluginConfiguration() {
-    clientInitial = false;
     this.load();
     this.configChange();
     ResourcesCache.getInstance().setJenkinsService(jenkinsService);
@@ -208,16 +207,15 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
    * Only call when the plugin configuration is really changed.
    */
   public void configChange() {
-    if (!this.enabled) {
+    if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
       this.stopWatchersAndClient();
       LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
     } else {
       try {
         stopWatchersAndClient();
 
-        if(!clientInitial) {
+        if(AlaudaUtils.getAlaudaClient() == null) {
           AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
-          clientInitial = true;
         }
 
         reloadNamespaces();
@@ -271,7 +269,8 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.secretWatcher.watch();
     this.secretWatcher.init(namespaces);
 
-    new JenkinsBindingWatcher().watch();
+    this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
+    this.jenkinsBindingWatcher.watch();
   }
 
   public void stopWatchers() {
@@ -288,6 +287,11 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     if (this.secretWatcher != null) {
       this.secretWatcher.stop();
       this.secretWatcher = null;
+    }
+
+    if(jenkinsBindingWatcher != null) {
+        jenkinsBindingWatcher.stop();
+        jenkinsBindingWatcher = null;
     }
   }
 

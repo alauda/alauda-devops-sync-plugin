@@ -66,7 +66,8 @@ public class PipelineWatcher implements BaseWatcher {
 
     @Override
     public void watch() {
-        PipelineList list = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines().list();
+        PipelineList list = AlaudaUtils.getAuthenticatedAlaudaClient()
+                .pipelines().inAnyNamespace().list();
         String ver = "0";
         if(list != null) {
             ver = list.getMetadata().getResourceVersion();

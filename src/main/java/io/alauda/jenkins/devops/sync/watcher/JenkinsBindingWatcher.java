@@ -23,50 +23,73 @@ import io.alauda.kubernetes.api.model.JenkinsBindingList;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
  * @author suren
  */
 public class JenkinsBindingWatcher implements BaseWatcher {
-  private final Logger LOGGER = Logger.getLogger(JenkinsBindingWatcher.class.getName());
+    private final Logger LOGGER = Logger.getLogger(JenkinsBindingWatcher.class.getName());
     private Watch watcher;
 
     @Override
-  public <T> void eventReceived(Watcher.Action action, T resource) {
-    JenkinsBinding jenkinsBinding = (JenkinsBinding) resource;
+    public <T> void eventReceived(Watcher.Action action, T resource) {
+        JenkinsBinding jenkinsBinding = (JenkinsBinding) resource;
 
-    LOGGER.info("JenkinsBindingWatcher receive action : " + action + "; resource : " + jenkinsBinding.getMetadata().getName());
+        LOGGER.info("JenkinsBindingWatcher receive action : " + action + "; resource : "
+                + jenkinsBinding.getMetadata().getName());
 
-    switch (action) {
-      case ADDED:
-        ResourcesCache.getInstance().addNamespace(jenkinsBinding);
-        break;
-      case DELETED:
-        ResourcesCache.getInstance().removeNamespace(jenkinsBinding);
-        break;
-    }
-  }
-
-  @Override
-  public void watch() {
-    if (!CredentialsUtils.hasCredentials()) {
-      LOGGER.info("No Alauda Kubernetes Token credential defined.");
-      return;
+        switch (action) {
+            case ADDED:
+                ResourcesCache.getInstance().addNamespace(jenkinsBinding);
+                break;
+            case DELETED:
+                ResourcesCache.getInstance().removeNamespace(jenkinsBinding);
+                break;
+        }
     }
 
-    JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient()
-            .jenkinsBindings().list();
+    @Override
+    public void watch() {
+        if (!CredentialsUtils.hasCredentials()) {
+            LOGGER.info("No Alauda Kubernetes Token credential defined.");
+            return;
+        }
 
-    String resourceVersion = "0";
-    if(jenkinsBindingList != null) {
-      resourceVersion = jenkinsBindingList.getMetadata().getResourceVersion();
+        JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient()
+                .jenkinsBindings().inAnyNamespace().list();
+
+        String resourceVersion = "0";
+        if(jenkinsBindingList != null) {
+            resourceVersion = jenkinsBindingList.getMetadata().getResourceVersion();
+
+            cacheBindings(jenkinsBindingList);
+        } else {
+            LOGGER.warning("Can not found JenkinsBindingList.");
+        }
+
+        watcher = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
+                .inAnyNamespace()
+                .withResourceVersion(resourceVersion)
+                .watch(new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null));
+
+        LOGGER.info("JenkinsBindingWatcher already added.");
     }
 
-    watcher = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
-            .withResourceVersion(resourceVersion)
-            .watch(new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null));
-  }
+    private void cacheBindings(JenkinsBindingList jenkinsBindingList) {
+        List<JenkinsBinding> items = jenkinsBindingList.getItems();
+        if(items == null || items.size() == 0) {
+            LOGGER.warning("JenkinsBindingList is empty!");
+            return;
+        }
+
+        LOGGER.info("Find JenkinsBinding " + items.size());
+
+        for(JenkinsBinding binding : items) {
+            ResourcesCache.getInstance().addJenkinsBinding(binding);
+        }
+    }
 
     @Override
     public void init(String[] namespaces){
