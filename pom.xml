@@ -28,7 +28,7 @@
 
   <groupId>io.alauda.jenkins.plugins</groupId>
   <artifactId>alauda-devops-sync</artifactId>
-  <version>${revision}${sha1}${changelist}</version>
+  <version>0.2.5</version>
   <packaging>hpi</packaging>
 
   <properties>

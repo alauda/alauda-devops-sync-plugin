@@ -34,16 +34,16 @@ pipeline {
     //(optional) 环境变量
     environment {
       // for building an scanning
-      REPOSITORY = "jenkins-sync-plugin"
-      OWNER = "mathildetech"
+      REPOSITORY = "alauda-devops-sync-plugin"
+      OWNER = "alauda"
       IMAGE_TAG = "dev"
       // sonar feedback user
       // needs to change together with the credentialsID
       SCM_FEEDBACK_ACCOUNT = "alaudabot"
       SONARQUBE_SCM_CREDENTIALS = "alaudabot"
-      DEPLOYMENT = "jenkins-sync-plugin"
+      DEPLOYMENT = "alauda-devops-sync-plugin"
       DINGDING_BOT = "devops-chat-bot"
-      TAG_CREDENTIALS = "alaudabot-bitbucket"
+      TAG_CREDENTIALS = "alaudabot-github"
     }
     // stages
     stages {
@@ -135,7 +135,7 @@ pipeline {
                         git config --global user.email "alaudabot@alauda.io"
                         git config --global user.name "Alauda Bot"
                     """
-                    def repo = "https://${GIT_USERNAME}:${GIT_PASSWORD}@bitbucket.org/${OWNER}/${REPOSITORY}.git"
+                    def repo = "https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${OWNER}/${REPOSITORY}.git"
                     sh "git fetch --tags ${repo}" // retrieve all tags
                     sh("git tag -a ${RELEASE_BUILD} -m 'auto add release tag by jenkins'")
                     sh("git push ${repo} --tags")
