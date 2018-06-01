@@ -15,6 +15,7 @@
  */
 package io.alauda.jenkins.devops.sync;
 
+import hudson.model.*;
 import hudson.plugins.git.BranchSpec;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.SubmoduleConfig;
@@ -39,7 +40,9 @@ import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -193,10 +196,16 @@ public class PipelineConfigToJobMapper {
         LOGGER.warning(() -> "No available JenkinsPipelineStrategy in the PipelineConfig " + namespaceName);
         return false;
       }
+    } else {
+      LOGGER.warning("Not sepc in PipelineConfig");
+      return false;
     }
 
     // checking if there are triggers to be updated
     updateTrigger(job, pipelineConfig);
+
+    // take care of job's params
+    updateParameters(job, pipelineConfig);
 
     FlowDefinition definition = job.getDefinition();
     if (definition instanceof CpsScmFlowDefinition) {
@@ -222,9 +231,13 @@ public class PipelineConfigToJobMapper {
           populateFromGitSCM(pipelineConfig, source, (GitSCM) scm, null);
           LOGGER.log(Level.FINE, "updating bc " + namespaceName);
           rc = true;
+        } else {
+          LOGGER.warning(() -> "Not support scm type: " + scm);
         }
+
         return rc;
       }
+
       return false;
     }
 
@@ -266,7 +279,67 @@ public class PipelineConfigToJobMapper {
     return false;
   }
 
-  private static boolean populateFromGitSCM(PipelineConfig pipelineConfig, PipelineSource source, GitSCM gitSCM, String ref) {
+    private static void updateParameters(WorkflowJob job, PipelineConfig pipelineConfig) {
+        pipelineConfig.getSpec().getParameters().clear();
+        ParametersDefinitionProperty paramsDefPro = job.getProperty(ParametersDefinitionProperty.class);
+        if(paramsDefPro == null) {
+            return;
+        }
+
+        List<ParameterDefinition> paramDefs = paramsDefPro.getParameterDefinitions();
+        if(paramDefs == null || paramDefs.size() == 0) {
+            return;
+        }
+
+        for(ParameterDefinition def : paramDefs) {
+            PipelineParameter pipelineParameter;
+            if((pipelineParameter = convertTo(def)) != null) {
+                pipelineConfig.getSpec().getParameters().add(pipelineParameter);
+            }
+        }
+    }
+
+    public static boolean isSupportParamType(ParameterDefinition paramDef) {
+        return (paramDef instanceof StringParameterDefinition)
+                || (paramDef instanceof BooleanParameterDefinition);
+    }
+
+    public static PipelineParameter convertTo(ParameterDefinition def) {
+        if(!isSupportParamType(def)) {
+            String errDesc = "Not support type:" + def.getType() + ", please fix these.";
+
+            def = new StringParameterDefinition(def.getName(), "", errDesc);
+        }
+
+        String value = "";
+        ParameterValue defVal = def.getDefaultParameterValue();
+        if(defVal != null && defVal.getValue() != null) {
+            value = defVal.getValue().toString();
+        }
+
+        return new PipelineParameterBuilder()
+                .withType(paramType(def))
+                .withName(def.getName())
+                .withValue(value)
+                .withDescription(def.getDescription()).build();
+    }
+
+    /**
+     * TODO need to optimize
+     * @param parameterDefinition ParameterDefinition
+     * @return param type
+     */
+    public static String paramType(ParameterDefinition parameterDefinition) {
+        Map<String, String> map = new HashMap<String, String>();
+        map.put(new StringParameterDefinition("", "").getType(),
+                Constants.PIPELINE_PARAMETER_TYPE_STRING);
+        map.put(new BooleanParameterDefinition("", false,"").getType(),
+                Constants.PIPELINE_PARAMETER_TYPE_BOOLEAN);
+
+        return map.get(parameterDefinition.getType());
+    }
+
+    private static boolean populateFromGitSCM(PipelineConfig pipelineConfig, PipelineSource source, GitSCM gitSCM, String ref) {
     if (source.getGit() == null) {
       source.setGit(new PipelineSourceGit());
     }
