@@ -92,9 +92,7 @@ public class JenkinsUtils {
 	public static boolean verifyEnvVars(Map<String, ParameterDefinition> paramMap, WorkflowJob workflowJob) {
         if (paramMap != null) {
             String fullName = workflowJob.getFullName();
-            WorkflowJob job = Jenkins.getActiveInstance()
-                    .getItemByFullName(fullName,
-                            WorkflowJob.class);
+            WorkflowJob job = Jenkins.getInstance().getItemByFullName(fullName, WorkflowJob.class);
             if (job == null) {
                 // this should not occur if an impersonate call has been made higher up
                 // the stack
@@ -197,6 +195,7 @@ public class JenkinsUtils {
           }
         }
       }
+
       for (PipelineParameter param : params) {
         ParameterDefinition jenkinsParam = null;
         switch (param.getType()) {
@@ -209,9 +208,10 @@ public class JenkinsUtils {
               param.getDescription());
             break;
           default:
-            LOGGER.warning("Paramter type `"+param.getType()+"` is not supported.. skipping...");
+            LOGGER.warning("Parameter type `"+param.getType()+"` is not supported.. skipping...");
             break;
         }
+
         if (jenkinsParam == null) {
           continue;
         }
@@ -221,6 +221,7 @@ public class JenkinsUtils {
           paramMap.put(jenkinsParam.getName(), jenkinsParam);
         }
       }
+
       List<ParameterDefinition> newParamList = new ArrayList<ParameterDefinition>(paramMap.values());
       job.addProperty(new ParametersDefinitionProperty(newParamList));
     }
