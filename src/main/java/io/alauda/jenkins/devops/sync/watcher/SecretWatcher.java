@@ -74,6 +74,10 @@ public class SecretWatcher implements BaseWatcher {
 
     @Override
     public void init(String[] namespaces) {
+        if (trackedSecrets == null) {
+            trackedSecrets = new ConcurrentHashMap<String, String>();
+        }
+
         for (String namespace : namespaces) {
             try {
                 logger.fine("listing Secrets resources");
@@ -90,8 +94,6 @@ public class SecretWatcher implements BaseWatcher {
     private synchronized void onInitialSecrets(SecretList secrets) {
         if (secrets == null)
             return;
-        if (trackedSecrets == null)
-            trackedSecrets = new ConcurrentHashMap<String, String>();
         List<Secret> items = secrets.getItems();
         if (items != null) {
             for (Secret secret : items) {
