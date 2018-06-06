@@ -91,6 +91,7 @@ public class ResourcesCache {
     }
 
     private boolean isBinding(String bindingName, String namespace) {
+        // TODO should be put some debug info
         String bindingService = bindingMap.get(bindingName);
         return (bindingService != null
                 && bindingService.equals(jenkinsService)

@@ -276,11 +276,12 @@ public class PipelineWatcher implements BaseWatcher {
         }
 
         WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-      logger.info("Pipeline got job... "+job);
+        logger.info("Pipeline got job... "+job);
         if (job != null) {
-          logger.info("Pipeline job will trigger... "+job+" pipeline: "+pipeline.getMetadata().getName());
+            logger.info("Pipeline job will trigger... "+job+" pipeline: "+pipeline.getMetadata().getName());
             return JenkinsUtils.triggerJob(job, pipeline);
         }
+
         logger.info("skipping watch event for pipeline "
                 + pipeline.getMetadata().getName() + " no job at this time");
         addPipelineToNoPCList(pipeline);
