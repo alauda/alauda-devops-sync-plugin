@@ -39,10 +39,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -280,7 +277,14 @@ public class PipelineConfigToJobMapper {
   }
 
     private static void updateParameters(WorkflowJob job, PipelineConfig pipelineConfig) {
-        pipelineConfig.getSpec().getParameters().clear();
+        PipelineConfigSpec spec = pipelineConfig.getSpec();
+
+      if(spec.getParameters() == null) {
+          spec.setParameters(new ArrayList<>());
+        } else {
+          spec.getParameters().clear();
+        }
+
         ParametersDefinitionProperty paramsDefPro = job.getProperty(ParametersDefinitionProperty.class);
         if(paramsDefPro == null) {
             return;
@@ -294,7 +298,7 @@ public class PipelineConfigToJobMapper {
         for(ParameterDefinition def : paramDefs) {
             PipelineParameter pipelineParameter;
             if((pipelineParameter = convertTo(def)) != null) {
-                pipelineConfig.getSpec().getParameters().add(pipelineParameter);
+                spec.getParameters().add(pipelineParameter);
             }
         }
     }
