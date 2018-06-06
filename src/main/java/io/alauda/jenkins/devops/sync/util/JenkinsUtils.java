@@ -293,15 +293,8 @@ public class JenkinsUtils {
 
 	public static List<Action> setJobRunParamsFromEnv(WorkflowJob job, List<PipelineParameter> pipelineParameters,
 			List<Action> buildActions) {
-//		List<EnvVar> envs = pipelineParameters.getEnv();
-		List<String> envKeys = new ArrayList<String>();
-		List<ParameterValue> envVarList = new ArrayList<ParameterValue>();
-		if (envVarList != null && envVarList.size() > 0) {
-			// build list of env var keys for compare with existing job params
-			for (ParameterValue pval : envVarList) {
-				envKeys.add(pval.getName());
-			}
-		}
+		List<String> envKeys = new ArrayList<>();
+		List<ParameterValue> envVarList = new ArrayList<>();
 
 		// add any existing job params that were not env vars, using their
 		// default values
@@ -369,50 +362,57 @@ public class JenkinsUtils {
 			}
 		}
 
-		if (envVarList.size() > 0)
-			buildActions.add(new ParametersAction(envVarList));
+		if (envVarList.size() > 0) {
+            buildActions.add(new ParametersAction(envVarList));
+        }
 
 		return buildActions;
 	}
 
 	public static List<Action> setJobRunParamsFromEnvAndUIParams(WorkflowJob job, List<PipelineParameter> pipelineParameters,
 			List<Action> buildActions, ParametersAction params) {
-//		List<EnvVar> envs = pipelineParameters.getEnv();
-		List<ParameterValue> envVarList = getParameterValues(pipelineParameters);
+        if(buildActions == null || pipelineParameters == null) {
+            return buildActions;
+        }
 
-		if (params != null)
-			envVarList.addAll(params.getParameters());
+        List<ParameterValue> envVarList = getParameterValues(pipelineParameters);
+        if (envVarList.size() == 0) {
+            return buildActions;
+        }
 
-		if (envVarList.size() > 0)
-			buildActions.add(new ParametersAction(envVarList));
+        buildActions.add(new ParametersAction(envVarList));
 
 		return buildActions;
 	}
 
-	public static List<ParameterValue> getParameterValues(List<PipelineParameter> pipelineParameters) {
-    List<ParameterValue> envVarList = new ArrayList<ParameterValue>();
-    if (pipelineParameters != null && pipelineParameters.size() > 0) {
+    public static List<ParameterValue> getParameterValues(List<PipelineParameter> pipelineParameters) {
+        List<ParameterValue> envVarList = new ArrayList<ParameterValue>();
+        if (pipelineParameters != null && pipelineParameters.size() > 0) {
 
-      for (PipelineParameter pipeParam : pipelineParameters) {
-        ParameterValue paramValue = null;
-        switch (pipeParam.getType()) {
-          case PIPELINE_PARAMETER_TYPE_STRING:
-            paramValue = new StringParameterValue(pipeParam.getName(), pipeParam.getValue());
-            break;
-          case PIPELINE_PARAMETER_TYPE_BOOLEAN:
-            paramValue = new BooleanParameterValue(pipeParam.getName(), Boolean.valueOf(pipeParam.getValue()));
-            break;
-          default:
-            LOGGER.warning("Parameter type `"+pipeParam.getType()+"` is not supported.. skipping...");
-            break;
+            for (PipelineParameter pipeParam : pipelineParameters) {
+                ParameterValue paramValue = null;
+                switch (pipeParam.getType()) {
+                    case PIPELINE_PARAMETER_TYPE_STRING:
+                        paramValue = new StringParameterValue(pipeParam.getName(),
+                                pipeParam.getValue(), pipeParam.getDescription());
+                        break;
+                    case PIPELINE_PARAMETER_TYPE_BOOLEAN:
+                        paramValue = new BooleanParameterValue(pipeParam.getName(),
+                                Boolean.valueOf(pipeParam.getValue()), pipeParam.getDescription());
+                        break;
+                    default:
+                        LOGGER.warning("Parameter type `" + pipeParam.getType() + "` is not supported.. skipping...");
+                        break;
+                }
+
+                if (paramValue != null) {
+                    envVarList.add(paramValue);
+                }
+            }
         }
-        if (paramValue != null) {
-          envVarList.add(paramValue);
-        }
-      }
+
+        return envVarList;
     }
-    return envVarList;
-  }
 
     public static boolean triggerJob(WorkflowJob job, Pipeline pipeline)
             throws IOException {
@@ -428,8 +428,7 @@ public class JenkinsUtils {
             return false;
         }
 
-        PipelineConfigProjectProperty pcProp = job
-                .getProperty(PipelineConfigProjectProperty.class);
+        PipelineConfigProjectProperty pcProp = job.getProperty(PipelineConfigProjectProperty.class);
         if (pcProp == null || pcProp.getPipelineRunPolicy() == null) {
             LOGGER.warning("aborting trigger of pipeline " + pipeline
                     + "because of missing pc project property or run policy");
@@ -460,7 +459,7 @@ public class JenkinsUtils {
                 .pipelineConfigs().inNamespace(namespace)
                 .withName(pipelineConfigName).get();
         if (pipelineConfig == null) {
-          LOGGER.info("pipeline config not found....: "+pipeline.getMetadata().getName()+" - config name "+pipelineConfigName);
+            LOGGER.info("pipeline config not found....: "+pipeline.getMetadata().getName()+" - config name "+pipelineConfigName);
             return false;
         }
 
@@ -496,13 +495,11 @@ public class JenkinsUtils {
             CauseAction bCauseAction = new CauseAction(newCauses);
             pipelineActions.add(bCauseAction);
 
-            PipelineSourceGit sourceGit = pipeline.getSpec().getSource()
-                    .getGit();
+            PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
             String commit = null;
             if (pipeline.getMetadata().getAnnotations() != null &&
               pipeline.getMetadata().getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
               commit = pipeline.getMetadata().getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
-
             }
           if (sourceGit != null && commit != null) {
             try {
@@ -530,33 +527,15 @@ public class JenkinsUtils {
 //            }
           LOGGER.info("pipeline got cause....: "+pipeline.getMetadata().getName()+" pipeline actions "+pipelineActions);
 
+            // params added by user in jenkins ui
             ParametersAction userProvidedParams = PipelineToActionMapper
                     .removeParameterAction(pipeline.getMetadata().getName());
-            // grab envs from actual pipeline in case user overrode default values
-            PipelineStrategyJenkins strat = pipeline.getSpec().getStrategy()
-                    .getJenkins();
-            // only add new param defs for pipeline envs which are not in pipeline
-            // config envs
-          Map<String, ParameterDefinition> paramMap = addJobParamForPipelineParameters(
-            job, pipeline.getSpec().getParameters(), false);
-            verifyEnvVars(paramMap, job);
-            if (userProvidedParams == null) {
-                LOGGER.fine("setting all job run params since this was either started with no pipeline parameters");
-                // now add the actual param values stemming from alauda devops pipeline
-                // env vars for this specific job
-                pipelineActions = setJobRunParamsFromEnv(job, pipelineConfig.getSpec().getParameters(), pipelineActions);
-              LOGGER.info("pipeline set job run params from env: "+pipeline.getMetadata().getName()+" pipeline actions "+pipelineActions);
-            } else {
-                LOGGER.fine("setting job run params and since this is manually started from jenkins applying user "
-                        + "provided parameters "
-                        + userProvidedParams
-                        + " along with any from pc's env vars");
-                pipelineActions = setJobRunParamsFromEnvAndUIParams(job, pipeline.getSpec().getParameters(),
-                        pipelineActions, userProvidedParams);
-              LOGGER.info("pipeline set job run params from env and UI params: "+pipeline.getMetadata().getName()+" pipeline actions "+pipelineActions);
-            }
+
+            pipelineActions = setJobRunParamsFromEnvAndUIParams(job, pipeline.getSpec().getParameters(),
+                    pipelineActions, userProvidedParams);
+
             putJobWithPipelineConfig(job, pipelineConfig);
-          LOGGER.info("pipeline config update with job: "+pipeline.getMetadata().getName()+" pipeline config "+pipelineConfig.getMetadata().getName());
+            LOGGER.info("pipeline config update with job: "+pipeline.getMetadata().getName()+" pipeline config "+pipelineConfig.getMetadata().getName());
 
             Action[] actionArray = pipelineActions.toArray(new Action[pipelineActions.size()]);
             if (job.scheduleBuild2(0, actionArray) != null) {
