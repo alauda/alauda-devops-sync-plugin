@@ -21,6 +21,7 @@ import hudson.triggers.SafeTimerTask;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
+import io.alauda.kubernetes.client.KubernetesClientException;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -47,9 +49,8 @@ import static java.util.logging.Level.WARNING;
 /**
  * @author suren
  */
-public class PipelineWatcher implements BaseWatcher {
-    private static final Logger logger = Logger.getLogger(PipelineWatcher.class
-            .getName());
+public class PipelineWatcher extends BaseWatcher {
+    private static final Logger logger = Logger.getLogger(PipelineWatcher.class.getName());
 
     // the fabric8 classes like Build have equal/hashcode annotations that
     // should allow
@@ -62,28 +63,20 @@ public class PipelineWatcher implements BaseWatcher {
     // minute delay
     // before the job run gets kicked off
     private static final HashSet<Pipeline> pipelinesWithNoPCList = new HashSet<Pipeline>();
-    private Watch watcher;
 
     @Override
-    public void watch() {
+    public void watch(String namespace) {
         PipelineList list = AlaudaUtils.getAuthenticatedAlaudaClient()
-                .pipelines().inAnyNamespace().list();
-        String ver = "0";
-        if(list != null) {
-            ver = list.getMetadata().getResourceVersion();
-        }
+                .pipelines().inNamespace(namespace).list();
+        String ver = KubernetesResourceListUtils.getResourceVersion(list);
 
-        watcher = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
-                .inAnyNamespace()
+        Watch watch = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
+                .inNamespace(namespace)
                 .withResourceVersion(ver)
-                .watch(new WatcherCallback<Pipeline>(this, null));
-    }
+                .watch(new WatcherCallback<>(this, namespace));
+        putWatch(namespace, watch);
 
-    @Override
-    public void stop() {
-        if(watcher != null) {
-            watcher.close();
-        }
+        logger.info(() -> "PipelineWatch added for namespace: " + namespace + ", resourceVersion: " + ver);
     }
 
     @Override
@@ -92,6 +85,8 @@ public class PipelineWatcher implements BaseWatcher {
         for (String namespace : namespaces) {
             try {
                 logger.fine("listing Pipeline resources");
+
+                watch(namespace);
 
                 // TODO: Filter directly in the API
                 PipelineList newPipelines = filterNew(AlaudaUtils.getAuthenticatedAlaudaClient()
@@ -263,14 +258,20 @@ public class PipelineWatcher implements BaseWatcher {
             return false;
         PipelineStatus status = pipeline.getStatus();
         if (status != null) {
-            logger.info("Pipeline Status is not null: "+status);
+            logger.info("Pipeline Status is not null: " + status);
             if (AlaudaUtils.isCancelled(status)) {
-              logger.info("Pipeline Status is Cancelled... updating pipeline: "+status);
-                AlaudaUtils.updatePipelinePhase(pipeline, PipelinePhases.CANCELLED);
+                logger.info("Pipeline Status is Cancelled... updating pipeline: " + status);
+
+                try {
+                    AlaudaUtils.updatePipelinePhase(pipeline, PipelinePhases.CANCELLED);
+                } catch (KubernetesClientException e) {
+                    logger.warning(e.getMessage());
+                }
+
                 return false;
             }
             if (!AlaudaUtils.isNew(status)) {
-              logger.info("Pipeline is not new... cancelling... "+status);
+                logger.info("Pipeline is not new... cancelling... " + status);
                 return false;
             }
         }

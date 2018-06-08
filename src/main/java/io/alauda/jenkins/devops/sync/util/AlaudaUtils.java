@@ -18,6 +18,7 @@ package io.alauda.jenkins.devops.sync.util;
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import hudson.PluginManager;
 import hudson.model.ItemGroup;
 import hudson.BulkChange;
 import hudson.model.Item;
@@ -43,7 +44,6 @@ import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -75,63 +75,49 @@ public class AlaudaUtils {
         } else {
             File f = new File(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
             if (f.exists()) {
-                FileReader fr = null;
-                BufferedReader br = null;
-                try {
-                    fr = new FileReader(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
-                    br = new BufferedReader(fr);
+                try (FileReader fr = new FileReader(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
+                     BufferedReader br = new BufferedReader(fr)){
                     // should just be one line
                     jenkinsPodNamespace = br.readLine();
                     if (jenkinsPodNamespace != null && jenkinsPodNamespace.trim().length() > 0) {
                         jenkinsPodNamespace = jenkinsPodNamespace.trim();
                     }
-
-                } catch (FileNotFoundException e) {
-                    logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
                 } catch (IOException e) {
                     logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
-                } finally {
-                    try {
-                        br.close();
-                        fr.close();
-                    } catch (Throwable e) {
-                        logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
-                    }
                 }
             }
         }
     }
 
-    private static final DateTimeFormatter dateFormatter = ISODateTimeFormat
-            .dateTimeNoMillis();
+    private static final DateTimeFormatter dateFormatter = ISODateTimeFormat.dateTimeNoMillis();
 
     /**
      * Initializes an {@link AlaudaDevOpsClient}
      *
-     * @param serverUrl
-     *            the optional URL of where the OpenShift cluster API server is
-     *            running
+     * @param serverUrl the optional URL of where the OpenShift cluster API server is
+     *                  running
      */
     public synchronized static void initializeAlaudaDevOpsClient(String serverUrl) {
-      AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
-      if (serverUrl != null && !serverUrl.isEmpty()) {
-          configBuilder.withMasterUrl(serverUrl);
-      }
-
-      Config config = configBuilder.build();
-      if (config != null) {
-        if (Jenkins.getInstance().getPluginManager() != null && Jenkins.getInstance().getPluginManager()
-          .getPlugin(PLUGIN_NAME) != null) {
-          config.setUserAgent(PLUGIN_NAME + "-plugin-"
-            + Jenkins.getInstance().getPluginManager()
-            .getPlugin(PLUGIN_NAME).getVersion() + "/alauda-devops-"
-            + Version.clientVersion());
+        AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
+        if (serverUrl != null && !serverUrl.isEmpty()) {
+            configBuilder.withMasterUrl(serverUrl);
         }
-        alaudaClient = new DefaultAlaudaDevOpsClient(config);
-        logger.info("Alauda client is created well.");
-      } else {
-          logger.warning("Config builder could not build a configuration for Alauda Connection");
-      }
+
+        Config config = configBuilder.build();
+        if (config != null) {
+            PluginManager pluginMgr = Jenkins.getInstance().getPluginManager();
+
+            if (pluginMgr != null && pluginMgr.getPlugin(PLUGIN_NAME) != null) {
+                config.setUserAgent(PLUGIN_NAME + "-plugin-" + pluginMgr.getPlugin(PLUGIN_NAME).getVersion()
+                        + "/alauda-devops-" + Version.clientVersion());
+            }
+
+            alaudaClient = new DefaultAlaudaDevOpsClient(config);
+            logger.info("Alauda client is created well.");
+        } else {
+            // TODO maybe never come to here
+            logger.warning("Config builder could not build a configuration for Alauda Connection");
+        }
     }
 
     public synchronized static AlaudaDevOpsClient getAlaudaClient() {
@@ -511,23 +497,27 @@ public class AlaudaUtils {
   }
 
     public static void updatePipelinePhase(Pipeline pipeline, String phase) {
+      String pipelineName = pipeline.getMetadata().getName();
+      String namespace = pipeline.getMetadata().getNamespace();
+
         logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}",
                 new Object[] { phase, pipeline.getMetadata().getNamespace(),
-                        pipeline.getMetadata().getName() });
+                        pipelineName });
 
         // TODO: Change to use edit instead....
       Pipeline pipe = getAuthenticatedAlaudaClient().pipelines()
-        .inNamespace(pipeline.getMetadata().getNamespace())
-        .withName(pipeline.getMetadata().getName()).get();
+        .inNamespace(namespace)
+        .withName(pipelineName).get();
       PipelineStatus stats = pipe.getStatus();
       if (stats == null) {
         stats = new PipelineStatusBuilder().build();
       }
       stats.setPhase(phase);
       pipe.setStatus(stats);
+
       getAuthenticatedAlaudaClient().pipelines()
-        .inNamespace(pipeline.getMetadata().getNamespace())
-        .withName(pipeline.getMetadata().getName())
+        .inNamespace(namespace)
+        .withName(pipelineName)
         .replace(pipe);
     }
 

@@ -205,6 +205,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
 
   /**
    * Only call when the plugin configuration is really changed.
+   * Do nothing when KubernetesClientException occurs
    */
   public void configChange() {
     if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
@@ -225,7 +226,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
             GlobalPluginConfiguration.LOGGER.info("Waiting for Jenkins to be started");
 
             while(true) {
-              Jenkins instance = Jenkins.getActiveInstance();
+              Jenkins instance = Jenkins.getInstance();
               InitMilestone initLevel = instance.getInitLevel();
               GlobalPluginConfiguration.LOGGER.fine("Jenkins init level: " + initLevel.toString());
               if (initLevel == InitMilestone.COMPLETED) {
@@ -250,54 +251,49 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         } else {
           LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e);
         }
-
-        throw e;
       }
     }
   }
 
-  public void startWatchers() {
-    this.pipelineWatcher = new PipelineWatcher();
-    this.pipelineWatcher.watch();
-    this.pipelineWatcher.init(namespaces);
+    public void startWatchers() {
+        this.pipelineWatcher = new PipelineWatcher();
+        this.pipelineWatcher.init(namespaces);
 
-    this.pipelineConfigWatcher = new PipelineConfigWatcher();
-    this.pipelineConfigWatcher.watch();
-    this.pipelineConfigWatcher.init(namespaces);
+        this.pipelineConfigWatcher = new PipelineConfigWatcher();
+        this.pipelineConfigWatcher.init(namespaces);
 
-    this.secretWatcher = new SecretWatcher();
-    this.secretWatcher.watch();
-    this.secretWatcher.init(namespaces);
+        this.secretWatcher = new SecretWatcher();
+        this.secretWatcher.init(namespaces);
 
-    this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
-    this.jenkinsBindingWatcher.watch();
-  }
-
-  public void stopWatchers() {
-    if (this.pipelineWatcher != null) {
-      this.pipelineWatcher.stop();
-      this.pipelineWatcher = null;
+        this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
+        this.jenkinsBindingWatcher.init(namespaces);
     }
 
-    if (this.pipelineConfigWatcher != null) {
-      this.pipelineConfigWatcher.stop();
-      this.pipelineConfigWatcher = null;
+    public void stopWatchers() {
+        if (this.pipelineWatcher != null) {
+            this.pipelineWatcher.stop();
+            this.pipelineWatcher = null;
+        }
+
+        if (this.pipelineConfigWatcher != null) {
+            this.pipelineConfigWatcher.stop();
+            this.pipelineConfigWatcher = null;
+        }
+
+        if (this.secretWatcher != null) {
+            this.secretWatcher.stop();
+            this.secretWatcher = null;
+        }
+
+        if (jenkinsBindingWatcher != null) {
+            jenkinsBindingWatcher.stop();
+            jenkinsBindingWatcher = null;
+        }
     }
 
-    if (this.secretWatcher != null) {
-      this.secretWatcher.stop();
-      this.secretWatcher = null;
+    public void stopWatchersAndClient() {
+        stopWatchers();
+
+        AlaudaUtils.shutdownAlaudaClient();
     }
-
-    if(jenkinsBindingWatcher != null) {
-        jenkinsBindingWatcher.stop();
-        jenkinsBindingWatcher = null;
-    }
-  }
-
-  public void stopWatchersAndClient() {
-    stopWatchers();
-
-    AlaudaUtils.shutdownAlaudaClient();
-  }
 }
