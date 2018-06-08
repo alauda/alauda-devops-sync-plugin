@@ -18,6 +18,7 @@ package io.alauda.jenkins.devops.sync.watcher;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
+import io.alauda.jenkins.devops.sync.util.KubernetesResourceListUtils;
 import io.alauda.kubernetes.api.model.JenkinsBinding;
 import io.alauda.kubernetes.api.model.JenkinsBindingList;
 import io.alauda.kubernetes.client.Watch;
@@ -29,9 +30,8 @@ import java.util.logging.Logger;
 /**
  * @author suren
  */
-public class JenkinsBindingWatcher implements BaseWatcher {
+public class JenkinsBindingWatcher extends BaseWatcher {
     private final Logger LOGGER = Logger.getLogger(JenkinsBindingWatcher.class.getName());
-    private Watch watcher;
 
     @Override
     public <T> void eventReceived(Watcher.Action action, T resource) {
@@ -51,28 +51,27 @@ public class JenkinsBindingWatcher implements BaseWatcher {
     }
 
     @Override
-    public void watch() {
+    public void watch(String namespace) {
         if (!CredentialsUtils.hasCredentials()) {
             LOGGER.info("No Alauda Kubernetes Token credential defined.");
             return;
         }
 
         JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient()
-                .jenkinsBindings().inAnyNamespace().list();
+                .jenkinsBindings().inNamespace(namespace).list();
 
-        String resourceVersion = "0";
+        String resourceVersion = KubernetesResourceListUtils.getResourceVersion(jenkinsBindingList);
         if(jenkinsBindingList != null) {
-            resourceVersion = jenkinsBindingList.getMetadata().getResourceVersion();
-
             cacheBindings(jenkinsBindingList);
         } else {
             LOGGER.warning("Can not found JenkinsBindingList.");
         }
 
-        watcher = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
-                .inAnyNamespace()
+        Watch watch = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
+                .inNamespace(namespace)
                 .withResourceVersion(resourceVersion)
-                .watch(new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null));
+                .watch(new WatcherCallback<>(this, namespace));
+        putWatch(namespace, watch);
 
         LOGGER.info("JenkinsBindingWatcher already added.");
     }
@@ -93,13 +92,12 @@ public class JenkinsBindingWatcher implements BaseWatcher {
 
     @Override
     public void init(String[] namespaces){
-        //don't need init anything here
-    }
+        if(namespaces == null) {
+            return;
+        }
 
-    @Override
-    public void stop(){
-        if(watcher != null) {
-            watcher.close();
+        for(String namespace : namespaces) {
+            watch(namespace);
         }
     }
 }

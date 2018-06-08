@@ -26,10 +26,7 @@ import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
 import hudson.util.XStream2;
 import io.alauda.jenkins.devops.sync.*;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
-import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
-import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
+import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.api.model.PipelineConfigList;
 
@@ -63,55 +60,45 @@ import static java.util.logging.Level.SEVERE;
  * ensure there is a suitable Jenkins Job object defined with the correct
  * configuration
  */
-public class PipelineConfigWatcher implements BaseWatcher {
-  private final Logger logger = Logger.getLogger(getClass().getName());
+public class PipelineConfigWatcher extends BaseWatcher {
+    private final Logger logger = Logger.getLogger(getClass().getName());
 
-  // for coordinating between ItemListener.onUpdate and onDeleted both
-  // getting called when we delete a job; ID should be combo of namespace
-  // and name for BC to properly differentiate; we don't use UUID since
-  // when we filter on the ItemListener side the UUID may not be
-  // available
-  private static final HashSet<String> deletesInProgress = new HashSet<String>();
+    // for coordinating between JenkinsListener.onUpdate and onDeleted both
+    // getting called when we delete a job; ID should be combo of namespace
+    // and name for BC to properly differentiate; we don't use UUID since
+    // when we filter on the JenkinsListener side the UUID may not be
+    // available
+    private static final HashSet<String> deletesInProgress = new HashSet<String>();
 
-  public static synchronized void deleteInProgress(String pcName) {
-    deletesInProgress.add(pcName);
-  }
-
-  public static synchronized boolean isDeleteInProgress(String pcID) {
-    return deletesInProgress.contains(pcID);
-  }
-
-  public static synchronized void deleteCompleted(String pcID) {
-    deletesInProgress.remove(pcID);
-  }
-
-  private Watch watcher;
-
-  @Override
-  public void watch() {
-      if (!CredentialsUtils.hasCredentials()) {
-          logger.info("No Alauda Kubernetes Token credential defined.");
-          return;
-      }
-
-    PipelineConfigList list = AlaudaUtils.getAuthenticatedAlaudaClient()
-            .pipelineConfigs().inAnyNamespace().list();
-    String ver = "0";
-    if(list != null) {
-      ver = list.getMetadata().getResourceVersion();
+    public static synchronized void deleteInProgress(String pcName) {
+        deletesInProgress.add(pcName);
     }
 
-    watcher = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
-            .inAnyNamespace()
-            .withResourceVersion(ver)
-            .watch(new WatcherCallback<PipelineConfig>(this, null));
-  }
+    public static synchronized boolean isDeleteInProgress(String pcID) {
+        return deletesInProgress.contains(pcID);
+    }
+
+    public static synchronized void deleteCompleted(String pcID) {
+        deletesInProgress.remove(pcID);
+    }
 
     @Override
-    public void stop() {
-      if(watcher != null) {
-          watcher.close();
-      }
+    public void watch(String namesapce) {
+        if (!CredentialsUtils.hasCredentials()) {
+            logger.info("No Alauda Kubernetes Token credential defined.");
+            return;
+        }
+
+        PipelineConfigList list = AlaudaUtils.getAuthenticatedAlaudaClient()
+                .pipelineConfigs().inNamespace(namesapce).list();
+        String ver = KubernetesResourceListUtils.getResourceVersion(list);
+
+        Watch watch = AlaudaUtils.getAuthenticatedAlaudaClient()
+                .pipelineConfigs()
+                .inNamespace(namesapce)
+                .withResourceVersion(ver)
+                .watch(new WatcherCallback<>(this, namesapce));
+        putWatch(namesapce, watch);
     }
 
     @Override
@@ -125,6 +112,7 @@ public class PipelineConfigWatcher implements BaseWatcher {
                 logger.info("listing PipelineConfigs resources");
                 pipelineConfigs = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(namespace).list();
                 onInitialPipelineConfigs(pipelineConfigs);
+                watch(namespace);
                 logger.info("handled PipelineConfigs resources");
             } catch (Exception e) {
                 logger.log(SEVERE, "Failed to load PipelineConfigs: " + e, e);
@@ -133,25 +121,25 @@ public class PipelineConfigWatcher implements BaseWatcher {
     }
 
     private synchronized void onInitialPipelineConfigs(PipelineConfigList pipelineConfigs) {
-    if (pipelineConfigs == null) {
-      return;
-    }
-
-    List<PipelineConfig> items = pipelineConfigs.getItems();
-    if (items != null) {
-      for (PipelineConfig pipelineConfig : items) {
-        try {
-            if(!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
-                continue;
-              }
-
-          upsertJob(pipelineConfig);
-        } catch (Exception e) {
-          logger.log(SEVERE, "Failed to update job", e);
+        if (pipelineConfigs == null) {
+            return;
         }
-      }
+
+        List<PipelineConfig> items = pipelineConfigs.getItems();
+        if (items != null) {
+            for (PipelineConfig pipelineConfig : items) {
+                try {
+                    if (!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
+                        continue;
+                    }
+
+                    upsertJob(pipelineConfig);
+                } catch (Exception e) {
+                    logger.log(SEVERE, "Failed to update job", e);
+                }
+            }
+        }
     }
-  }
 
   @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
   public synchronized void eventReceived(Watcher.Action action, PipelineConfig pipelineConfig) {

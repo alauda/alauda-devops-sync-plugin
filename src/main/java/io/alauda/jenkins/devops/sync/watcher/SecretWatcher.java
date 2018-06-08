@@ -19,6 +19,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
+import io.alauda.jenkins.devops.sync.util.KubernetesResourceListUtils;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.Secret;
 import io.alauda.kubernetes.api.model.SecretList;
@@ -38,38 +39,28 @@ import static java.util.logging.Level.SEVERE;
  * Jenkins
  * @author suren
  */
-public class SecretWatcher implements BaseWatcher {
+public class SecretWatcher extends BaseWatcher {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
     private Map<String, String> trackedSecrets;
-    private Watch watcher;
 
     @Override
-    public void watch() {
+    public void watch(String namespace) {
         if (!CredentialsUtils.hasCredentials()) {
             logger.fine("No Alauda Kubernetes Token credential defined.");
             return;
         }
 
-        String resourceVersion = "0";
         SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient()
-                .secrets().inAnyNamespace().list();
-        if(secrets != null) {
-            resourceVersion = secrets.getMetadata().getResourceVersion();
-        }
+                .secrets().inNamespace(namespace).list();
+        String resourceVersion = KubernetesResourceListUtils.getResourceVersion(secrets);
 
-        watcher = AlaudaUtils.getAuthenticatedAlaudaClient()
+        Watch watch = AlaudaUtils.getAuthenticatedAlaudaClient()
                 .secrets()
-                .inAnyNamespace()
+                .inNamespace(namespace)
                 .withResourceVersion(resourceVersion)
-                .watch(new WatcherCallback<Secret>(SecretWatcher.this, null));
-    }
-
-    @Override
-    public void stop() {
-        if(watcher != null) {
-            watcher.close();
-        }
+                .watch(new WatcherCallback<>(this, namespace));
+        putWatch(namespace, watch);
     }
 
     @Override
@@ -84,6 +75,8 @@ public class SecretWatcher implements BaseWatcher {
                 SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient().secrets()
                         .inNamespace(namespace).list();
                 onInitialSecrets(secrets);
+
+                watch(namespace);
                 logger.fine("handled Secrets resources");
             } catch (Exception e) {
                 logger.log(SEVERE, "Failed to load Secrets: " + e, e);
