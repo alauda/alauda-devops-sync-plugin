@@ -257,6 +257,9 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
   }
 
   public void startWatchers() {
+      this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
+      this.jenkinsBindingWatcher.watch();
+
     this.pipelineWatcher = new PipelineWatcher();
     this.pipelineWatcher.watch();
     this.pipelineWatcher.init(namespaces);
@@ -268,9 +271,6 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     this.secretWatcher = new SecretWatcher();
     this.secretWatcher.watch();
     this.secretWatcher.init(namespaces);
-
-    this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
-    this.jenkinsBindingWatcher.watch();
   }
 
   public void stopWatchers() {
