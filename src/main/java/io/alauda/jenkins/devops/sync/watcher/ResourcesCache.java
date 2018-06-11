@@ -47,6 +47,10 @@ public class ResourcesCache {
         }
     }
 
+    public String[] getNamespace() {
+        return namespaces.toArray(new String[]{});
+    }
+
     public void removeNamespace(String namespace) {
         namespaces.remove(namespace);
     }

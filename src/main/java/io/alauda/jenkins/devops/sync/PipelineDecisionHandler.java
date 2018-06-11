@@ -65,17 +65,18 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                     + pipelineConfigProjectProperty + " with run policy: " + pipelineConfigProjectProperty.getPipelineRunPolicy());
             // TODO: Add trigger API for pipelineconfig (like above)
 
+            String pipelineConfigName = pipelineConfigProjectProperty.getName();
             PipelineConfig config = null;
             try {
                 config = AlaudaUtils.getAuthenticatedAlaudaClient()
                         .pipelineConfigs().inNamespace(namespace)
-                        .withName(pipelineConfigProjectProperty.getName()).get();
+                        .withName(pipelineConfigName).get();
             } catch (KubernetesClientException e) {
                 LOGGER.warning(() -> e.getMessage() + "; cause: " + e.getCause().getMessage());
             }
 
             if (config == null) {
-                LOGGER.warning("Config is null");
+                LOGGER.warning(() -> "Can not found PipelineConfig " + pipelineConfigName);
                 return false;
             } else if (config.getMetadata() == null) {
                 LOGGER.warning("Config metadata is null");

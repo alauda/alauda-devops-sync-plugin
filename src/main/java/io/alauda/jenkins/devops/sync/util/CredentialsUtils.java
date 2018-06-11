@@ -347,10 +347,10 @@ public class CredentialsUtils {
             logger.log(Level.WARNING, "Invalid secret data, secretName: " +
                 secretName + " usernameData is null: " + (usernameData == null)
                 + " usernameData is empty: " + 
-                (usernameData != null ? usernameData.length() == 0 : false) + 
+                (usernameData != null && usernameData.length() == 0) +
                 " passwordData is null: " + (passwordData == null) + 
                 " passwordData is empty: " + 
-                (passwordData != null ? passwordData.length() == 0 : false));
+                (passwordData != null && passwordData.length() == 0));
             return null;
             
         }

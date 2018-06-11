@@ -15,17 +15,38 @@
  */
 package io.alauda.jenkins.devops.sync.watcher;
 
+import io.alauda.kubernetes.client.KubernetesClientException;
+import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author suren
  */
-public interface BaseWatcher {
-    <T> void eventReceived(Watcher.Action action, T resource);
+public abstract class BaseWatcher {
+    private Map<String, Watch> watchMap = new ConcurrentHashMap<>();
 
-    void watch();
+    public abstract <T> void eventReceived(Watcher.Action action, T resource);
 
-    void init(String[] namespaces);
+    public abstract void watch(String namespace) throws KubernetesClientException;
 
-    void stop();
+    public abstract void init(String[] namespaces);
+
+    public void stop() {
+        watchMap.forEach((key, watch) -> {
+            watch.close();
+        });
+        watchMap.clear();
+    };
+
+    public void putWatch(String namespace, Watch watch) {
+        if(watchMap.containsKey(namespace)) {
+            watchMap.get(namespace).close();
+            watchMap.remove(namespace);
+        }
+
+        watchMap.put(namespace, watch);
+    }
 }
