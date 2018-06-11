@@ -1,12 +1,10 @@
 package io.alauda.jenkins.devops.sync;
 
-public class PipelineRunPolicy {
+public interface PipelineRunPolicy {
 
-  public static final String PARALLEL = "Parallel";
-
-  public static final String SERIAL = "Serial";
-
-  // NOT IMPLEMENTED YET
-  public static final String SERIAL_LATEST_ONLY = "SerialLatestOnly";
-  
+    /** NOT IMPLEMENTED YET */
+    String PARALLEL = "Parallel";
+    String SERIAL = "Serial";
+    /** NOT IMPLEMENTED YET */
+    String SERIAL_LATEST_ONLY = "SerialLatestOnly";
 }

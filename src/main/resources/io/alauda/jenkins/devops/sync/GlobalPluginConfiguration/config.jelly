@@ -33,6 +33,11 @@
              description="The name of the Jenkins service installed in Alauda DevOps platform. If left blank an attempt to find its matching Jenkins using the host address will be made.">
       <f:textbox/>
     </f:entry>
+    <f:advanced>
+      <f:entry title="${%Skip Namespace}" field="skipNamespace" description="What namespace we will omit.">
+        <f:textbox default="alauda-system,kube-public,kube-system"/>
+      </f:entry>
+    </f:advanced>
     <f:invisibleEntry title="Sync Job Name Pattern" field="jobNamePattern"
              description="The regular expression to match pipeline job names which should be sync'd to PipelineConfigs in Alauda DevOps - leave blank to not sync Jenkins Jobs to Alauda DevOps PipelineConfigs.">
       <f:textbox/>
