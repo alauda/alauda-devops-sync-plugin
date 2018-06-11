@@ -121,14 +121,20 @@ public class PipelineWatcher implements BaseWatcher {
 
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
     public synchronized void eventReceived(Watcher.Action action, Pipeline pipeline) {
-        if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline))
-            return;
+        String pipelineName = pipeline.getMetadata().getName();
 
-        if(!ResourcesCache.getInstance().isBinding(pipeline)) {
+        logger.info(() -> "Pipeline event: " + action + " - pipeline " + pipelineName);
+
+        if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline)) {
+            logger.warning(() -> "Pipeline " + pipelineName  + " is not Alauda pipeline strategy.");
             return;
         }
 
-        logger.info("Pipeline event: "+action+" - pipeline "+pipeline.getMetadata().getName());
+        if(!ResourcesCache.getInstance().isBinding(pipeline)) {
+            logger.warning(() -> "Pipeline " + pipelineName + " is not binding to current jenkins.");
+            return;
+        }
+
         try {
             switch (action) {
             case ADDED:
