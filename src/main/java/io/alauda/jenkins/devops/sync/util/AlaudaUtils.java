@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.util;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -25,6 +25,10 @@ import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.Annotations;
+import io.alauda.jenkins.devops.sync.Constants;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
 
 import io.alauda.kubernetes.client.Config;
@@ -43,9 +47,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -53,7 +54,6 @@ import java.util.logging.Logger;
 import static io.alauda.jenkins.devops.sync.PipelinePhases.PENDING;
 import static io.alauda.jenkins.devops.sync.PipelinePhases.RUNNING;
 import static io.alauda.jenkins.devops.sync.Constants.FOLDER_DESCRIPTION;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.PipelinePhases.QUEUED;
 import static java.util.logging.Level.FINE;
 
@@ -61,8 +61,7 @@ import static java.util.logging.Level.FINE;
  */
 public class AlaudaUtils {
 
-    private final static Logger logger = Logger.getLogger(AlaudaUtils.class
-            .getName());
+    private final static Logger logger = Logger.getLogger(AlaudaUtils.class.getName());
 
     private static AlaudaDevOpsClient alaudaClient;
     private static String jenkinsPodNamespace = null;
@@ -70,7 +69,7 @@ public class AlaudaUtils {
     
     static {
         jenkinsPodNamespace = System
-                .getProperty(Constants.OPENSHIFT_PROJECT_ENV_VAR_NAME);
+                .getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
         if (jenkinsPodNamespace != null && jenkinsPodNamespace.trim().length() > 0) {
             jenkinsPodNamespace = jenkinsPodNamespace.trim();
         } else {
@@ -115,24 +114,24 @@ public class AlaudaUtils {
      */
     public synchronized static void initializeAlaudaDevOpsClient(String serverUrl) {
       AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
-        if (serverUrl != null && !serverUrl.isEmpty()) {
-            configBuilder.withMasterUrl(serverUrl);
-        }
-        Config config = configBuilder.build();
-        if (config != null) {
-          if (Jenkins.getInstance().getPluginManager() != null && Jenkins.getInstance().getPluginManager()
-            .getPlugin(PLUGIN_NAME) != null) {
-            config.setUserAgent(PLUGIN_NAME + "-plugin-"
-              + Jenkins.getInstance().getPluginManager()
-              .getPlugin(PLUGIN_NAME).getVersion() + "/alauda-devops-"
-              + Version.clientVersion());
-          }
-          alaudaClient = new DefaultAlaudaDevOpsClient(config);
-        } else {
-          logger.warning("Config builder could not build a onfiguration for Alauda Connection");
-        }
+      if (serverUrl != null && !serverUrl.isEmpty()) {
+          configBuilder.withMasterUrl(serverUrl);
+      }
 
-
+      Config config = configBuilder.build();
+      if (config != null) {
+        if (Jenkins.getInstance().getPluginManager() != null && Jenkins.getInstance().getPluginManager()
+          .getPlugin(PLUGIN_NAME) != null) {
+          config.setUserAgent(PLUGIN_NAME + "-plugin-"
+            + Jenkins.getInstance().getPluginManager()
+            .getPlugin(PLUGIN_NAME).getVersion() + "/alauda-devops-"
+            + Version.clientVersion());
+        }
+        alaudaClient = new DefaultAlaudaDevOpsClient(config);
+        logger.info("Alauda client is created well.");
+      } else {
+          logger.warning("Config builder could not build a configuration for Alauda Connection");
+      }
     }
 
     public synchronized static AlaudaDevOpsClient getAlaudaClient() {
@@ -631,7 +630,7 @@ public class AlaudaUtils {
     /**
      * Lets convert the string to btw a valid kubernetes resource name
      */
-    static String convertNameToValidResourceName(String text) {
+    public static String convertNameToValidResourceName(String text) {
         String lower = text.toLowerCase();
         StringBuilder builder = new StringBuilder();
         boolean started = false;
@@ -695,6 +694,31 @@ public class AlaudaUtils {
             return metadata.getName();
         }
         return null;
+    }
+
+    public static boolean isBindingToCurrentJenkins(JenkinsBinding jenkinsBinding) {
+        GlobalPluginConfiguration pluginConfig = GlobalPluginConfiguration.get();
+
+        String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
+        String jenkinsService = pluginConfig.getJenkinsService();
+
+        return (jenkinsName.equals(jenkinsService));
+    }
+
+    public static boolean isBindingToCurrentJenkins(String namespace) {
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        String jenkinsService = GlobalPluginConfiguration.get().getJenkinsService();
+
+        JenkinsBindingList jenkinsBindings = client.jenkinsBindings().inNamespace(namespace).list();
+        if(jenkinsBindings != null) {
+            for(JenkinsBinding binding : jenkinsBindings.getItems()) {
+                if(binding.getSpec().getJenkins().getName().equals(jenkinsService)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     abstract class StatelessReplicationControllerMixIn extends

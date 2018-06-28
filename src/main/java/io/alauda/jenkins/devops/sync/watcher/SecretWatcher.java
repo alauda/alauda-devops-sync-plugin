@@ -13,13 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import hudson.triggers.SafeTimerTask;
+import io.alauda.jenkins.devops.sync.WatcherCallback;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.Secret;
 import io.alauda.kubernetes.api.model.SecretList;
+import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 
 import java.util.List;
@@ -28,101 +31,69 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.getAuthenticatedAlaudaClient;
 import static java.util.logging.Level.SEVERE;
 
 /**
  * Watches {@link Secret} objects in Kubernetes and syncs then to Credentials in
  * Jenkins
+ * @author suren
  */
-public class SecretWatcher extends BaseWatcher {
-    private Map<String, String> trackedSecrets;
-
+public class SecretWatcher implements BaseWatcher {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
-    @SuppressFBWarnings("EI_EXPOSE_REP2")
-    public SecretWatcher(String[] namespaces) {
-        super(namespaces);
-        this.trackedSecrets = new ConcurrentHashMap<String, String>();
+    private Map<String, String> trackedSecrets;
+    private Watch watcher;
+
+    @Override
+    public void watch() {
+        if (!CredentialsUtils.hasCredentials()) {
+            logger.fine("No Alauda Kubernetes Token credential defined.");
+            return;
+        }
+
+        String resourceVersion = "0";
+        SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient()
+                .secrets().inAnyNamespace().list();
+        if(secrets != null) {
+            resourceVersion = secrets.getMetadata().getResourceVersion();
+        }
+
+        watcher = AlaudaUtils.getAuthenticatedAlaudaClient()
+                .secrets()
+                .inAnyNamespace()
+                .withResourceVersion(resourceVersion)
+                .watch(new WatcherCallback<Secret>(SecretWatcher.this, null));
     }
 
     @Override
-    public Runnable getStartTimerTask() {
-        return new SafeTimerTask() {
-            @Override
-            public void doRun() {
-                if (!CredentialsUtils.hasCredentials()) {
-                    logger.fine("No Alauda Kubernetes Token credential defined.");
-                    return;
-                }
-                for (String namespace : namespaces) {
-                    SecretList secrets = null;
-                    try {
-                        logger.fine("listing Secrets resources");
-//                        secrets = getAuthenticatedAlaudaClient().secrets()
-//                                .inNamespace(namespace)
-//                                .withLabel(Constants.OPENSHIFT_LABELS_SECRET_CREDENTIAL_SYNC, Constants.VALUE_SECRET_SYNC).list();
-                        secrets = AlaudaUtils.getAuthenticatedAlaudaClient().secrets()
-                          .inNamespace(namespace).list();
-                        onInitialSecrets(secrets);
-                        logger.fine("handled Secrets resources");
-                    } catch (Exception e) {
-                        logger.log(SEVERE, "Failed to load Secrets: " + e, e);
-                    }
-                    try {
-                        String resourceVersion = "0";
-                        if (secrets == null) {
-                            logger.warning("Unable to get secret list; impacts resource version used for watch");
-                        } else {
-                            resourceVersion = secrets.getMetadata()
-                                    .getResourceVersion();
-                        }
-                        synchronized(SecretWatcher.this) {
-                            if (watches.get(namespace) == null) {
-                                logger.info("creating Secret watch for namespace "
-                                        + namespace + " and resource version"
-                                        + resourceVersion);
-//                                watches.put(
-//                                        namespace,
-//                                        getAuthenticatedAlaudaClient()
-//                                        .secrets()
-//                                        .inNamespace(namespace)
-//                                        .withLabel(Constants.OPENSHIFT_LABELS_SECRET_CREDENTIAL_SYNC,
-//                                                Constants.VALUE_SECRET_SYNC)
-//                                                .withResourceVersion(
-//                                                        resourceVersion)
-//                                                        .watch(new WatcherCallback<Secret>(SecretWatcher.this,
-//                                                                namespace)));
-                              watches.put(
-                                namespace,
-                                AlaudaUtils.getAuthenticatedAlaudaClient()
-                                  .secrets()
-                                  .inNamespace(namespace)
-                                    .withResourceVersion(resourceVersion)
-                                    .watch(new WatcherCallback<Secret>(SecretWatcher.this,
-                                      namespace)));
-                            }
-                        }
-                    } catch (Exception e) {
-                        logger.log(SEVERE, "Failed to load Secrets: " + e, e);
-                    }
-                }
-
-            }
-        };
+    public void stop() {
+        if(watcher != null) {
+            watcher.close();
+        }
     }
 
-    public synchronized void start() {
-        // lets process the initial state
-        super.start();
-        logger.info("Now handling startup secrets!!");
+    @Override
+    public void init(String[] namespaces) {
+        if (trackedSecrets == null) {
+            trackedSecrets = new ConcurrentHashMap<String, String>();
+        }
+
+        for (String namespace : namespaces) {
+            try {
+                logger.fine("listing Secrets resources");
+                SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient().secrets()
+                        .inNamespace(namespace).list();
+                onInitialSecrets(secrets);
+                logger.fine("handled Secrets resources");
+            } catch (Exception e) {
+                logger.log(SEVERE, "Failed to load Secrets: " + e, e);
+            }
+        }
     }
 
     private synchronized void onInitialSecrets(SecretList secrets) {
         if (secrets == null)
             return;
-        if (trackedSecrets == null)
-            trackedSecrets = new ConcurrentHashMap<String, String>();
         List<Secret> items = secrets.getItems();
         if (items != null) {
             for (Secret secret : items) {
@@ -209,5 +180,4 @@ public class SecretWatcher extends BaseWatcher {
         trackedSecrets.remove(secret.getMetadata().getUid());
         CredentialsUtils.deleteCredential(secret);
     }
-
 }

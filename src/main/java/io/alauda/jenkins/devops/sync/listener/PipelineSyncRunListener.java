@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.listener;
 
 import com.cloudbees.workflow.rest.external.AtomFlowNodeExt;
 import com.cloudbees.workflow.rest.external.FlowNodeExt;
@@ -33,6 +33,9 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
+import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import io.jenkins.blueocean.rest.factory.BlueRunFactory;
@@ -62,14 +65,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.getCurrentTimestamp;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getCurrentTimestamp;
 import static io.alauda.jenkins.devops.sync.Constants.*;
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.formatTimestamp;
-import static io.alauda.jenkins.devops.sync.AlaudaUtils.getAuthenticatedAlaudaClient;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.formatTimestamp;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.logging.Level.*;
 
@@ -80,8 +84,7 @@ import static java.util.logging.Level.*;
  */
 @Extension
 public class PipelineSyncRunListener extends RunListener<Run> {
-  private static final Logger logger = Logger
-    .getLogger(PipelineSyncRunListener.class.getName());
+  private static final Logger logger = Logger.getLogger(PipelineSyncRunListener.class.getName());
 
   private long pollPeriodMs = 1000 * 5;  // 5 seconds
   private long delayPollPeriodMs = 1000; // 1 seconds
@@ -179,7 +182,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
 
     JenkinsPipelineCause cause = (JenkinsPipelineCause) run.getCause(JenkinsPipelineCause.class);
-    if(run instanceof WorkflowRun && cause != null) {
+    if(cause != null && run instanceof WorkflowRun) {
       String namespace = cause.getNamespace();
       String pipelineName = cause.getName();
 
@@ -237,6 +240,10 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         return;
       }
       throw e;
+    } catch (InterruptedException e) {
+        e.printStackTrace();
+    } catch (TimeoutException e) {
+        e.printStackTrace();
     }
   }
 
@@ -276,7 +283,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     return false;
   }
 
-  private void upsertPipeline(Run run, RunExt wfRunExt, BlueRun blueRun) {
+  private void upsertPipeline(Run run, RunExt wfRunExt, BlueRun blueRun) throws TimeoutException, InterruptedException {
     if (run == null) {
       return;
     }
@@ -598,7 +605,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
   // annotate the Build with pending input JSON so consoles can do the
   // Proceed/Abort stuff if they want
-  private String getPendingActionsJson(WorkflowRun run) {
+  private String getPendingActionsJson(WorkflowRun run) throws TimeoutException, InterruptedException {
     List<PendingInputActionsExt> pendingInputActions = new ArrayList<PendingInputActionsExt>();
     InputAction inputAction = run.getAction(InputAction.class);
 

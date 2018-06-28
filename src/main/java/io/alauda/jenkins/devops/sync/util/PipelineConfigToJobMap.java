@@ -1,5 +1,6 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.util;
 
+import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import jenkins.model.Jenkins;
@@ -19,7 +20,7 @@ public class PipelineConfigToJobMap {
   private PipelineConfigToJobMap() {
   }
 
-  static synchronized void initializePipelineConfigToJobMap() {
+  public static synchronized void initializePipelineConfigToJobMap() {
     if (pipelineConfigToJobMap == null) {
       List<WorkflowJob> jobs = Jenkins.getActiveInstance().getAllItems(
         WorkflowJob.class);
@@ -38,23 +39,24 @@ public class PipelineConfigToJobMap {
     }
   }
 
-  static synchronized WorkflowJob getJobFromPipelineConfig(
-    PipelineConfig pipelineConfig) {
+  public static synchronized WorkflowJob getJobFromPipelineConfig(PipelineConfig pipelineConfig) {
     ObjectMeta meta = pipelineConfig.getMetadata();
     if (meta == null) {
       return null;
     }
+
     return getJobFromPipelineConfigUid(meta.getUid());
   }
 
-  static synchronized WorkflowJob getJobFromPipelineConfigUid(String uid) {
+  public static synchronized WorkflowJob getJobFromPipelineConfigUid(String uid) {
     if (isBlank(uid)) {
       return null;
     }
+
     return pipelineConfigToJobMap.get(uid);
   }
 
-  static synchronized void putJobWithPipelineConfig(WorkflowJob job,
+  public static synchronized void putJobWithPipelineConfig(WorkflowJob job,
                                                     PipelineConfig pipelineConfig) {
     if (pipelineConfig == null) {
       throw new IllegalArgumentException("PipelineConfig cannot be null");
@@ -67,6 +69,7 @@ public class PipelineConfigToJobMap {
       throw new IllegalArgumentException(
         "PipelineConfig must contain valid metadata");
     }
+
     putJobWithPipelineConfigUid(job, meta.getUid());
   }
 
@@ -79,7 +82,7 @@ public class PipelineConfigToJobMap {
     pipelineConfigToJobMap.put(uid, job);
   }
 
-  static synchronized void removeJobWithPipelineConfig(PipelineConfig pipelineConfig) {
+  public static synchronized void removeJobWithPipelineConfig(PipelineConfig pipelineConfig) {
     if (pipelineConfig == null) {
       throw new IllegalArgumentException("PipelineConfig cannot be null");
     }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.listener;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
@@ -24,6 +24,11 @@ import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.listeners.ItemListener;
 
+import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
+import io.alauda.jenkins.devops.sync.watcher.PipelineConfigWatcher;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import org.apache.commons.lang.StringUtils;
@@ -86,11 +91,16 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
   @Override
   public void onUpdated(Item item) {
-    if (!GlobalPluginConfiguration.isItEnabled())
-      return;
+    if (!GlobalPluginConfiguration.isItEnabled()) {
+        return;
+    }
+
     reconfigure();
-    super.onUpdated(item);
+
     upsertItem(item);
+
+    // super class's method should be the last call
+    super.onUpdated(item);
   }
 
   @Override
@@ -147,13 +157,17 @@ public class JenkinsPipelineJobListener extends ItemListener {
     reconfigure();
   }
 
-  public void upsertItem(Item item) {
-    if (item instanceof WorkflowJob) {
-      upsertWorkflowJob((WorkflowJob) item);
-    } else if (item instanceof ItemGroup) {
-      upsertItemGroup((ItemGroup) item);
+    /**
+     * Create or update the pipeline job
+     * @param item
+     */
+    public void upsertItem(Item item) {
+        if (item instanceof WorkflowJob) {
+            upsertWorkflowJob((WorkflowJob) item);
+        } else if (item instanceof ItemGroup) {
+            upsertItemGroup((ItemGroup) item);
+        }
     }
-  }
 
   private void upsertItemGroup(ItemGroup itemGroup) {
     Collection items = itemGroup.getItems();
@@ -168,13 +182,35 @@ public class JenkinsPipelineJobListener extends ItemListener {
     }
   }
 
-  private void upsertWorkflowJob(WorkflowJob job) {
-    PipelineConfigProjectProperty property = pipelineConfigProjectForJob(job);
-    if (property != null && (!PipelineConfigWatcher.isDeleteInProgress(property.getNamespace() + property.getName()))) {
-      logger.info("Upsert WorkflowJob " + job.getName() + " to PipelineConfig: " + property.getNamespace() + "/" + property.getName() + " in Alauda Kubernetes");
-      upsertPipelineConfigForJob(job, property);
+    /**
+    * Update or insert target workflow job
+    * @param job target workflow job
+    */
+    private void upsertWorkflowJob(WorkflowJob job) {
+        PipelineConfigProjectProperty property = pipelineConfigProjectForJob(job);
+
+        //we just take care of our style's jobs
+        if (canUpdate(job, property)) {
+            logger.info(() -> "Upsert WorkflowJob " + job.getName() + " to PipelineConfig: "
+                    + property.getNamespace() + "/" + property.getName() + " in Alauda Kubernetes");
+
+            upsertPipelineConfigForJob(job, property);
+        }
     }
-  }
+
+    /**
+     * Check status of job
+     * @param job WorkflowJob
+     * @param property PipelineConfigProjectProperty
+     * @return if we can update the job, will return true
+     */
+    private boolean canUpdate(WorkflowJob job, PipelineConfigProjectProperty property) {
+        return (property != null && isNotDeleteInProgress(property));
+    }
+
+    private boolean isNotDeleteInProgress(PipelineConfigProjectProperty property) {
+        return !PipelineConfigWatcher.isDeleteInProgress(property.getNamespace() + property.getName());
+    }
 
   /**
    * Returns the mapping of the jenkins workflow job to a qualified namespace
@@ -222,11 +258,18 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
   private void upsertPipelineConfigForJob(WorkflowJob job, PipelineConfigProjectProperty pipelineConfigProjectProperty) {
     boolean create = false;
-    PipelineConfig jobPipelineConfig = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(pipelineConfigProjectProperty.getNamespace()).withName(pipelineConfigProjectProperty.getName()).get();
+    String namespace = pipelineConfigProjectProperty.getNamespace();
+    String jobName = pipelineConfigProjectProperty.getName();
+
+    PipelineConfig jobPipelineConfig = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
+            .inNamespace(namespace)
+            .withName(jobName).get();
     if (jobPipelineConfig == null) {
       create = true;
       // TODO: Adjust this part
-      jobPipelineConfig = new PipelineConfigBuilder().withNewMetadata().withName(pipelineConfigProjectProperty.getName()).withNamespace(pipelineConfigProjectProperty.getNamespace())
+      jobPipelineConfig = new PipelineConfigBuilder().withNewMetadata()
+              .withName(jobName)
+              .withNamespace(namespace)
         .addToAnnotations(Annotations.GENERATED_BY, Annotations.GENERATED_BY_JENKINS)
         .endMetadata()
         .withNewSpec()
@@ -236,10 +279,15 @@ public class JenkinsPipelineJobListener extends ItemListener {
         .endStrategy().endSpec().build();
     } else {
       ObjectMeta metadata = jobPipelineConfig.getMetadata();
+      if(metadata == null) {
+          logger.warning("PipelineConfig's metadata is missing.");
+          return;
+      }
+
       String uid = pipelineConfigProjectProperty.getUid();
-      if (metadata != null && StringUtils.isEmpty(uid)) {
+      if (StringUtils.isEmpty(uid)) {
         pipelineConfigProjectProperty.setUid(metadata.getUid());
-      } else if (metadata != null && !Objects.equal(uid, metadata.getUid())) {
+      } else if (!Objects.equal(uid, metadata.getUid())) {
         // the UUIDs are different so lets ignore this PipelineConfig
         return;
       }
@@ -261,7 +309,10 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     if (create) {
       try {
-        PipelineConfig pc = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(jobPipelineConfig.getMetadata().getNamespace()).create(jobPipelineConfig);
+        PipelineConfig pc = AlaudaUtils.getAuthenticatedAlaudaClient()
+                .pipelineConfigs()
+                .inNamespace(jobPipelineConfig.getMetadata().getNamespace())
+                .create(jobPipelineConfig);
         String uid = pc.getMetadata().getUid();
         pipelineConfigProjectProperty.setUid(uid);
       } catch (Exception e) {
@@ -269,7 +320,11 @@ public class JenkinsPipelineJobListener extends ItemListener {
       }
     } else {
       try {
-        AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(jobPipelineConfig.getMetadata().getNamespace()).withName(jobPipelineConfig.getMetadata().getName()).cascading(false).replace(jobPipelineConfig);
+        AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
+                .inNamespace(jobPipelineConfig.getMetadata().getNamespace())
+                .withName(jobPipelineConfig.getMetadata().getName())
+                .cascading(false)
+                .replace(jobPipelineConfig);
       } catch (Exception e) {
         logger.log(Level.WARNING, "Failed to update PipelineConfig: " + NamespaceName.create(jobPipelineConfig) + ". " + e, e);
       }

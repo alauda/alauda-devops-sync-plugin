@@ -15,6 +15,7 @@
  */
 package io.alauda.jenkins.devops.sync;
 
+import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import org.junit.Test;
 
 import java.util.Arrays;

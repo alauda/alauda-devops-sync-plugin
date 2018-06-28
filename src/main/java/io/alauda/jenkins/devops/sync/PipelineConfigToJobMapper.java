@@ -15,13 +15,17 @@
  */
 package io.alauda.jenkins.devops.sync;
 
+import hudson.model.*;
 import hudson.plugins.git.BranchSpec;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.SubmoduleConfig;
 import hudson.plugins.git.UserRemoteConfig;
 import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.scm.SCM;
+import hudson.triggers.SCMTrigger;
+import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.*;
 
 import jenkins.branch.Branch;
@@ -35,12 +39,11 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.CredentialsUtils.updateSourceCredentials;
+import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 public class PipelineConfigToJobMapper {
@@ -103,6 +106,73 @@ public class PipelineConfigToJobMapper {
   }
 
   /**
+   * Find PipelineTrigger according to the type
+   * @param pipelineConfig PipelineConfig
+   * @param type type of PipelineTrigger
+   * @return target PipelineTrigger. Return null if can not find it.
+   */
+  private static PipelineTrigger findPipelineTriggers(PipelineConfig pipelineConfig, String type) {
+    List<PipelineTrigger> triggers = pipelineConfig.getSpec().getTriggers();
+    if(triggers == null) {
+      return null;
+    }
+
+    for(PipelineTrigger trigger : triggers) {
+      if(trigger.getType().equals(type)) {
+        return trigger;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Update triggers to k8s  resources. We support scm and cron for now.
+   * @param job WorkflowJob
+   * @param pipelineConfig PipelineConfig
+   */
+  private static void updateTrigger(WorkflowJob job, PipelineConfig pipelineConfig) {
+    // checking if there are triggers to be updated
+    if ((job.getTriggers() != null && job.getTriggers().size() >0 )
+            || (pipelineConfig.getSpec().getTriggers() != null && pipelineConfig.getSpec().getTriggers().size() > 0)) {
+      for (Trigger<?> trigger : job.getTriggers().values()) {
+        if(trigger instanceof SCMTrigger) {
+          PipelineTrigger pipelineTrigger = findPipelineTriggers(pipelineConfig,
+                  Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE);
+          SCMTrigger scmTrigger = (SCMTrigger) trigger;
+
+          if(pipelineTrigger == null) {
+            pipelineTrigger = new PipelineTriggerBuilder()
+                    .withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE)
+                    .withNewCodeChange()
+                    .withEnabled(true)
+                    .withPeriodicCheck(scmTrigger.getSpec())
+                    .endCodeChange().build();
+            pipelineConfig.getSpec().getTriggers().add(pipelineTrigger);
+          } else {
+            pipelineTrigger.getCodeChange().setPeriodicCheck(scmTrigger.getSpec());
+          }
+        } else if(trigger instanceof TimerTrigger) {
+          PipelineTrigger pipelineTrigger = findPipelineTriggers(pipelineConfig,
+                  Constants.PIPELINE_TRIGGER_TYPE_CRON);
+          TimerTrigger timerTrigger = (TimerTrigger) trigger;
+
+          if(pipelineTrigger == null) {
+            pipelineTrigger = new PipelineTriggerBuilder()
+                    .withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
+                    .withNewCron(true, timerTrigger.getSpec()).build();
+            pipelineConfig.getSpec().getTriggers().add(pipelineTrigger);
+          } else {
+            pipelineTrigger.getCron().setRule(timerTrigger.getSpec());
+          }
+        } else {
+          LOGGER.warning(() -> "Not support trigger type : " + trigger.getClass());
+        }
+      }
+    }
+  }
+
+  /**
    * Updates the {@link PipelineConfig} if the Jenkins {@link WorkflowJob} changes
    *
    * @param job
@@ -113,28 +183,26 @@ public class PipelineConfigToJobMapper {
    */
   public static boolean updatePipelineConfigFromJob(WorkflowJob job, PipelineConfig pipelineConfig) {
     NamespaceName namespaceName = NamespaceName.create(pipelineConfig);
-    PipelineStrategyJenkins jenkinsPipelineStrategy = null;
+    PipelineStrategyJenkins pipelineStrategyJenkins = null;
     PipelineConfigSpec spec = pipelineConfig.getSpec();
     if (spec != null) {
       PipelineStrategy strategy = spec.getStrategy();
       if (strategy != null) {
-        jenkinsPipelineStrategy = strategy.getJenkins();
+        pipelineStrategyJenkins = strategy.getJenkins();
+      } else {
+        LOGGER.warning(() -> "No available JenkinsPipelineStrategy in the PipelineConfig " + namespaceName);
+        return false;
       }
-    }
-
-    if (jenkinsPipelineStrategy == null) {
-      LOGGER.warning("No jenkinsPipelineStrategy available in the PipelineConfig " + namespaceName);
+    } else {
+      LOGGER.warning("Not sepc in PipelineConfig");
       return false;
     }
 
     // checking if there are triggers to be updated
-    // TODO: add reverse syncing triggers logic
-    if ((job.getTriggers() != null && job.getTriggers().size() >0 )
-      || (pipelineConfig.getSpec().getTriggers() != null && pipelineConfig.getSpec().getTriggers().size() > 0)) {
-      for (Trigger<?> trgr : job.getTriggers().values()) {
-//        trgr =
-      }
-    }
+    updateTrigger(job, pipelineConfig);
+
+    // take care of job's params
+    updateParameters(job, pipelineConfig);
 
     FlowDefinition definition = job.getDefinition();
     if (definition instanceof CpsScmFlowDefinition) {
@@ -148,11 +216,11 @@ public class PipelineConfigToJobMapper {
 //          scriptPath = scriptPath.replaceFirst("^" + bcContextDir + "/?", "");
 //        }
 
-        if (!scriptPath.equals(jenkinsPipelineStrategy.getJenkinsfilePath())) {
+        if (!scriptPath.equals(pipelineStrategyJenkins.getJenkinsfilePath())) {
           LOGGER.log(Level.FINE,
             "updating PipelineConfig " + namespaceName + " jenkinsfile path to " + scriptPath + " from ");
           rc = true;
-          jenkinsPipelineStrategy.setJenkinsfilePath(scriptPath);
+          pipelineStrategyJenkins.setJenkinsfilePath(scriptPath);
         }
 
         SCM scm = cpsScmFlowDefinition.getScm();
@@ -160,9 +228,13 @@ public class PipelineConfigToJobMapper {
           populateFromGitSCM(pipelineConfig, source, (GitSCM) scm, null);
           LOGGER.log(Level.FINE, "updating bc " + namespaceName);
           rc = true;
+        } else {
+          LOGGER.warning(() -> "Not support scm type: " + scm);
         }
+
         return rc;
       }
+
       return false;
     }
 
@@ -170,10 +242,10 @@ public class PipelineConfigToJobMapper {
       CpsFlowDefinition cpsFlowDefinition = (CpsFlowDefinition) definition;
       String jenkinsfile = cpsFlowDefinition.getScript();
       if (jenkinsfile != null && jenkinsfile.trim().length() > 0
-        && !jenkinsfile.equals(jenkinsPipelineStrategy.getJenkinsfile())) {
+        && !jenkinsfile.equals(pipelineStrategyJenkins.getJenkinsfile())) {
         LOGGER.log(Level.FINE, "updating PipelineConfig " + namespaceName + " jenkinsfile to " + jenkinsfile
-          + " where old jenkinsfile was " + jenkinsPipelineStrategy.getJenkinsfile());
-        jenkinsPipelineStrategy.setJenkinsfile(jenkinsfile);
+          + " where old jenkinsfile was " + pipelineStrategyJenkins.getJenkinsfile());
+        pipelineStrategyJenkins.setJenkinsfile(jenkinsfile);
         return true;
       }
 
@@ -190,8 +262,8 @@ public class PipelineConfigToJobMapper {
         PipelineSource source = getOrCreatePipelineSource(spec);
         if (scm instanceof GitSCM) {
           if (populateFromGitSCM(pipelineConfig, source, (GitSCM) scm, ref)) {
-            if (StringUtils.isEmpty(jenkinsPipelineStrategy.getJenkinsfilePath())) {
-              jenkinsPipelineStrategy.setJenkinsfilePath("Jenkinsfile");
+            if (StringUtils.isEmpty(pipelineStrategyJenkins.getJenkinsfilePath())) {
+              pipelineStrategyJenkins.setJenkinsfilePath("Jenkinsfile");
             }
             return true;
           }
@@ -204,7 +276,74 @@ public class PipelineConfigToJobMapper {
     return false;
   }
 
-  private static boolean populateFromGitSCM(PipelineConfig pipelineConfig, PipelineSource source, GitSCM gitSCM, String ref) {
+    private static void updateParameters(WorkflowJob job, PipelineConfig pipelineConfig) {
+        PipelineConfigSpec spec = pipelineConfig.getSpec();
+
+      if(spec.getParameters() == null) {
+          spec.setParameters(new ArrayList<>());
+        } else {
+          spec.getParameters().clear();
+        }
+
+        ParametersDefinitionProperty paramsDefPro = job.getProperty(ParametersDefinitionProperty.class);
+        if(paramsDefPro == null) {
+            return;
+        }
+
+        List<ParameterDefinition> paramDefs = paramsDefPro.getParameterDefinitions();
+        if(paramDefs == null || paramDefs.size() == 0) {
+            return;
+        }
+
+        for(ParameterDefinition def : paramDefs) {
+            PipelineParameter pipelineParameter;
+            if((pipelineParameter = convertTo(def)) != null) {
+                spec.getParameters().add(pipelineParameter);
+            }
+        }
+    }
+
+    public static boolean isSupportParamType(ParameterDefinition paramDef) {
+        return (paramDef instanceof StringParameterDefinition)
+                || (paramDef instanceof BooleanParameterDefinition);
+    }
+
+    public static PipelineParameter convertTo(ParameterDefinition def) {
+        if(!isSupportParamType(def)) {
+            String errDesc = "Not support type:" + def.getType() + ", please fix these.";
+
+            def = new StringParameterDefinition(def.getName(), "", errDesc);
+        }
+
+        String value = "";
+        ParameterValue defVal = def.getDefaultParameterValue();
+        if(defVal != null && defVal.getValue() != null) {
+            value = defVal.getValue().toString();
+        }
+
+        return new PipelineParameterBuilder()
+                .withType(paramType(def))
+                .withName(def.getName())
+                .withValue(value)
+                .withDescription(def.getDescription()).build();
+    }
+
+    /**
+     * TODO need to optimize
+     * @param parameterDefinition ParameterDefinition
+     * @return param type
+     */
+    public static String paramType(ParameterDefinition parameterDefinition) {
+        Map<String, String> map = new HashMap<String, String>();
+        map.put(new StringParameterDefinition("", "").getType(),
+                Constants.PIPELINE_PARAMETER_TYPE_STRING);
+        map.put(new BooleanParameterDefinition("", false,"").getType(),
+                Constants.PIPELINE_PARAMETER_TYPE_BOOLEAN);
+
+        return map.get(parameterDefinition.getType());
+    }
+
+    private static boolean populateFromGitSCM(PipelineConfig pipelineConfig, PipelineSource source, GitSCM gitSCM, String ref) {
     if (source.getGit() == null) {
       source.setGit(new PipelineSourceGit());
     }

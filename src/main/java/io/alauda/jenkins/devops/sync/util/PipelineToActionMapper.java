@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.util;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,19 +26,12 @@ public class PipelineToActionMapper {
     private static Map<String, ParametersAction> buildToParametersMap;
     private static Map<String, CauseAction> buildToCauseMap;
 
-    private PipelineToActionMapper() {
+    static {
+        buildToParametersMap = new ConcurrentHashMap<String, ParametersAction>();
+        buildToCauseMap = new ConcurrentHashMap<String, CauseAction>();
     }
 
-    static synchronized void initialize() {
-        if (buildToParametersMap == null) {
-            buildToParametersMap = new ConcurrentHashMap<String, ParametersAction>();
-        }
-        if (buildToCauseMap == null) {
-            buildToCauseMap = new ConcurrentHashMap<String, CauseAction>();
-        }
-    }
-
-    static synchronized void addParameterAction(String pipelineId,
+    public static synchronized void addParameterAction(String pipelineId,
             ParametersAction params) {
         buildToParametersMap.put(pipelineId, params);
     }
@@ -47,7 +40,7 @@ public class PipelineToActionMapper {
         return buildToParametersMap.remove(pipelineId);
     }
 
-    static synchronized void addCauseAction(String pipelineId, CauseAction cause) {
+    public static synchronized void addCauseAction(String pipelineId, CauseAction cause) {
         buildToCauseMap.put(pipelineId, cause);
     }
 

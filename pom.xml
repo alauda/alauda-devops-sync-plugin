@@ -22,29 +22,22 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>2.15</version>
+    <version>2.36</version>
     <relativePath />
   </parent>
 
   <groupId>io.alauda.jenkins.plugins</groupId>
   <artifactId>alauda-devops-sync</artifactId>
-  <version>0.2.4</version>
+  <version>0.2.6-SNAPSHOT</version>
   <packaging>hpi</packaging>
 
   <properties>
     <!-- Baseline Jenkins version you use to build the plugin. Users must have this version or newer to run. -->
-    <jenkins.version>1.651.2</jenkins.version>
+    <jenkins.version>2.83</jenkins.version>
     <!-- Java Level to use. Java 7 required when using core >= 1.612 -->
     <java.level>8</java.level>
-    <!-- Jenkins Test Harness version you use to test the plugin. -->
-    <!-- For Jenkins version >= 1.580.1 use JTH 2.x or higher. -->
-    <jenkins-test-harness.version>2.1</jenkins-test-harness.version>
-    <!-- Other properties you may want to use:
-         ~ hpi-plugin.version: The HPI Maven Plugin version used by the plugin..
-         ~ stapler-plugin.version: The Stapler Maven plugin version required by the plugin.
-    -->
 
-    <devops-client.version>0.2.4.1</devops-client.version>
+    <devops-client.version>0.2.4.2</devops-client.version>
     <log.level>INFO</log.level>
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
     <findbugs.failOnError>false</findbugs.failOnError>
@@ -60,11 +53,15 @@
     <junit.version>4.12</junit.version>
     <validation-api.version>1.1.0.Final</validation-api.version>
     <lombok.version>1.16.10</lombok.version>
+
+    <revision>0.2.4</revision>
+    <changelist>-SNAPSHOT</changelist>
+    <sha1/>
   </properties>
 
   <name>Alauda DevOps Sync</name>
   <description>Syncs DevOps PipelineConfigs with Jenkins jobs</description>
-  <url>https://wiki.jenkins-ci.org/display/JENKINS/DevOps+Sync+Plugin</url>
+  <url>https://wiki.jenkins-ci.org/display/JENKINS/Alauda+DevOps+Sync+Plugin</url>
   <inceptionYear>2018</inceptionYear>
 
   <organization>
@@ -125,80 +122,95 @@
       <groupId>io.alauda</groupId>
       <artifactId>devops-client</artifactId>
       <version>${devops-client.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
        <groupId>io.jenkins.blueocean</groupId>
        <artifactId>blueocean-rest</artifactId>
        <version>1.5.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.core</groupId>
+          <artifactId>jackson-databind</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
        <groupId>org.jenkins-ci.plugins</groupId>
        <artifactId>credentials</artifactId>
-       <version>2.1.9</version>
+       <version>2.1.11</version>
     </dependency>
 
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-job</artifactId>
-      <version>2.8</version>
+      <artifactId>workflow-multibranch</artifactId>
+      <version>2.18</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
+          <artifactId>workflow-support</artifactId>
+          <!-- according to https://jenkins.io/security/advisory/2018-02-05/ -->
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-support</artifactId>
+      <version>2.18</version>
     </dependency>
 
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>git</artifactId>
       <version>3.0.0</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>git-client</artifactId>
-      <version>2.0.0</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-api</artifactId>
-      <version>2.5</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.httpcomponents</groupId>
+          <artifactId>httpclient</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>
       <groupId>org.jenkins-ci.plugins.pipeline-stage-view</groupId>
       <artifactId>pipeline-rest-api</artifactId>
-      <version>2.9</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-cps</artifactId>
-      <version>2.21</version>
-    </dependency>
-
-    <!-- for multi-branch job detection -->
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-multibranch</artifactId>
       <version>2.10</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.jenkins-ci.plugins</groupId>
+          <artifactId>pipeline-input-step</artifactId>
+          <!-- according to https://jenkins.io/security/advisory/2017-08-07/ -->
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>pipeline-input-step</artifactId>
+      <version>2.8</version>
     </dependency>
 
-    <!--
-        These dependencies come in from the workflow-multibranch dependency:
-    -->
     <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>scm-api</artifactId>
-      <version>2.0.8</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>branch-api</artifactId>
-      <version>2.0.7</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>cloudbees-folder</artifactId>
-      <version>5.18</version>
+      <groupId>org.csanchez.jenkins.plugins</groupId>
+      <artifactId>kubernetes</artifactId>
+      <version>1.5</version>
+      <exclusions>
+        <exclusion>
+          <groupId>io.fabric8</groupId>
+          <artifactId>kubernetes-client</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.httpcomponent</groupId>
+          <artifactId>httpclient</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <!--
@@ -240,115 +252,103 @@
 
     
     <!-- testing -->
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-step-api</artifactId>
-      <version>2.4</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins.workflow</groupId>-->
+      <!--<artifactId>workflow-step-api</artifactId>-->
+      <!--<version>2.4</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-durable-task-step</artifactId>
-      <version>2.5</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins.workflow</groupId>-->
+      <!--<artifactId>workflow-durable-task-step</artifactId>-->
+      <!--<version>2.5</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-cps-global-lib</artifactId>
-      <version>2.4</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins.workflow</groupId>-->
+      <!--<artifactId>workflow-cps-global-lib</artifactId>-->
+      <!--<version>2.4</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-basic-steps</artifactId>
-      <version>2.2</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins.workflow</groupId>-->
+      <!--<artifactId>workflow-basic-steps</artifactId>-->
+      <!--<version>2.2</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-scm-step</artifactId>
-      <version>2.2</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins.workflow</groupId>-->
+      <!--<artifactId>workflow-scm-step</artifactId>-->
+      <!--<version>2.2</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-support</artifactId>
-      <version>2.10</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins.workflow</groupId>-->
+      <!--<artifactId>workflow-support</artifactId>-->
+      <!--<version>2.10</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>structs</artifactId>
-      <version>1.5</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins</groupId>-->
+      <!--<artifactId>structs</artifactId>-->
+      <!--<version>1.5</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.pipeline-stage-view</groupId>
-      <artifactId>pipeline-stage-view</artifactId>
-      <version>2.1</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins.pipeline-stage-view</groupId>-->
+      <!--<artifactId>pipeline-stage-view</artifactId>-->
+      <!--<version>2.1</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>4.5.2</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.apache.httpcomponents</groupId>-->
+      <!--<artifactId>httpclient</artifactId>-->
+      <!--<version>4.5.2</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>oic-auth</artifactId>
-      <version>1.0</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins</groupId>-->
+      <!--<artifactId>oic-auth</artifactId>-->
+      <!--<version>1.0</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>github-organization-folder</artifactId>
-      <version>1.6</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins</groupId>-->
+      <!--<artifactId>github-organization-folder</artifactId>-->
+      <!--<version>1.6</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>pipeline-github-lib</artifactId>
-      <version>1.0</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins</groupId>-->
+      <!--<artifactId>pipeline-github-lib</artifactId>-->
+      <!--<version>1.0</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>github-branch-source</artifactId>
-      <version>2.0.3</version>
-      <scope>test</scope>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>org.jenkins-ci.plugins</groupId>-->
+      <!--<artifactId>github-branch-source</artifactId>-->
+      <!--<version>2.0.3</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
 
-    <dependency>
-      <groupId>com.coravy.hudson.plugins.github</groupId>
-      <artifactId>github</artifactId>
-      <version>1.26.1</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-       <groupId>org.csanchez.jenkins.plugins</groupId>
-       <artifactId>kubernetes</artifactId>
-       <version>1.5</version>
-       <exclusions>
-         <exclusion>
-           <groupId>io.fabric8</groupId>
-           <artifactId>kubernetes-client</artifactId>
-         </exclusion>
-       </exclusions>
-    </dependency>
+    <!--<dependency>-->
+      <!--<groupId>com.coravy.hudson.plugins.github</groupId>-->
+      <!--<artifactId>github</artifactId>-->
+      <!--<version>1.26.1</version>-->
+      <!--<scope>test</scope>-->
+    <!--</dependency>-->
   </dependencies>
 
   <build>
