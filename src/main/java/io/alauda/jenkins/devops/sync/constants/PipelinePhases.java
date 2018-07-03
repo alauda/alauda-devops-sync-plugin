@@ -1,4 +1,4 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.constants;
 
 public class PipelinePhases {
   // TODO it'd be nice to code generate these from the go source code

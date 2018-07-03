@@ -25,6 +25,7 @@ import hudson.scm.SCM;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.*;
 

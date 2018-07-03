@@ -26,7 +26,7 @@ import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.Annotations;
-import io.alauda.jenkins.devops.sync.Constants;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
@@ -51,10 +51,10 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.PipelinePhases.PENDING;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.RUNNING;
-import static io.alauda.jenkins.devops.sync.Constants.FOLDER_DESCRIPTION;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.PENDING;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.RUNNING;
+import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 import static java.util.logging.Level.FINE;
 
 /**

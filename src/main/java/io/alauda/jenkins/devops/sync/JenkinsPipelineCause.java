@@ -20,7 +20,7 @@ import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.Pipeline;
 import org.apache.commons.lang.StringUtils;
 
-import static io.alauda.jenkins.devops.sync.Constants.ALAUDA_DEVOPS_ANNOTATIONS_COMMIT;
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_COMMIT;
 
 public class JenkinsPipelineCause extends Cause {
 

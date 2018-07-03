@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 import org.json.*;
 
 import static hudson.Util.fixNull;
-import static io.alauda.jenkins.devops.sync.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 public class CredentialsUtils {

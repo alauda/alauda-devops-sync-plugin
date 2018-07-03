@@ -52,12 +52,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.getJobFromPipelineConfig;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.putJobWithPipelineConfig;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.CANCELLED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.watcher.PipelineWatcher.addEventToJenkinsJobRun;
-import static io.alauda.jenkins.devops.sync.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static java.util.Collections.sort;
