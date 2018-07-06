@@ -401,8 +401,10 @@ public class PipelineConfigWatcher implements BaseWatcher {
             } else {
                 updatePipelineConfigPhase(pipelineConfig, PipelineConfigPhase.READY); // change phase to ready
 
-              JenkinsUtils.verifyEnvVars(paramMap, workflowJob);
-              PipelineConfigToJobMap.putJobWithPipelineConfig(workflowJob, pipelineConfig);
+                logger.info("Update PipelineConfig's phase to READY, name: " + pipelineConfig.getMetadata().getName());
+
+                JenkinsUtils.verifyEnvVars(paramMap, workflowJob);
+                PipelineConfigToJobMap.putJobWithPipelineConfig(workflowJob, pipelineConfig);
             }
 
             return null;

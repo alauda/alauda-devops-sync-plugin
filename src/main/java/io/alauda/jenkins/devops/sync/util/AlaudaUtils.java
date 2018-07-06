@@ -163,14 +163,18 @@ public class AlaudaUtils {
             logger.warning("bad input, null spec: " + pipeline);
             return false;
         }
-        if (pipeline.getSpec().getStrategy() == null) {
+
+        PipelineStrategy strategy = pipeline.getSpec().getStrategy();
+        if (strategy == null) {
             logger.warning("bad input, null strategy: " + pipeline);
             return false;
         }
-        return (
-          pipeline.getSpec().getStrategy().getJenkins() != null && (
-            StringUtils.isNotEmpty(pipeline.getSpec().getStrategy().getJenkins().getJenkinsfile()) ||
-            StringUtils.isNotEmpty(pipeline.getSpec().getStrategy().getJenkins().getJenkinsfilePath())
+
+        PipelineStrategyJenkins jenkins = strategy.getJenkins();
+
+        return (jenkins != null && (
+            StringUtils.isNotEmpty(jenkins.getJenkinsfile()) ||
+            StringUtils.isNotEmpty(jenkins.getJenkinsfilePath())
           )
         );
     }
@@ -479,36 +483,32 @@ public class AlaudaUtils {
     }
 
 
-  /**
-   * Lazily creates the PipelineConfigSource if need be then updates the git URL
-   *
-   * @param pipelineConfig
-   *            the PipelineConfig to update
-   * @param gitUrl
-   *            the URL to the git repo
-   * @param ref
-   *            the git ref (commit/branch/etc) for the build
-   */
-  public static void updateGitSourceUrl(PipelineConfig pipelineConfig,
-                                        String gitUrl, String ref) {
-    PipelineConfigSpec spec = pipelineConfig.getSpec();
-    if (spec == null) {
-      spec = new PipelineConfigSpec();
-      pipelineConfig.setSpec(spec);
+    /**
+     * Lazily creates the PipelineConfigSource if need be then updates the git URL
+     *
+     * @param pipelineConfig the PipelineConfig to update
+     * @param gitUrl         the URL to the git repo
+     * @param ref            the git ref (commit/branch/etc) for the build
+     */
+    public static void updateGitSourceUrl(PipelineConfig pipelineConfig, String gitUrl, String ref) {
+        PipelineConfigSpec spec = pipelineConfig.getSpec();
+        if (spec == null) {
+            spec = new PipelineConfigSpec();
+            pipelineConfig.setSpec(spec);
+        }
+        PipelineSource source = spec.getSource();
+        if (source == null) {
+            source = new PipelineSource();
+            spec.setSource(source);
+        }
+        PipelineSourceGit git = source.getGit();
+        if (git == null) {
+            git = new PipelineSourceGit();
+            source.setGit(git);
+        }
+        git.setUri(gitUrl);
+        git.setRef(ref);
     }
-    PipelineSource source = spec.getSource();
-    if (source == null) {
-      source = new PipelineSource();
-      spec.setSource(source);
-    }
-    PipelineSourceGit git = source.getGit();
-    if (git == null) {
-      git = new PipelineSourceGit();
-      source.setGit(git);
-    }
-    git.setUri(gitUrl);
-    git.setRef(ref);
-  }
 
     public static void updatePipelinePhase(Pipeline pipeline, String phase) {
         logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}",
