@@ -318,12 +318,6 @@ public class JenkinsPipelineJobListener extends ItemListener {
             }
         } else {
             try {
-                // TODO should use edit instead of replace
-//        AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
-//                .inNamespace(jobPipelineConfig.getMetadata().getNamespace())
-//                .withName(jobPipelineConfig.getMetadata().getName())
-//                .cascading(false)
-//                .replace(jobPipelineConfig);
                 PipelineConfigSpec spec = jobPipelineConfig.getSpec();
 
                 AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().
@@ -334,7 +328,6 @@ public class JenkinsPipelineJobListener extends ItemListener {
                         .withParameters(spec.getParameters())
                         .withSource(spec.getSource())
                         .endSpec()
-//                        .editOrNewStatus().withPhase(PipelineConfigPhase.READY).endStatus()
                         .done();
                 logger.info("PipelineConfig update success, " + jobName);
             } catch (Exception e) {
