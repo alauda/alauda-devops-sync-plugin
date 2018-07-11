@@ -25,7 +25,10 @@ import hudson.model.ParameterDefinition;
 import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
 import hudson.util.XStream2;
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
@@ -276,9 +279,18 @@ public class PipelineConfigWatcher implements BaseWatcher {
   /**
    * Update or create PipelineConfig
    * @param pipelineConfig PipelineConfig
-   * @throws Exception
+   * @throws Exception in case of io error
    */
   private void upsertJob(final PipelineConfig pipelineConfig) throws Exception {
+      PipelineConfigStatus pipelineConfigStatus = pipelineConfig.getStatus();
+      String pipelineConfigPhase = null;
+      if(pipelineConfigStatus == null || !PipelineConfigPhase.SYNCING.equals(
+              (pipelineConfigPhase = pipelineConfig.getStatus().getPhase()))) {
+          logger.info(String.format("Do nothing, PipelineConfig [%s], phase [%s].",
+                  pipelineConfig.getMetadata().getName(), pipelineConfigPhase));
+          return;
+      }
+
     if (AlaudaUtils.isPipelineStrategyPipelineConfig(pipelineConfig)) {
       // sync on intern of name should guarantee sync on same actual obj
       synchronized (pipelineConfig.getMetadata().getUid().intern()) {
@@ -382,14 +394,19 @@ public class PipelineConfigWatcher implements BaseWatcher {
               Folder folder = (Folder) parent;
               folder.add(job, jobName);
               workflowJob = activeInstance.getItemByFullName(fullName, WorkflowJob.class);
-
             }
+
             if (workflowJob == null) {
               logger.warning("Could not find created job " + fullName + " for PipelineConfig: " + AlaudaUtils.getNamespace(pipelineConfig) + "/" + AlaudaUtils.getName(pipelineConfig));
             } else {
-              JenkinsUtils.verifyEnvVars(paramMap, workflowJob);
-              PipelineConfigToJobMap.putJobWithPipelineConfig(workflowJob, pipelineConfig);
+                updatePipelineConfigPhase(pipelineConfig, PipelineConfigPhase.READY); // change phase to ready
+
+                logger.info("Update PipelineConfig's phase to READY, name: " + pipelineConfig.getMetadata().getName());
+
+                JenkinsUtils.verifyEnvVars(paramMap, workflowJob);
+                PipelineConfigToJobMap.putJobWithPipelineConfig(workflowJob, pipelineConfig);
             }
+
             return null;
           }
         });
@@ -397,14 +414,28 @@ public class PipelineConfigWatcher implements BaseWatcher {
     }
   }
 
-  private synchronized void modifyEventToJenkinsJob(PipelineConfig pipelineConfig) throws Exception {
+    private void updatePipelineConfigPhase(PipelineConfig pipelineConfig, String phase) {
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        ObjectMeta metadata = pipelineConfig.getMetadata();
+        String namespace = metadata.getNamespace();
+        String name = metadata.getName();
+
+        client.pipelineConfigs().inNamespace(namespace)
+                .withName(name)
+                .edit()
+                .editOrNewStatus()
+                .withPhase(phase)
+                .endStatus().done();
+    }
+
+    private synchronized void modifyEventToJenkinsJob(PipelineConfig pipelineConfig) throws Exception {
     if (AlaudaUtils.isPipelineStrategyPipelineConfig(pipelineConfig)) {
       upsertJob(pipelineConfig);
       return;
     }
 
     // no longer a Jenkins build so lets delete it if it exists
-    deleteEventToJenkinsJob(pipelineConfig);
+//    deleteEventToJenkinsJob(pipelineConfig);
   }
 
   // innerDeleteEventToJenkinsJob is the actual delete logic at the heart of

@@ -17,8 +17,9 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.security.ACL;
-import hudson.triggers.SafeTimerTask;
 import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Watch;

@@ -34,6 +34,8 @@ import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
 import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.kubernetes.api.model.*;
@@ -71,7 +73,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getCurrentTimestamp;
-import static io.alauda.jenkins.devops.sync.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.formatTimestamp;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;

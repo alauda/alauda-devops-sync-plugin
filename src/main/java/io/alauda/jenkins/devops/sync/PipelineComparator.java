@@ -1,9 +1,9 @@
 package io.alauda.jenkins.devops.sync;
 
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.Pipeline;
 
 import java.util.Comparator;
-import java.util.logging.Level;
 
 public class PipelineComparator implements Comparator<Pipeline>
 {

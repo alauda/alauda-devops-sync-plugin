@@ -26,7 +26,7 @@ import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.Annotations;
-import io.alauda.jenkins.devops.sync.Constants;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
@@ -51,10 +51,10 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.PipelinePhases.PENDING;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.RUNNING;
-import static io.alauda.jenkins.devops.sync.Constants.FOLDER_DESCRIPTION;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.PENDING;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.RUNNING;
+import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 import static java.util.logging.Level.FINE;
 
 /**
@@ -163,14 +163,18 @@ public class AlaudaUtils {
             logger.warning("bad input, null spec: " + pipeline);
             return false;
         }
-        if (pipeline.getSpec().getStrategy() == null) {
+
+        PipelineStrategy strategy = pipeline.getSpec().getStrategy();
+        if (strategy == null) {
             logger.warning("bad input, null strategy: " + pipeline);
             return false;
         }
-        return (
-          pipeline.getSpec().getStrategy().getJenkins() != null && (
-            StringUtils.isNotEmpty(pipeline.getSpec().getStrategy().getJenkins().getJenkinsfile()) ||
-            StringUtils.isNotEmpty(pipeline.getSpec().getStrategy().getJenkins().getJenkinsfilePath())
+
+        PipelineStrategyJenkins jenkins = strategy.getJenkins();
+
+        return (jenkins != null && (
+            StringUtils.isNotEmpty(jenkins.getJenkinsfile()) ||
+            StringUtils.isNotEmpty(jenkins.getJenkinsfilePath())
           )
         );
     }
@@ -479,36 +483,32 @@ public class AlaudaUtils {
     }
 
 
-  /**
-   * Lazily creates the PipelineConfigSource if need be then updates the git URL
-   *
-   * @param pipelineConfig
-   *            the PipelineConfig to update
-   * @param gitUrl
-   *            the URL to the git repo
-   * @param ref
-   *            the git ref (commit/branch/etc) for the build
-   */
-  public static void updateGitSourceUrl(PipelineConfig pipelineConfig,
-                                        String gitUrl, String ref) {
-    PipelineConfigSpec spec = pipelineConfig.getSpec();
-    if (spec == null) {
-      spec = new PipelineConfigSpec();
-      pipelineConfig.setSpec(spec);
+    /**
+     * Lazily creates the PipelineConfigSource if need be then updates the git URL
+     *
+     * @param pipelineConfig the PipelineConfig to update
+     * @param gitUrl         the URL to the git repo
+     * @param ref            the git ref (commit/branch/etc) for the build
+     */
+    public static void updateGitSourceUrl(PipelineConfig pipelineConfig, String gitUrl, String ref) {
+        PipelineConfigSpec spec = pipelineConfig.getSpec();
+        if (spec == null) {
+            spec = new PipelineConfigSpec();
+            pipelineConfig.setSpec(spec);
+        }
+        PipelineSource source = spec.getSource();
+        if (source == null) {
+            source = new PipelineSource();
+            spec.setSource(source);
+        }
+        PipelineSourceGit git = source.getGit();
+        if (git == null) {
+            git = new PipelineSourceGit();
+            source.setGit(git);
+        }
+        git.setUri(gitUrl);
+        git.setRef(ref);
     }
-    PipelineSource source = spec.getSource();
-    if (source == null) {
-      source = new PipelineSource();
-      spec.setSource(source);
-    }
-    PipelineSourceGit git = source.getGit();
-    if (git == null) {
-      git = new PipelineSourceGit();
-      source.setGit(git);
-    }
-    git.setUri(gitUrl);
-    git.setRef(ref);
-  }
 
     public static void updatePipelinePhase(Pipeline pipeline, String phase) {
         logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}",

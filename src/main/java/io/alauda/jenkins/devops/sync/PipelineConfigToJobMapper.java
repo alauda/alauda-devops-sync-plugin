@@ -25,6 +25,7 @@ import hudson.scm.SCM;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.*;
 
@@ -194,7 +195,7 @@ public class PipelineConfigToJobMapper {
         return false;
       }
     } else {
-      LOGGER.warning("Not sepc in PipelineConfig");
+      LOGGER.warning("Not spec in PipelineConfig");
       return false;
     }
 
@@ -344,45 +345,45 @@ public class PipelineConfigToJobMapper {
     }
 
     private static boolean populateFromGitSCM(PipelineConfig pipelineConfig, PipelineSource source, GitSCM gitSCM, String ref) {
-    if (source.getGit() == null) {
-      source.setGit(new PipelineSourceGit());
-    }
-
-    List<RemoteConfig> repositories = gitSCM.getRepositories();
-    if (repositories != null && repositories.size() > 0) {
-      RemoteConfig remoteConfig = repositories.get(0);
-      List<URIish> urIs = remoteConfig.getURIs();
-      if (urIs != null && urIs.size() > 0) {
-        URIish urIish = urIs.get(0);
-        String gitUrl = urIish.toString();
-        if (gitUrl != null && gitUrl.length() > 0) {
-          if (StringUtils.isEmpty(ref)) {
-            List<BranchSpec> branches = gitSCM.getBranches();
-            if (branches != null && branches.size() > 0) {
-              BranchSpec branchSpec = branches.get(0);
-              String branch = branchSpec.getName();
-              while (branch.startsWith("*") || branch.startsWith("/")) {
-                branch = branch.substring(1);
-              }
-              if (!branch.isEmpty()) {
-                ref = branch;
-              }
-            }
-          }
-          AlaudaUtils.updateGitSourceUrl(pipelineConfig, gitUrl, ref);
-          return true;
+        if (source.getGit() == null) {
+            source.setGit(new PipelineSourceGit());
         }
-      }
-    }
-    return false;
-  }
 
-  private static PipelineSource getOrCreatePipelineSource(PipelineConfigSpec spec) {
-    PipelineSource source = spec.getSource();
-    if (source == null) {
-      source = new PipelineSource();
-      spec.setSource(source);
+        List<RemoteConfig> repositories = gitSCM.getRepositories();
+        if (repositories != null && repositories.size() > 0) {
+            RemoteConfig remoteConfig = repositories.get(0);
+            List<URIish> urIs = remoteConfig.getURIs();
+            if (urIs != null && urIs.size() > 0) {
+                URIish urIish = urIs.get(0);
+                String gitUrl = urIish.toString();
+                if (gitUrl != null && gitUrl.length() > 0) {
+                    if (StringUtils.isEmpty(ref)) {
+                        List<BranchSpec> branches = gitSCM.getBranches();
+                        if (branches != null && branches.size() > 0) {
+                            BranchSpec branchSpec = branches.get(0);
+                            String branch = branchSpec.getName();
+                            while (branch.startsWith("*") || branch.startsWith("/")) {
+                                branch = branch.substring(1);
+                            }
+                            if (!branch.isEmpty()) {
+                                ref = branch;
+                            }
+                        }
+                    }
+                    AlaudaUtils.updateGitSourceUrl(pipelineConfig, gitUrl, ref);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
-    return source;
-  }
+
+    private static PipelineSource getOrCreatePipelineSource(PipelineConfigSpec spec) {
+        PipelineSource source = spec.getSource();
+        if (source == null) {
+            source = new PipelineSource();
+            spec.setSource(source);
+        }
+        return source;
+    }
 }
