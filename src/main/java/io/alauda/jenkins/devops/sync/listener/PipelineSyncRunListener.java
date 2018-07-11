@@ -546,7 +546,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         .pipelines()
         .inNamespace(namespace)
         .withName(pipeline.getMetadata().getName())
-        .replace(pipeline);
+              .patch(pipeline);
+//        .replace(pipeline);
       logger.fine("updated pipeline: " + result);
 
 //          DoneablePipeline builder = getAuthenticatedAlaudaClient()

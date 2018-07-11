@@ -164,71 +164,71 @@ public class JenkinsUtils {
 		return paramMap;
 	}
 
-  public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(WorkflowJob job, List<PipelineParameter> params,
-                                                                                  boolean replaceExisting) throws IOException {
-    Map<String, ParameterDefinition> paramMap = null;
-    if (params != null && params.size() > 0) {
-      // build list of current env var names for possible deletion of env
-      // vars currently stored
-      // as job params
-      // builds a list of job parameters
+    public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(WorkflowJob job,
+        List<PipelineParameter> params, boolean replaceExisting) throws IOException {
+        // get existing property defs, including any manually added from the
+        // jenkins console independent of PC
+        ParametersDefinitionProperty jenkinsParams = job.removeProperty(ParametersDefinitionProperty.class);
 
-      List<String> envKeys = new ArrayList<String>();
-      for (PipelineParameter parameter : params) {
-        envKeys.add(parameter.getName());
-      }
-      // get existing property defs, including any manually added from the
-      // jenkins console independent of PC
-      ParametersDefinitionProperty jenkinsParams = job.removeProperty(ParametersDefinitionProperty.class);
-      paramMap = new HashMap<String, ParameterDefinition>();
-      // store any existing parameters in map for easy key lookup
-      if (jenkinsParams != null) {
-        List<ParameterDefinition> existingParamList = jenkinsParams.getParameterDefinitions();
-        for (ParameterDefinition param : existingParamList) {
-          // if a user supplied param, add
-          if (param.getDescription() == null || !param.getDescription().equals(PARAM_FROM_ENV_DESCRIPTION))
-            paramMap.put(param.getName(), param);
-          else if (envKeys.contains(param.getName())) {
-            // the env var still exists on the PipelineConfig side so
-            // keep
-            paramMap.put(param.getName(), param);
-          }
-        }
-      }
+        Map<String, ParameterDefinition> paramMap = null;
+        if (params != null && params.size() > 0) {
+            // build list of current env var names for possible deletion of env
+            // vars currently stored
+            // as job params
+            // builds a list of job parameters
 
-      for (PipelineParameter param : params) {
-        ParameterDefinition jenkinsParam = null;
-        switch (param.getType()) {
-          case PIPELINE_PARAMETER_TYPE_STRING:
-            jenkinsParam = new StringParameterDefinition(param.getName(), param.getValue(),
-              param.getDescription());
-            break;
-          case PIPELINE_PARAMETER_TYPE_BOOLEAN:
-            jenkinsParam = new BooleanParameterDefinition(param.getName(), Boolean.valueOf(param.getValue()),
-              param.getDescription());
-            break;
-          default:
-            LOGGER.warning("Parameter type `"+param.getType()+"` is not supported.. skipping...");
-            break;
+            List<String> envKeys = new ArrayList<>();
+            for (PipelineParameter parameter : params) {
+                envKeys.add(parameter.getName());
+            }
+            paramMap = new HashMap<>();
+            // store any existing parameters in map for easy key lookup
+            if (jenkinsParams != null) {
+                List<ParameterDefinition> existingParamList = jenkinsParams.getParameterDefinitions();
+                for (ParameterDefinition param : existingParamList) {
+                    // if a user supplied param, add
+                    if (param.getDescription() == null || !param.getDescription().equals(PARAM_FROM_ENV_DESCRIPTION))
+                        paramMap.put(param.getName(), param);
+                    else if (envKeys.contains(param.getName())) {
+                        // the env var still exists on the PipelineConfig side so
+                        // keep
+                        paramMap.put(param.getName(), param);
+                    }
+                }
+            }
+
+            for (PipelineParameter param : params) {
+                ParameterDefinition jenkinsParam = null;
+                switch (param.getType()) {
+                    case PIPELINE_PARAMETER_TYPE_STRING:
+                        jenkinsParam = new StringParameterDefinition(param.getName(), param.getValue(), param.getDescription());
+                        break;
+                    case PIPELINE_PARAMETER_TYPE_BOOLEAN:
+                        jenkinsParam = new BooleanParameterDefinition(param.getName(), Boolean.valueOf(param.getValue()), param.getDescription());
+                        break;
+                    default:
+                        LOGGER.warning("Parameter type `" + param.getType() + "` is not supported.. skipping...");
+                        break;
+                }
+
+                if (jenkinsParam == null) {
+                    continue;
+                }
+                // TODO: This is made differently from the original source
+                // Need revisit this part if the parameters
+                if (replaceExisting || !paramMap.containsKey(jenkinsParam.getName())) {
+                    paramMap.put(jenkinsParam.getName(), jenkinsParam);
+                }
+            }
+
+            List<ParameterDefinition> newParamList = new ArrayList<>(paramMap.values());
+            job.addProperty(new ParametersDefinitionProperty(newParamList));
         }
 
-        if (jenkinsParam == null) {
-          continue;
-        }
-        // TODO: This is made differently from the original source
-        // Need revisit this part if the parameters
-        if (replaceExisting || !paramMap.containsKey(jenkinsParam.getName())) {
-          paramMap.put(jenkinsParam.getName(), jenkinsParam);
-        }
-      }
-
-      List<ParameterDefinition> newParamList = new ArrayList<ParameterDefinition>(paramMap.values());
-      job.addProperty(new ParametersDefinitionProperty(newParamList));
+        // force save here ... seen some timing issues with concurrent job updates and run initiations
+        job.save();
+        return paramMap;
     }
-    // force save here ... seen some timing issues with concurrent job updates and run initiations
-    job.save();
-    return paramMap;
-  }
 
   public static List<Trigger<?>> addJobTriggers(WorkflowJob job, List<PipelineTrigger> triggers) throws IOException {
 	  List<Trigger<?>> jenkinsTriggers = new ArrayList<>();
