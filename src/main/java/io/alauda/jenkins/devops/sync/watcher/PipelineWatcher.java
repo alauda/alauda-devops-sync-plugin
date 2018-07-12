@@ -89,6 +89,7 @@ public class PipelineWatcher implements BaseWatcher {
 
     @Override
     public void init(String[] namespaces) {
+        PipelineConfigToJobMap.initializePipelineConfigToJobMap();
         PipelineWatcher.flushPipelinesWithNoPCList();
         for (String namespace : namespaces) {
             try {
