@@ -247,12 +247,9 @@ public class JenkinsPipelineJobListener extends ItemListener {
         if (property != null) {
           property.setNamespace(namespace);
           property.setName(pipelineConfigName);
-          if (!StringUtils.isNotBlank(property.getPipelineRunPolicy())) {
-            property.setPipelineRunPolicy(pipelineRunPolicy);
-          }
           return property;
         } else {
-          return new PipelineConfigProjectProperty(namespace, pipelineConfigName, uuid, resourceVersion, pipelineRunPolicy);
+          return new PipelineConfigProjectProperty(namespace, pipelineConfigName, uuid, resourceVersion);
         }
       }
 
@@ -270,6 +267,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
         PipelineConfig jobPipelineConfig = pipelineConfigResource.get();
         if (jobPipelineConfig == null) {
+            logger.info("Can't find PipelineConfig, will create. namespace:" + namespace + "; name: " + jobName);
+
             create = true;
             // TODO: Adjust this part
             jobPipelineConfig = new PipelineConfigBuilder()
@@ -327,6 +326,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
                         .withTriggers(spec.getTriggers())
                         .withParameters(spec.getParameters())
                         .withSource(spec.getSource())
+                        .withStrategy(spec.getStrategy())
                         .endSpec()
                         .done();
                 logger.info("PipelineConfig update success, " + jobName);
