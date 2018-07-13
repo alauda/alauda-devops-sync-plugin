@@ -133,7 +133,7 @@ public class PipelineWatcher implements BaseWatcher {
         }
 
         if(!ResourcesCache.getInstance().isBinding(pipeline)) {
-            logger.warning(() -> "Pipeline " + pipelineName + " is not binding to current jenkins.");
+            logger.warning(() -> "Pipeline " + pipelineName + " is not binding to current jenkins " + ResourcesCache.getInstance().getJenkinsService());
             return;
         }
 

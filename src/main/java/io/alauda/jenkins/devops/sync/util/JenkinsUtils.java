@@ -429,13 +429,13 @@ public class JenkinsUtils {
         }
 
         PipelineConfigProjectProperty pcProp = job.getProperty(PipelineConfigProjectProperty.class);
-        if (pcProp == null || pcProp.getPipelineRunPolicy() == null) {
+        if (pcProp == null) {
             LOGGER.warning("aborting trigger of pipeline " + pipeline
-                    + "because of missing pc project property or run policy");
+                    + "because of missing pc project property");
             return false;
         }
 
-        switch (pcProp.getPipelineRunPolicy()) {
+//        switch (pcProp.getPipelineRunPolicy()) {
           // TODO: Not implemented yet
 //        case SERIAL_LATEST_ONLY:
 //            cancelQueuedBuilds(job, pcProp.getUid());
@@ -449,8 +449,8 @@ public class JenkinsUtils {
 //                return false;
 //            }
 //            break;
-        default:
-        }
+//        default:
+//        }
 
 
         ObjectMeta meta = pipeline.getMetadata();
@@ -720,18 +720,18 @@ public class JenkinsUtils {
 		return getJobFromPipelineConfig(pipelineConfig);
 	}
 
-	public static void maybeScheduleNext(WorkflowJob job) {
-    PipelineConfigProjectProperty pcp = job.getProperty(PipelineConfigProjectProperty.class);
-		if (pcp == null) {
-			return;
-		}
+    public static void maybeScheduleNext(WorkflowJob job) {
+        PipelineConfigProjectProperty pcp = job.getProperty(PipelineConfigProjectProperty.class);
+        if (pcp == null) {
+            return;
+        }
 
-		// TODO: Change to filter on the API level
-		PipelineList list = filterNew(getAuthenticatedAlaudaClient().pipelines().inNamespace(pcp.getNamespace())
-      .withLabel(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcp.getName()).list());
-    LOGGER.info("Got new pipeline list: "+list.getItems());
-		handlePipelineList(job, list.getItems(), pcp);
-	}
+        // TODO: Change to filter on the API level
+        PipelineList list = filterNew(getAuthenticatedAlaudaClient().pipelines()
+                .inNamespace(pcp.getNamespace()).withLabel(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcp.getName()).list());
+        LOGGER.info("Got new pipeline list: " + list.getItems());
+        handlePipelineList(job, list.getItems(), pcp);
+    }
 
   public static PipelineList filterNew(PipelineList list) {
     if (list == null || list.getItems() == null || list.getItems().size() == 0) {
@@ -814,7 +814,7 @@ public class JenkinsUtils {
                 return rc;
 			}
 		});
-		boolean isSerial = PipelineRunPolicy.SERIAL.equals(pipelineConfigProjectProperty.getPipelineRunPolicy());
+		boolean isSerial = !job.isConcurrentBuild();//PipelineRunPolicy.SERIAL.equals(pipelineConfigProjectProperty.getPipelineRunPolicy());
 		boolean jobIsBuilding = job.isBuilding();
 		for (int i = 0; i < pipelines.size(); i++) {
 			Pipeline p = pipelines.get(i);

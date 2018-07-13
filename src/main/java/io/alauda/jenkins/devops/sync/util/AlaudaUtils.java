@@ -511,24 +511,30 @@ public class AlaudaUtils {
     }
 
     public static void updatePipelinePhase(Pipeline pipeline, String phase) {
-        logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}",
-                new Object[] { phase, pipeline.getMetadata().getNamespace(),
-                        pipeline.getMetadata().getName() });
+        logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}", new Object[]{phase, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()});
 
         // TODO: Change to use edit instead....
-      Pipeline pipe = getAuthenticatedAlaudaClient().pipelines()
-        .inNamespace(pipeline.getMetadata().getNamespace())
-        .withName(pipeline.getMetadata().getName()).get();
-      PipelineStatus stats = pipe.getStatus();
-      if (stats == null) {
-        stats = new PipelineStatusBuilder().build();
-      }
-      stats.setPhase(phase);
-      pipe.setStatus(stats);
-      getAuthenticatedAlaudaClient().pipelines()
-        .inNamespace(pipeline.getMetadata().getNamespace())
-        .withName(pipeline.getMetadata().getName())
-        .replace(pipe);
+        String namespace = pipeline.getMetadata().getNamespace();
+        String name = pipeline.getMetadata().getName();
+        Pipeline pipe = getAuthenticatedAlaudaClient().pipelines().inNamespace(namespace).withName(name).get();
+
+        if (pipe == null) {
+            logger.warning(() -> "Can't find Pipeline by namespace: " + namespace + ", name: " + name);
+            return;
+        }
+
+        PipelineStatus stats = pipe.getStatus();
+        if (stats == null) {
+            stats = new PipelineStatusBuilder().build();
+        }
+        stats.setPhase(phase);
+        pipe.setStatus(stats);
+
+        getAuthenticatedAlaudaClient()
+                .pipelines()
+                .inNamespace(namespace)
+                .withName(name)
+                .patch(pipe);
     }
 
     /**

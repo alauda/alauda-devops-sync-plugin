@@ -162,7 +162,7 @@ public class PipelineConfigWatcher implements BaseWatcher {
     logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
 
     if(!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
-        logger.info(pipelineName + " is not binding to current Jenkins.");
+        logger.info(pipelineName + " is not binding to current Jenkins " + ResourcesCache.getInstance().getJenkinsService());
         return;
     }
 
@@ -265,15 +265,17 @@ public class PipelineConfigWatcher implements BaseWatcher {
     eventReceived(action, pc);
   }
 
-  private void updateJob(WorkflowJob job, InputStream jobStream, String jobName, PipelineConfig pipelineConfig, String existingPipelineRunPolicy, PipelineConfigProjectProperty pipelineConfigProjectProperty) throws IOException {
+  private void updateJob(WorkflowJob job, InputStream jobStream, String jobName, PipelineConfig pipelineConfig/*, String existingPipelineRunPolicy*/, PipelineConfigProjectProperty pipelineConfigProjectProperty) throws IOException {
     Source source = new StreamSource(jobStream);
     job.updateByXml(source);
     job.save();
     logger.info("Updated job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
-    if (existingPipelineRunPolicy != null && !existingPipelineRunPolicy.equals(pipelineConfigProjectProperty.getPipelineRunPolicy())) {
-      // TODO: Change to schedule pipeline
-       JenkinsUtils.maybeScheduleNext(job);
-    }
+
+    // TODO don't know why here need to re-check
+//    if (existingPipelineRunPolicy != null && !existingPipelineRunPolicy.equals(pipelineConfigProjectProperty.getPipelineRunPolicy())) {
+//      // TODO: Change to schedule pipeline
+//       JenkinsUtils.maybeScheduleNext(job);
+//    }
   }
 
   /**
@@ -327,19 +329,15 @@ public class PipelineConfigWatcher implements BaseWatcher {
 
             job.setDefinition(flowFromPipelineConfig);
 
-            String existingBuildRunPolicy = null;
-
             PipelineConfigProjectProperty pipelineConfigProjectProperty = job.getProperty(PipelineConfigProjectProperty.class);
             if (pipelineConfigProjectProperty != null) {
-              existingBuildRunPolicy = pipelineConfigProjectProperty.getPipelineRunPolicy();
               long updatedBCResourceVersion = AlaudaUtils.parseResourceVersion(pipelineConfig);
               long oldBCResourceVersion = parseResourceVersion(pipelineConfigProjectProperty.getResourceVersion());
               PipelineConfigProjectProperty newProperty = new PipelineConfigProjectProperty(pipelineConfig);
               if (updatedBCResourceVersion <= oldBCResourceVersion
                       && newProperty.getUid().equals(pipelineConfigProjectProperty.getUid())
                       && newProperty.getNamespace().equals(pipelineConfigProjectProperty.getNamespace())
-                      && newProperty.getName().equals(pipelineConfigProjectProperty.getName())
-                      && newProperty.getPipelineRunPolicy().equals(pipelineConfigProjectProperty.getPipelineRunPolicy())) {
+                      && newProperty.getName().equals(pipelineConfigProjectProperty.getName())) {
                 return null;
               }
 
@@ -347,7 +345,6 @@ public class PipelineConfigWatcher implements BaseWatcher {
               pipelineConfigProjectProperty.setNamespace(newProperty.getNamespace());
               pipelineConfigProjectProperty.setName(newProperty.getName());
               pipelineConfigProjectProperty.setResourceVersion(newProperty.getResourceVersion());
-              pipelineConfigProjectProperty.setPipelineRunPolicy(newProperty.getPipelineRunPolicy());
             } else {
               job.addProperty(new PipelineConfigProjectProperty(pipelineConfig));
             }
@@ -379,10 +376,10 @@ public class PipelineConfigWatcher implements BaseWatcher {
                 // newJob check above and when we make
                 // the createProjectFromXML call; if so,
                 // retry as an update
-                updateJob(job, jobStream, jobName, pipelineConfig, existingBuildRunPolicy, pipelineConfigProjectProperty);
+                updateJob(job, jobStream, jobName, pipelineConfig, pipelineConfigProjectProperty);
               }
             } else {
-              updateJob(job, jobStream, jobName, pipelineConfig, existingBuildRunPolicy, pipelineConfigProjectProperty);
+              updateJob(job, jobStream, jobName, pipelineConfig, pipelineConfigProjectProperty);
             }
             bk.commit();
             String fullName = job.getFullName();
