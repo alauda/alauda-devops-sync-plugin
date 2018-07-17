@@ -159,31 +159,36 @@ public class PipelineConfigWatcher implements BaseWatcher {
   @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
   public synchronized void eventReceived(Watcher.Action action, PipelineConfig pipelineConfig) {
       String pipelineName = pipelineConfig.getMetadata().getName();
-    logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
+      logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
 
-    if(!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
-        logger.info(pipelineName + " is not binding to current Jenkins " + ResourcesCache.getInstance().getJenkinsService());
-        return;
-    }
+      if (!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
+          String pipelineBinding = pipelineConfig.getSpec().getJenkinsBinding().getName();
+          String jenkinsService = ResourcesCache.getInstance().getJenkinsService();
 
-    try {
-      switch (action) {
-        case ADDED:
-          upsertJob(pipelineConfig);
-          break;
-        case DELETED:
-          deleteEventToJenkinsJob(pipelineConfig);
-          break;
-        case MODIFIED:
-          modifyEventToJenkinsJob(pipelineConfig);
-          break;
-        case ERROR:
-          logger.warning("watch for PipelineConfig " + pipelineConfig.getMetadata().getName() + " received error event ");
-          break;
-        default:
-          logger.warning("watch for PipelineConfig " + pipelineConfig.getMetadata().getName() + " received unknown event " + action);
-          break;
+          String msg = String.format("%s[%s] is not binding to current jenkins[%s]",
+                  pipelineName, pipelineBinding, jenkinsService);
+          logger.warning(msg);
+          return;
       }
+
+      try {
+          switch (action) {
+              case ADDED:
+                  upsertJob(pipelineConfig);
+                  break;
+              case DELETED:
+                  deleteEventToJenkinsJob(pipelineConfig);
+                  break;
+              case MODIFIED:
+                  modifyEventToJenkinsJob(pipelineConfig);
+                  break;
+              case ERROR:
+                  logger.warning("watch for PipelineConfig " + pipelineConfig.getMetadata().getName() + " received error event ");
+                  break;
+              default:
+                  logger.warning("watch for PipelineConfig " + pipelineConfig.getMetadata().getName() + " received unknown event " + action);
+                  break;
+          }
       // we employ impersonation here to insure we have "full access";
       // for example, can we actually
       // read in jobs defs for verification? without impersonation here

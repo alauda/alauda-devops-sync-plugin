@@ -68,18 +68,14 @@ public class AlaudaUtils {
     private static String PLUGIN_NAME = "alauda-sync";
     
     static {
-        jenkinsPodNamespace = System
-                .getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
+        jenkinsPodNamespace = System.getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
         if (jenkinsPodNamespace != null && jenkinsPodNamespace.trim().length() > 0) {
             jenkinsPodNamespace = jenkinsPodNamespace.trim();
         } else {
             File f = new File(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
             if (f.exists()) {
-                FileReader fr = null;
-                BufferedReader br = null;
-                try {
-                    fr = new FileReader(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
-                    br = new BufferedReader(fr);
+                try (FileReader fr = new FileReader(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
+                     BufferedReader br = new BufferedReader(fr)){
                     // should just be one line
                     jenkinsPodNamespace = br.readLine();
                     if (jenkinsPodNamespace != null && jenkinsPodNamespace.trim().length() > 0) {
@@ -90,13 +86,6 @@ public class AlaudaUtils {
                     logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
                 } catch (IOException e) {
                     logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
-                } finally {
-                    try {
-                        br.close();
-                        fr.close();
-                    } catch (Throwable e) {
-                        logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
-                    }
                 }
             }
         }

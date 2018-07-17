@@ -26,6 +26,8 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.csanchez.jenkins.plugins.kubernetes.OpenShiftTokenCredentialImpl;
 import org.json.*;
 
 import static hudson.Util.fixNull;
@@ -281,6 +283,7 @@ public class CredentialsUtils {
             return null;
         }
 
+        //kubernetes.io/service-account-token
         final String secretName = secretName(namespace, name);
         switch (secret.getType()) {
         case ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE:
@@ -314,6 +317,9 @@ public class CredentialsUtils {
           case ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER:
             String dockerData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_DOCKER);
             return newDockerCredentials(secretName, dockerData);
+            case ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN:
+                String token = secret.getData().get("token");
+                return newTokenCredentials(secretName, token);
         default:
             logger.log(Level.WARNING,
                     "Unknown secret type: " + secret.getType());
@@ -358,6 +364,14 @@ public class CredentialsUtils {
                 secretName, secretName, new String(Base64.decode(usernameData),
                         StandardCharsets.UTF_8), new String(
                         Base64.decode(passwordData), StandardCharsets.UTF_8));
+    }
+
+    public static Credentials newTokenCredentials(String secretName, String token) {
+        token = new String(Base64.decode(token), StandardCharsets.UTF_8);
+
+        hudson.util.Secret secret = hudson.util.Secret.fromString(token);
+        return new AlaudaToken(CredentialsScope.GLOBAL, secretName, null, secret);
+//        return new OpenShiftTokenCredentialImpl(CredentialsScope.GLOBAL, secretName(namespace, secretName), null, secret);
     }
 
     private static Credentials newDockerCredentials(String secretName, String dockerData) {
