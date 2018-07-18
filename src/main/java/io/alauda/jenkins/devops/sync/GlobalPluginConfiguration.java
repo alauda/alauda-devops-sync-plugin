@@ -21,7 +21,9 @@ import hudson.Util;
 import hudson.init.InitMilestone;
 import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
+import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
+import io.alauda.jenkins.devops.sync.action.KubernetesClientAction;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.watcher.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
@@ -31,9 +33,11 @@ import jenkins.util.Timer;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -69,15 +73,20 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         this.jobNamePattern = jobNamePattern;
         this.skipOrganizationPrefix = skipOrganizationPrefix;
         this.skipBranchSuffix = skipBranchSuffix;
-        this.configChange();
 
-        ResourcesCache.getInstance().setJenkinsService(jenkinsService);
+        try {
+            this.configChange();
+        } catch (KubernetesClientException e) {
+        }
     }
 
     public GlobalPluginConfiguration() {
         this.load();
-        this.configChange();
-        ResourcesCache.getInstance().setJenkinsService(jenkinsService);
+
+        try {
+            this.configChange();
+        } catch (KubernetesClientException e) {
+        }
 
         LOGGER.info("Alauda GlobalPluginConfiguration is started.");
     }
@@ -111,75 +120,87 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         }
     }
 
-  public boolean isEnabled() {
-    return this.enabled;
-  }
+    public boolean isEnabled() {
+        return this.enabled;
+    }
 
-  public void setEnabled(boolean enabled) {
-    this.enabled = enabled;
-  }
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
 
-  public String getServer() {
-    return this.server;
-  }
+    public String getServer() {
+        return this.server;
+    }
 
-  public void setServer(String server) {
-    this.server = server;
-  }
+    public void setServer(String server) {
+        this.server = server;
+    }
 
-  public String getCredentialsId() {
-    return this.credentialsId == null ? "" : this.credentialsId;
-  }
+    public String getCredentialsId() {
+        return this.credentialsId == null ? "" : this.credentialsId;
+    }
 
-  public void setCredentialsId(String credentialsId) {
-    this.credentialsId = Util.fixEmptyAndTrim(credentialsId);
-  }
+    public void setCredentialsId(String credentialsId) {
+        this.credentialsId = Util.fixEmptyAndTrim(credentialsId);
+    }
 
-  public String getJenkinsService() {
-    return this.jenkinsService;
-  }
+    public String getJenkinsService() {
+        return this.jenkinsService;
+    }
 
-  public void setJenkinsService(String jenkinsService) {
-    this.jenkinsService = jenkinsService;
-  }
+    public void setJenkinsService(String jenkinsService) {
+        this.jenkinsService = jenkinsService;
+    }
 
-  public String getJobNamePattern() {
-    return this.jobNamePattern;
-  }
+    public String getJobNamePattern() {
+        return this.jobNamePattern;
+    }
 
-  public void setJobNamePattern(String jobNamePattern) {
-    this.jobNamePattern = jobNamePattern;
-  }
+    public void setJobNamePattern(String jobNamePattern) {
+        this.jobNamePattern = jobNamePattern;
+    }
 
-  public String getSkipOrganizationPrefix() {
-    return this.skipOrganizationPrefix;
-  }
+    public String getSkipOrganizationPrefix() {
+        return this.skipOrganizationPrefix;
+    }
 
-  public void setSkipOrganizationPrefix(String skipOrganizationPrefix) {
-    this.skipOrganizationPrefix = skipOrganizationPrefix;
-  }
+    public void setSkipOrganizationPrefix(String skipOrganizationPrefix) {
+        this.skipOrganizationPrefix = skipOrganizationPrefix;
+    }
 
-  public String getSkipBranchSuffix() {
-    return this.skipBranchSuffix;
-  }
+    public String getSkipBranchSuffix() {
+        return this.skipBranchSuffix;
+    }
 
-  public void setSkipBranchSuffix(String skipBranchSuffix) {
-    this.skipBranchSuffix = skipBranchSuffix;
-  }
+    public void setSkipBranchSuffix(String skipBranchSuffix) {
+        this.skipBranchSuffix = skipBranchSuffix;
+    }
 
-    public String[] getNamespaces()
-    {
+    public String[] getNamespaces() {
         return namespaces;
     }
 
+    @SuppressWarnings("unused")
     public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
-    Jenkins jenkins = Jenkins.getInstance();
-    if (jenkins == null) {
-      return (ListBoxModel)null;
-    } else {
-      return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, AlaudaToken.class).includeCurrentValue(credentialsId);
+        Jenkins jenkins = Jenkins.getInstance();
+        if (jenkins == null) {
+            return (ListBoxModel) null;
+        } else {
+            return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, AlaudaToken.class).includeCurrentValue(credentialsId);
+        }
     }
-  }
+
+    @SuppressWarnings("unused")
+    public FormValidation doVerifyConnect(@QueryParameter String server,
+                                          @QueryParameter String credentialId) {
+        try {
+            URL url = new KubernetesClientAction().connectTest(server, credentialId);
+
+            return FormValidation.ok(String.format("Connect to %s success.", url.toString()));
+        } catch(KubernetesClientException e) {
+            return FormValidation.error(e, "Failed to connect kubernetes");
+        }
+    }
 
     public void reloadNamespaces() {
         this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
@@ -189,27 +210,29 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         }
     }
 
-  /***
-   * Just for re-watch all the namespaces
-   */
-  public void reWatchAllNamespace(String namespace) {
-    stopWatchers();
+    /***
+     * Just for re-watch all the namespaces
+     */
+    public void reWatchAllNamespace(String namespace) {
+        stopWatchers();
 
-    reloadNamespaces();
+        reloadNamespaces();
 
-    // put the new guy at first
-    List<String> namespaceList = Arrays.asList(namespaces);
-    namespaceList.remove(namespace);
-    namespaceList.add(0, namespace);
-    namespaces = namespaceList.toArray(new String[]{});
+        // put the new guy at first
+        List<String> namespaceList = Arrays.asList(namespaces);
+        namespaceList.remove(namespace);
+        namespaceList.add(0, namespace);
+        namespaces = namespaceList.toArray(new String[]{});
 
-    startWatchers();
-  }
+        startWatchers();
+    }
 
   /**
    * Only call when the plugin configuration is really changed.
    */
-  public void configChange() {
+  public void configChange() throws KubernetesClientException {
+      ResourcesCache.getInstance().setJenkinsService(jenkinsService);
+
     if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
       this.stopWatchersAndClient();
       LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
@@ -261,48 +284,48 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     }
   }
 
-  public void startWatchers() {
-      this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
-      this.jenkinsBindingWatcher.watch();
+    public void startWatchers() {
+        this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
+        this.jenkinsBindingWatcher.watch();
 
-    this.pipelineWatcher = new PipelineWatcher();
-    this.pipelineWatcher.watch();
-    this.pipelineWatcher.init(namespaces);
+        this.pipelineWatcher = new PipelineWatcher();
+        this.pipelineWatcher.watch();
+        this.pipelineWatcher.init(namespaces);
 
-    this.pipelineConfigWatcher = new PipelineConfigWatcher();
-    this.pipelineConfigWatcher.watch();
-    this.pipelineConfigWatcher.init(namespaces);
+        this.pipelineConfigWatcher = new PipelineConfigWatcher();
+        this.pipelineConfigWatcher.watch();
+        this.pipelineConfigWatcher.init(namespaces);
 
-    this.secretWatcher = new SecretWatcher();
-    this.secretWatcher.watch();
-    this.secretWatcher.init(namespaces);
-  }
-
-  public void stopWatchers() {
-    if (this.pipelineWatcher != null) {
-      this.pipelineWatcher.stop();
-      this.pipelineWatcher = null;
+        this.secretWatcher = new SecretWatcher();
+        this.secretWatcher.watch();
+        this.secretWatcher.init(namespaces);
     }
 
-    if (this.pipelineConfigWatcher != null) {
-      this.pipelineConfigWatcher.stop();
-      this.pipelineConfigWatcher = null;
+    public void stopWatchers() {
+        if (this.pipelineWatcher != null) {
+            this.pipelineWatcher.stop();
+            this.pipelineWatcher = null;
+        }
+
+        if (this.pipelineConfigWatcher != null) {
+            this.pipelineConfigWatcher.stop();
+            this.pipelineConfigWatcher = null;
+        }
+
+        if (this.secretWatcher != null) {
+            this.secretWatcher.stop();
+            this.secretWatcher = null;
+        }
+
+        if (jenkinsBindingWatcher != null) {
+            jenkinsBindingWatcher.stop();
+            jenkinsBindingWatcher = null;
+        }
     }
 
-    if (this.secretWatcher != null) {
-      this.secretWatcher.stop();
-      this.secretWatcher = null;
+    public void stopWatchersAndClient() {
+        stopWatchers();
+
+        AlaudaUtils.shutdownAlaudaClient();
     }
-
-    if(jenkinsBindingWatcher != null) {
-        jenkinsBindingWatcher.stop();
-        jenkinsBindingWatcher = null;
-    }
-  }
-
-  public void stopWatchersAndClient() {
-    stopWatchers();
-
-    AlaudaUtils.shutdownAlaudaClient();
-  }
 }

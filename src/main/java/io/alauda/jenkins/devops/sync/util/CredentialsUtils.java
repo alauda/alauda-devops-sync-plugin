@@ -240,23 +240,28 @@ public class CredentialsUtils {
           logger.info("global plugin configuration is null");
           return "";
         }
-        String credentialsId = GlobalPluginConfiguration.get()
-                .getCredentialsId();
+
+        String credentialsId = GlobalPluginConfiguration.get().getCredentialsId();
         if (credentialsId.equals("")) {
             return "";
         }
 
+        String token = getToken(credentialsId);
+        return token == null ? "" : token;
+    }
+
+    public static String getToken(String credentialId) {
         AlaudaToken token = CredentialsMatchers.firstOrNull(
                 CredentialsProvider.lookupCredentials(AlaudaToken.class,
                         Jenkins.getActiveInstance(), ACL.SYSTEM,
                         Collections.<DomainRequirement> emptyList()),
-                CredentialsMatchers.withId(credentialsId));
+                CredentialsMatchers.withId(credentialId));
 
         if (token != null) {
             return token.getToken();
+        } else {
+            return null;
         }
-
-        return "";
     }
 
     private static Credentials lookupCredentials(String id) {
