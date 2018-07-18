@@ -85,8 +85,18 @@ pipeline {
           stage('Build') {
               steps {
                   script {
+                      // setup kubectl
+                      if (GIT_BRANCH == "master") {
+                          // master is already merged
+                          deploy.setupStaging()
+
+                      } else {
+                          // pull-requests
+                          deploy.setupInt()
+                      }
+
                     sh """
-                        mvn clean install -DskipTests
+                        mvn clean install
 
                         if [ -d .tmp ]; then
                           rm -rf .tmp
@@ -110,23 +120,6 @@ pipeline {
                     // TODO: change to commit when we have a 
                     // more final solution
                     IMAGE.start().push().push(IMAGE_TAG)
-                  }
-              }
-          }
-          stage('Test') {
-              steps{
-                  script {
-                      // setup kubectl
-                      if (GIT_BRANCH == "master") {
-                          // master is already merged
-                          deploy.setupStaging()
-
-                      } else {
-                          // pull-requests
-                          deploy.setupInt()
-                      }
-
-                      sh "mvn test"
                   }
               }
           }
