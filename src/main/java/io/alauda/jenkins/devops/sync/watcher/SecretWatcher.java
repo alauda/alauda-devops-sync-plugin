@@ -46,11 +46,6 @@ public class SecretWatcher implements BaseWatcher {
 
     @Override
     public void watch() {
-        if (!CredentialsUtils.hasCredentials()) {
-            logger.fine("No Alauda Kubernetes Token credential defined.");
-            return;
-        }
-
         String resourceVersion = "0";
         SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient()
                 .secrets().inAnyNamespace().list();

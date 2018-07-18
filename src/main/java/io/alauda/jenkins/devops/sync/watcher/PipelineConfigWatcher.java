@@ -92,11 +92,6 @@ public class PipelineConfigWatcher implements BaseWatcher {
 
   @Override
   public void watch() {
-      if (!CredentialsUtils.hasCredentials()) {
-          logger.info("No Alauda Kubernetes Token credential defined.");
-          return;
-      }
-
     PipelineConfigList list = AlaudaUtils.getAuthenticatedAlaudaClient()
             .pipelineConfigs().inAnyNamespace().list();
     String ver = "0";
@@ -215,10 +210,10 @@ public class PipelineConfigWatcher implements BaseWatcher {
             Runnable backupBuildQuery = new SafeTimerTask() {
               @Override
               public void doRun() {
-                if (!CredentialsUtils.hasCredentials()) {
-                  logger.fine("No Alauda Kubernetes Token credential defined.");
-                  return;
-                }
+//                if (!CredentialsUtils.hasCredentials()) {
+//                  logger.fine("No Alauda Kubernetes Token credential defined.");
+//                  return;
+//                }
                 // TODO: Change to PipelineList and filter
                 PipelineList pipelineList = JenkinsUtils.filterNew(AlaudaUtils.getAuthenticatedAlaudaClient().pipelines().inNamespace(pipelineConfig.getMetadata().getNamespace())
                   .withLabel(Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pipelineConfig.getMetadata().getName()).list());

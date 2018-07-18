@@ -5,20 +5,18 @@ import hudson.model.TopLevelItem;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.DevOpsInit;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
-import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.Secret;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-import org.junit.*;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
 import java.io.IOException;
-import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 public class PipelineConfigWatcherTest {
 
@@ -31,18 +29,7 @@ public class PipelineConfigWatcherTest {
     public void setup() throws IOException {
         devOpsInit = new DevOpsInit().init();
         client = devOpsInit.getClient();
-        String credentialId = null;
-        List<Secret> secretList = client.secrets().inNamespace("alauda-system").list().getItems();
-        if(secretList != null) {
-            Secret secret = secretList.stream().filter(item -> item.getMetadata().getName().startsWith("devops-apiserver-token-"))
-                    .findFirst()
-                    .orElseThrow(RuntimeException::new);
-
-            credentialId = CredentialsUtils.upsertCredential(secret);
-        }
-
         GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
-        config.setCredentialsId(credentialId);
         config.setJenkinsService(devOpsInit.getJenkinsName());
         config.configChange();
     }
