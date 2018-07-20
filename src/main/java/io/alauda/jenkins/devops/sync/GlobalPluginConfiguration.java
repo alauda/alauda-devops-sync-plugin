@@ -33,6 +33,7 @@ import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
+import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -44,69 +45,71 @@ import java.util.logging.Logger;
  */
 @Extension
 public class GlobalPluginConfiguration extends GlobalConfiguration {
-  private static final Logger LOGGER = Logger.getLogger(GlobalPluginConfiguration.class.getName());
-  private boolean enabled = true;
-  private String server;
-  private String credentialsId = "";
-  private String jenkinsService;
-  private String jobNamePattern;
-  private String skipOrganizationPrefix;
-  private String skipBranchSuffix;
-  private String[] namespaces;
-  private transient PipelineWatcher pipelineWatcher;
-  private transient PipelineConfigWatcher pipelineConfigWatcher;
-  private transient SecretWatcher secretWatcher;
-  private transient JenkinsBindingWatcher jenkinsBindingWatcher;
+    private static final Logger LOGGER = Logger.getLogger(GlobalPluginConfiguration.class.getName());
+    private boolean enabled = true;
+    private String server;
+    private String credentialsId = "";
+    private String jenkinsService;
+    private String jobNamePattern;
+    private String skipOrganizationPrefix;
+    private String skipBranchSuffix;
+    private String[] namespaces;
+    private transient PipelineWatcher pipelineWatcher;
+    private transient PipelineConfigWatcher pipelineConfigWatcher;
+    private transient SecretWatcher secretWatcher;
+    private transient JenkinsBindingWatcher jenkinsBindingWatcher;
 
-  @DataBoundConstructor
-  public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId, String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
-    this.enabled = enable;
-    this.server = server;
-    this.jenkinsService = StringUtils.isBlank(jenkinsService) ? "" : jenkinsService;
-    this.credentialsId = Util.fixEmptyAndTrim(credentialsId);
-    this.jobNamePattern = jobNamePattern;
-    this.skipOrganizationPrefix = skipOrganizationPrefix;
-    this.skipBranchSuffix = skipBranchSuffix;
-    this.configChange();
+    @DataBoundConstructor
+    public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId,
+                                     String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
+        this.enabled = enable;
+        this.server = server;
+        this.jenkinsService = StringUtils.isBlank(jenkinsService) ? "" : jenkinsService;
+        this.credentialsId = Util.fixEmptyAndTrim(credentialsId);
+        this.jobNamePattern = jobNamePattern;
+        this.skipOrganizationPrefix = skipOrganizationPrefix;
+        this.skipBranchSuffix = skipBranchSuffix;
+        this.configChange();
 
-    ResourcesCache.getInstance().setJenkinsService(jenkinsService);
-  }
-
-  public GlobalPluginConfiguration() {
-    this.load();
-    this.configChange();
-    ResourcesCache.getInstance().setJenkinsService(jenkinsService);
-
-    LOGGER.info("Alauda GlobalPluginConfiguration is started.");
-  }
-
-  public static GlobalPluginConfiguration get() {
-    return (GlobalPluginConfiguration)GlobalConfiguration.all().get(GlobalPluginConfiguration.class);
-  }
-
-  public static boolean isItEnabled() {
-    GlobalPluginConfiguration config = get();
-    return config != null ? config.isEnabled() : false;
-  }
-
-  @Override
-  public String getDisplayName() {
-    return "Alauda Jenkins Sync";
-  }
-
-  @Override
-  public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
-    req.bindJSON(this, json);
-
-    try {
-      this.configChange();
-
-      this.save();
-      return true;
-    } catch (KubernetesClientException e) {
-      return false;
+        ResourcesCache.getInstance().setJenkinsService(jenkinsService);
     }
-  }
+
+    public GlobalPluginConfiguration() {
+        this.load();
+        this.configChange();
+        ResourcesCache.getInstance().setJenkinsService(jenkinsService);
+
+        LOGGER.info("Alauda GlobalPluginConfiguration is started.");
+    }
+
+    public static GlobalPluginConfiguration get() {
+        return (GlobalPluginConfiguration) GlobalConfiguration.all().get(GlobalPluginConfiguration.class);
+    }
+
+    public static boolean isItEnabled() {
+        GlobalPluginConfiguration config = get();
+        return config != null && config.isEnabled();
+    }
+
+    @Override
+    @Nonnull
+    public String getDisplayName() {
+        return "Alauda Jenkins Sync";
+    }
+
+    @Override
+    public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
+        req.bindJSON(this, json);
+
+        try {
+            this.configChange();
+
+            this.save();
+            return true;
+        } catch (KubernetesClientException e) {
+            return false;
+        }
+    }
 
   public boolean isEnabled() {
     return this.enabled;
@@ -178,13 +181,13 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     }
   }
 
-  public void reloadNamespaces() {
-    this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
+    public void reloadNamespaces() {
+        this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
 
-    for(String namespace : namespaces) {
-      ResourcesCache.getInstance().addNamespace(namespace);
+        for (String namespace : namespaces) {
+            ResourcesCache.getInstance().addNamespace(namespace);
+        }
     }
-  }
 
   /***
    * Just for re-watch all the namespaces
@@ -211,6 +214,8 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
       this.stopWatchersAndClient();
       LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
     } else {
+        ResourcesCache.getInstance().setJenkinsService(jenkinsService);
+
       try {
         stopWatchersAndClient();
 

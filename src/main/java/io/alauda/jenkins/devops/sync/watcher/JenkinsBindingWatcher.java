@@ -52,11 +52,6 @@ public class JenkinsBindingWatcher implements BaseWatcher {
 
     @Override
     public void watch() {
-        if (!CredentialsUtils.hasCredentials()) {
-            LOGGER.info("No Alauda Kubernetes Token credential defined.");
-            return;
-        }
-
         JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient()
                 .jenkinsBindings().inAnyNamespace().list();
 

@@ -85,6 +85,16 @@ pipeline {
           stage('Build') {
               steps {
                   script {
+                      // setup kubectl
+                      if (GIT_BRANCH == "master") {
+                          // master is already merged
+                          deploy.setupStaging()
+
+                      } else {
+                          // pull-requests
+                          deploy.setupInt()
+                      }
+
                     sh """
                         mvn clean install
 

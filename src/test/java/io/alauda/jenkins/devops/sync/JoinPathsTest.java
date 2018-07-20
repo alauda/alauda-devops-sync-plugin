@@ -18,6 +18,7 @@ package io.alauda.jenkins.devops.sync;
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 import static org.junit.Assert.assertEquals;
