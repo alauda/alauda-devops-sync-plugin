@@ -8,6 +8,12 @@ import io.alauda.kubernetes.client.Config;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static io.alauda.devops.client.models.PipelineConfigStatus.PipelineConfigPhaseCreating;
 
 public class DevOpsInit implements Closeable {
     private String namespace;
@@ -45,6 +51,114 @@ public class DevOpsInit implements Closeable {
                 .endStrategy()
                 .withNewJenkinsBinding(bindingName)
                 .withRunPolicy("Serial")
+                .endSpec()
+                .done();
+    }
+
+    public PipelineConfig updatePipelineConfigWithParams(AlaudaDevOpsClient client,
+                                                         String name,
+                                                         Map<String, String> paramMap,
+                                                         String script) {
+        List<PipelineParameter> params = convertTo(paramMap);
+
+        PipelineStrategy strategy = new PipelineStrategyBuilder()
+                .editJenkins()
+                .withJenkinsfile(script).endJenkins().editJenkins().endJenkins().build();
+
+        client.pipelineConfigs().inNamespace(namespace).withName(name)
+                .edit()
+                .editSpec()
+                .withStrategy(strategy)
+                .withParameters(params).endSpec()
+                .done();
+
+        return null;
+    }
+
+    public PipelineConfig createPipelineConfigWithParams(AlaudaDevOpsClient client,
+                                                         Map<String, String> paramMap,
+                                                         String script) {
+        List<PipelineParameter> params = convertTo(paramMap);
+
+        return client.pipelineConfigs()
+                .createNew()
+                .withNewMetadata()
+                .withGenerateName("pipeline-config-")
+                .withNamespace(namespace).endMetadata()
+                .withNewSpec()
+                .withNewStrategy()
+                .withNewJenkins().withJenkinsfile(script).endJenkins()
+                .endStrategy()
+                .withParameters(params)
+                .withNewJenkinsBinding(bindingName)
+                .withRunPolicy("Serial")
+                .endSpec()
+                .done();
+    }
+
+    private List<PipelineParameter> convertTo(Map<String, String> paramMap) {
+        List<PipelineParameter> params = new ArrayList<>();
+        paramMap.forEach((key, val) -> {
+            params.add(new PipelineParameterBuilder().withName(key).withType(val).build());
+        });
+        return params;
+    }
+
+    public void updatePipelineConfig(AlaudaDevOpsClient client, String name, String script) {
+        client.pipelineConfigs().inNamespace(namespace)
+                .withName(name)
+                .edit()
+                .editSpec()
+                .editStrategy()
+                .editJenkins()
+                .withJenkinsfile(script)
+                .endJenkins()
+                .endStrategy()
+                .endSpec()
+                .editStatus().withPhase(PipelineConfigPhaseCreating).endStatus()
+                .done();
+    }
+
+    public PipelineConfig getPipelineConfig(AlaudaDevOpsClient client, String name) {
+        return client.pipelineConfigs().inNamespace(namespace).withName(name).get();
+    }
+
+    public Pipeline createPipeline(AlaudaDevOpsClient client, String configName, Map<String, String> paramMap) {
+        PipelineConfig pipelineConfig = client.pipelineConfigs().inNamespace(namespace).withName(configName).get();
+        List<PipelineParameter> params = pipelineConfig.getSpec().getParameters();
+
+        params.forEach(p -> {
+            p.setValue(paramMap.get(p.getName()));
+        });
+
+        return client.pipelines().createNew()
+                .withNewMetadata()
+                .withNamespace(namespace)
+                .endMetadata()
+                .withNewSpec()
+                .withParameters(params)
+                .withNewPipelineConfig(configName)
+                .withNewJenkinsBinding(bindingName)
+                .withRunPolicy("Serial")
+                .withNewStrategy().withNewJenkins("a", "a").endStrategy()
+                .endSpec()
+                .done();
+    }
+
+    public List<Pipeline> getPipelines(AlaudaDevOpsClient client) {
+        return client.pipelines().inNamespace(namespace).list().getItems();
+    }
+
+    public Pipeline createPipeline(AlaudaDevOpsClient client, String pipelineConfig) {
+        return client.pipelines().createNew()
+                .withNewMetadata()
+                .withNamespace(namespace)
+                .endMetadata()
+                .withNewSpec()
+                .withNewPipelineConfig(pipelineConfig)
+                .withNewJenkinsBinding(bindingName)
+                .withRunPolicy("Serial")
+                .withNewStrategy().withNewJenkins("a", "a").endStrategy()
                 .endSpec()
                 .done();
     }
