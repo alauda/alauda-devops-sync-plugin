@@ -25,6 +25,7 @@ import hudson.model.Queue;
 
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.alauda.jenkins.devops.sync.util.PipelineToActionMapper;
 import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;

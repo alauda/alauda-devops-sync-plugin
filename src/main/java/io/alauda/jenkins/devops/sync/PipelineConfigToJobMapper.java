@@ -25,8 +25,10 @@ import hudson.scm.SCM;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
+import hudson.triggers.TriggerDescriptor;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
 
 import jenkins.branch.Branch;
@@ -39,6 +41,7 @@ import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
@@ -127,51 +130,45 @@ public class PipelineConfigToJobMapper {
     return null;
   }
 
-  /**
-   * Update triggers to k8s  resources. We support scm and cron for now.
-   * @param job WorkflowJob
-   * @param pipelineConfig PipelineConfig
-   */
-  private static void updateTrigger(WorkflowJob job, PipelineConfig pipelineConfig) {
-    // checking if there are triggers to be updated
-    if ((job.getTriggers() != null && job.getTriggers().size() >0 )
-            || (pipelineConfig.getSpec().getTriggers() != null && pipelineConfig.getSpec().getTriggers().size() > 0)) {
-      for (Trigger<?> trigger : job.getTriggers().values()) {
-        if(trigger instanceof SCMTrigger) {
-          PipelineTrigger pipelineTrigger = findPipelineTriggers(pipelineConfig,
-                  Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE);
-          SCMTrigger scmTrigger = (SCMTrigger) trigger;
+    /**
+     * Update triggers to k8s  resources. We support scm and cron for now.
+     *
+     * @param job            WorkflowJob
+     * @param pipelineConfig PipelineConfig
+     */
+    private static void updateTrigger(WorkflowJob job, PipelineConfig pipelineConfig) {
+        // checking if there are triggers to be updated
+        List<PipelineTrigger> pipelineConfigTriggers = pipelineConfig.getSpec().getTriggers();
+        Map<TriggerDescriptor, Trigger<?>> triggers = job.getTriggers();
 
-          if(pipelineTrigger == null) {
-            pipelineTrigger = new PipelineTriggerBuilder()
-                    .withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE)
-                    .withNewCodeChange()
-                    .withEnabled(true)
-                    .withPeriodicCheck(scmTrigger.getSpec())
-                    .endCodeChange().build();
-            pipelineConfig.getSpec().getTriggers().add(pipelineTrigger);
-          } else {
-            pipelineTrigger.getCodeChange().setPeriodicCheck(scmTrigger.getSpec());
-          }
-        } else if(trigger instanceof TimerTrigger) {
-          PipelineTrigger pipelineTrigger = findPipelineTriggers(pipelineConfig,
-                  Constants.PIPELINE_TRIGGER_TYPE_CRON);
-          TimerTrigger timerTrigger = (TimerTrigger) trigger;
-
-          if(pipelineTrigger == null) {
-            pipelineTrigger = new PipelineTriggerBuilder()
-                    .withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
-                    .withNewCron(true, timerTrigger.getSpec()).build();
-            pipelineConfig.getSpec().getTriggers().add(pipelineTrigger);
-          } else {
-            pipelineTrigger.getCron().setRule(timerTrigger.getSpec());
-          }
-        } else {
-          LOGGER.warning(() -> "Not support trigger type : " + trigger.getClass());
+        pipelineConfigTriggers.clear();
+        if (triggers == null) {
+            return;
         }
-      }
+
+        triggers.forEach((desc, trigger) -> {
+            PipelineTrigger pipelineTrigger = null;
+            if (trigger instanceof SCMTrigger) {
+                pipelineTrigger = new PipelineTriggerBuilder()
+                        .withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE)
+                        .withNewCodeChange()
+                        .withEnabled(true)
+                        .withPeriodicCheck(trigger.getSpec())
+                        .endCodeChange().build();
+            } else if (trigger instanceof TimerTrigger) {
+                pipelineTrigger = new PipelineTriggerBuilder()
+                                .withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
+                                .withNewCron(true, trigger.getSpec())
+                                .build();
+            }
+
+            if(pipelineTrigger != null) {
+                pipelineConfigTriggers.add(pipelineTrigger);
+            } else {
+                LOGGER.warning(() -> "Not support trigger type : " + trigger.getClass());
+            }
+        });
     }
-  }
 
   /**
    * Updates the {@link PipelineConfig} if the Jenkins {@link WorkflowJob} changes
@@ -297,10 +294,7 @@ public class PipelineConfigToJobMapper {
         }
 
         for(ParameterDefinition def : paramDefs) {
-            PipelineParameter pipelineParameter;
-            if((pipelineParameter = convertTo(def)) != null) {
-                spec.getParameters().add(pipelineParameter);
-            }
+            spec.getParameters().add(convertTo(def));
         }
     }
 
@@ -309,7 +303,8 @@ public class PipelineConfigToJobMapper {
                 || (paramDef instanceof BooleanParameterDefinition);
     }
 
-    public static PipelineParameter convertTo(ParameterDefinition def) {
+    @Nonnull
+    private static PipelineParameter convertTo(ParameterDefinition def) {
         if(!isSupportParamType(def)) {
             String errDesc = "Not support type:" + def.getType() + ", please fix these.";
 

@@ -6,14 +6,14 @@ import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 
+import com.iwombat.util.StringUtil;
 import hudson.model.Fingerprint;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.api.model.BuildConfig;
 import io.alauda.jenkins.devops.sync.*;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.Secret;
+import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
+import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
 
 import org.acegisecurity.context.SecurityContext;
@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.csanchez.jenkins.plugins.kubernetes.OpenShiftTokenCredentialImpl;
 import org.json.*;
 
 import static hudson.Util.fixNull;
@@ -38,7 +37,7 @@ public class CredentialsUtils {
 
     private final static Logger logger = Logger
             .getLogger(CredentialsUtils.class.getName());
-    
+
     public static synchronized Secret getSourceCredentials(
             BuildConfig buildConfig) {
         if (buildConfig.getSpec() != null
@@ -57,22 +56,26 @@ public class CredentialsUtils {
         return null;
     }
 
-  public static synchronized Secret getSourceCredentials(
-    PipelineConfig pipelineConfig) {
-    if (pipelineConfig.getSpec() != null
-      && pipelineConfig.getSpec().getSource() != null
-      && pipelineConfig.getSpec().getSource().getSecret() != null
-      && !pipelineConfig.getSpec().getSource().getSecret()
-      .getName().isEmpty()) {
-      Secret sourceSecret = AlaudaUtils.getAuthenticatedAlaudaClient()
-        .secrets()
-        .inNamespace(pipelineConfig.getMetadata().getNamespace())
-        .withName(
-          pipelineConfig.getSpec().getSource().getSecret()
-            .getName()).get();
-      return sourceSecret;
-    }
-    return null;
+  private static synchronized Secret getSourceCredentials(PipelineConfig pipelineConfig) {
+      PipelineConfigSpec spec = pipelineConfig.getSpec();
+      if(spec == null) {
+          return null;
+      }
+
+      PipelineSource source = spec.getSource();
+      if(source == null) {
+          return null;
+      }
+
+      LocalObjectReference secret = source.getSecret();
+      if(secret != null && StringUtils.isNotBlank(secret.getName())) {
+          return AlaudaUtils.getAuthenticatedAlaudaClient()
+                  .secrets()
+                  .inNamespace(pipelineConfig.getMetadata().getNamespace())
+                  .withName(secret.getName()).get();
+      }
+
+      return null;
   }
 
     public static synchronized String updateSourceCredentials(
@@ -100,8 +103,7 @@ public class CredentialsUtils {
         return credID;
     }
 
-  public static synchronized String updateSourceCredentials(
-    PipelineConfig pipelineConfig) throws IOException {
+  public static synchronized String updateSourceCredentials(PipelineConfig pipelineConfig) throws IOException {
     Secret sourceSecret = getSourceCredentials(pipelineConfig);
     String credID = null;
     if (sourceSecret != null) {
