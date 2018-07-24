@@ -11,12 +11,16 @@ import io.alauda.kubernetes.client.KubernetesClientException;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
 import javax.annotation.CheckForNull;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 @Extension
 @Symbol("alauda")
@@ -55,6 +59,24 @@ public class KubernetesClientAction implements UnprotectedRootAction {
         }
 
         return HttpResponses.okJSON(result);
+    }
+
+    @Exported
+    public HttpResponse doBuildId() {
+        Properties pro = new Properties();
+
+        ClassLoader loader = KubernetesClientAction.class.getClassLoader();
+        try(InputStream stream = loader.getResourceAsStream("debug.properties")) {
+            if(stream != null) {
+                pro.load(stream);
+
+                return HttpResponses.okJSON(pro);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return HttpResponses.errorJSON("no debug file");
     }
 
     public URL connectTest(String server, String credentialId) {
