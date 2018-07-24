@@ -214,7 +214,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
   }
 
-  protected synchronized void pollRun(Run run) {
+  private synchronized void pollRun(Run run) {
     if (!(run instanceof WorkflowRun)) {
       throw new IllegalStateException("Cannot poll a non-workflow run");
     }
@@ -448,8 +448,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     // override stages in case declarative has fooled base pipeline support
     wfRunExt.setStages(validStageList);
 
-    boolean needToUpdate = this.shouldUpdatePipeline(cause,
-      newNumStages, newNumFlowNodes, wfRunExt.getStatus());
+    boolean needToUpdate = this.shouldUpdatePipeline(cause, newNumStages, newNumFlowNodes, wfRunExt.getStatus());
     if (!needToUpdate) {
       return;
     }
@@ -508,6 +507,11 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         .pipelines()
         .inNamespace(cause.getNamespace())
         .withName(cause.getName()).get();
+
+      if(pipeline == null) {
+          logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
+          return;
+      }
 
       Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
       annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON, json);

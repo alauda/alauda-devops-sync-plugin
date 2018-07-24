@@ -26,9 +26,11 @@ import hudson.model.listeners.ItemListener;
 
 import io.alauda.devops.client.dsl.PipelineConfigResource;
 import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
+import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.jenkins.devops.sync.watcher.PipelineConfigWatcher;
 import io.alauda.kubernetes.api.model.*;

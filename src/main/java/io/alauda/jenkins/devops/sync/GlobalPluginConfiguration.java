@@ -24,6 +24,7 @@ import hudson.triggers.SafeTimerTask;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import io.alauda.jenkins.devops.sync.action.KubernetesClientAction;
+import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.watcher.*;
 import io.alauda.kubernetes.client.KubernetesClientException;

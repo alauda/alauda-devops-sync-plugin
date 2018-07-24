@@ -65,6 +65,8 @@ pipeline {
                   def branch = GIT_BRANCH.replace("/","-").replace("_","-")
                   RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
               }
+
+              sh 'echo "version=$GIT_COMMIT" > src/main/resources/debug.properties'
           }
           // installing golang coverage and report tools
           sh """
@@ -96,7 +98,7 @@ pipeline {
                       }
 
                     sh """
-                        mvn clean install
+                        mvn clean install -U
 
                         if [ -d .tmp ]; then
                           rm -rf .tmp
