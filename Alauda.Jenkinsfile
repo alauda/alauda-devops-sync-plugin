@@ -98,7 +98,7 @@ pipeline {
                       }
 
                     sh """
-                        mvn clean install
+                        mvn clean install -U
 
                         if [ -d .tmp ]; then
                           rm -rf .tmp
