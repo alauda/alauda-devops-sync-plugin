@@ -66,7 +66,8 @@ pipeline {
                   RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
               }
 
-              sh 'echo "version=$GIT_COMMIT" > src/main/resources/debug.properties'
+              sh 'echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties'
+              sh 'echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties'
           }
           // installing golang coverage and report tools
           sh """

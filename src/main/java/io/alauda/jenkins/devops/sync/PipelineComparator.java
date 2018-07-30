@@ -3,9 +3,10 @@ package io.alauda.jenkins.devops.sync;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.Pipeline;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
-public class PipelineComparator implements Comparator<Pipeline>
+public class PipelineComparator implements Comparator<Pipeline>, Serializable
 {
     @Override
     public int compare(Pipeline p1, Pipeline p2)

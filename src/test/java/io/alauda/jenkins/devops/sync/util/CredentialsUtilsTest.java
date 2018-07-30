@@ -12,7 +12,7 @@ public class CredentialsUtilsTest {
 
     @Test
     public void getToken() {
-        // fake credential id test
+        // fake CredentialTest id test
         assertNull(CredentialsUtils.getToken("fake"));
     }
 }

@@ -1,12 +1,15 @@
 package io.alauda.jenkins.devops.sync.util;
 
+import hudson.remoting.Base64;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Config;
 
+import javax.swing.tree.AbstractLayoutCache;
 import java.io.Closeable;
 import java.io.IOException;
 import java.text.ParseException;
@@ -47,6 +50,11 @@ public class DevOpsInit implements Closeable {
         return this;
     }
 
+    /**
+     * Has a simple echo script
+     * @param client k8s client
+     * @return PipelineConfig instance
+     */
     public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client) {
         return createPipelineConfig(client, "echo '1'");
     }
@@ -63,20 +71,46 @@ public class DevOpsInit implements Closeable {
     }
 
     public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client, String script) {
+        return createPipelineConfig(client, script, null);
+    }
+
+    public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client, String script, String cron) {
+        return createPipelineConfig(client, script, null, cron);
+    }
+
+    public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client, String script, String jenkinsFilePath, String cron) {
+        return createPipelineConfig(client, script, jenkinsFilePath, cron, null);
+    }
+
+    public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client, String script, String jenkinsFilePath, String cron, String secret) {
+        PipelineConfigSpecBuilder specBuilder = new PipelineConfigSpecBuilder()
+//                .withNewSource().withNewSecret().endSecret().endSource()
+                .withNewStrategy()
+                .withNewJenkins().withJenkinsfile(script).withJenkinsfilePath(jenkinsFilePath).endJenkins()
+                .endStrategy()
+                .withNewJenkinsBinding(bindingName)
+                .withRunPolicy("Serial");
+
+        if(secret != null) {
+            specBuilder.withNewSource()
+                    .withNewSecret().withName(secret).endSecret()
+                    .withNewGit("http://github.com", "master")
+                    .endSource();
+        }
+
+        if(cron != null) {
+            PipelineTrigger trigger = new PipelineTriggerBuilder()
+                    .withType("cron").withNewCron(true, cron).build();
+            specBuilder.withTriggers(trigger);
+        }
+
         return client.pipelineConfigs()
                 .createNew()
                 .withNewMetadata()
                 .withLabels(Collections.singletonMap(TEST_FLAG, TEST_FLAG_VALUE))
                 .withGenerateName("pipeline-config-")
                 .withNamespace(namespace).endMetadata()
-                .withNewSpec()
-                .withNewSource().withNewSecret().endSecret().endSource()
-                .withNewStrategy()
-                .withNewJenkins().withJenkinsfile(script).endJenkins()
-                .endStrategy()
-                .withNewJenkinsBinding(bindingName)
-                .withRunPolicy("Serial")
-                .endSpec()
+                .withSpec(specBuilder.build())
                 .done();
     }
 
@@ -239,8 +273,14 @@ public class DevOpsInit implements Closeable {
     }
 
     public Secret createSecret(AlaudaDevOpsClient client) {
+        Map<String, String> data = new HashMap<>();
+        data.put("username", Base64.encode("a".getBytes()));
+        data.put("password", Base64.encode("a".getBytes()));
+
         return client.secrets()
                 .createNew()
+                .withData(data)
+                .withType(Constants.ALAUDA_DEVOPS_SECRETS_TYPE_BASICAUTH)
                 .withNewMetadata()
                 .withLabels(Collections.singletonMap(TEST_FLAG, TEST_FLAG_VALUE))
                 .withNamespace(namespace)

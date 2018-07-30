@@ -38,6 +38,9 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSession;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
@@ -178,7 +181,10 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     }
 
     public String[] getNamespaces() {
-        return namespaces;
+        if(namespaces == null) {
+            return null;
+        }
+        return Arrays.copyOf(namespaces, namespaces.length);
     }
 
     @SuppressWarnings("unused")

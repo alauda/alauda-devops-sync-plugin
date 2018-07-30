@@ -39,7 +39,9 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 import com.cloudbees.plugins.credentials.CredentialsParameterDefinition;
+import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -230,66 +232,78 @@ public class JenkinsUtils {
         return paramMap;
     }
 
-  public static List<Trigger<?>> addJobTriggers(WorkflowJob job, List<PipelineTrigger> triggers) throws IOException {
-	  List<Trigger<?>> jenkinsTriggers = new ArrayList<>();
-	  if (triggers == null || triggers.size() == 0) {
-	    return jenkinsTriggers;
+    /**
+     * Override job's triggers
+     * @param job
+     * @param triggers
+     * @return
+     * @throws IOException
+     */
+    @NotNull
+    public static List<ANTLRException> setJobTriggers(WorkflowJob job, List<PipelineTrigger> triggers) throws IOException {
+        job.removeProperty(PipelineTriggersJobProperty.class);
+
+        List<ANTLRException> exceptions = new ArrayList<>();
+        if (triggers == null || triggers.size() == 0) {
+            return exceptions;
+        }
+
+        LOGGER.info(() -> "PipelineTrigger's count is " + triggers.size());
+
+        for (PipelineTrigger pipelineTrigger : triggers) {
+            Trigger trigger = null;
+            switch (pipelineTrigger.getType()) {
+                case PIPELINE_TRIGGER_TYPE_CODE_CHANGE:
+                    PipelineTriggerCodeChange codeTrigger = pipelineTrigger.getCodeChange();
+
+                    if (codeTrigger == null || !codeTrigger.getEnabled()) {
+                        LOGGER.warning("Trigger type `" + PIPELINE_TRIGGER_TYPE_CODE_CHANGE + "` has empty description or is disabled...");
+                        break;
+                    }
+
+                    try {
+                        trigger = new SCMTrigger(codeTrigger.getPeriodicCheck());
+
+                        LOGGER.info(() -> "Add CodeChangeTrigger.");
+                    } catch (ANTLRException exc) {
+                        LOGGER.severe("Error processing trigger type `" + PIPELINE_TRIGGER_TYPE_CODE_CHANGE + "`: " + exc);
+                        exceptions.add(exc);
+                    }
+
+                    break;
+                case PIPELINE_TRIGGER_TYPE_CRON:
+                    PipelineTriggerCron cronTrigger = pipelineTrigger.getCron();
+                    if (cronTrigger == null || !cronTrigger.getEnabled()) {
+                        LOGGER.warning("Trigger type `" + PIPELINE_TRIGGER_TYPE_CRON + "` has empty description or is disabled...");
+                        break;
+                    }
+
+                    try {
+                        trigger = new TimerTrigger(cronTrigger.getRule());
+
+                        LOGGER.info(() -> "Add CronTrigger.");
+                    } catch (ANTLRException exc) {
+                        LOGGER.severe("Error processing trigger type `" + PIPELINE_TRIGGER_TYPE_CRON + "`: " + exc);
+                        exceptions.add(exc);
+                    }
+
+                    break;
+                default:
+                    LOGGER.warning("Trigger type `" + pipelineTrigger.getType() + "` is not supported... skipping...");
+            }
+
+            if(trigger != null) {
+                job.addTrigger(trigger);
+            }
+        }
+
+//        job.setTriggers(exceptions);
+//        job.save();
+
+        LOGGER.info(() -> "Job trigger save done.");
+
+        return exceptions;
     }
-
-    LOGGER.info(() -> "PipelineTrigger's count is " + triggers.size());
-
-    for (PipelineTrigger trigger : triggers) {
-      Trigger triggerDescr = null;
-	    switch (trigger.getType()) {
-        case PIPELINE_TRIGGER_TYPE_CODE_CHANGE:
-          PipelineTriggerCodeChange codeTrigger = trigger.getCodeChange();
-
-          if (codeTrigger == null || !codeTrigger.getEnabled()) {
-            LOGGER.warning("Trigger type `"+PIPELINE_TRIGGER_TYPE_CODE_CHANGE+"` has empty description or is disabled...");
-            break;
-          }
-
-          try {
-            triggerDescr = new SCMTrigger(codeTrigger.getPeriodicCheck());
-          } catch (ANTLRException exc) {
-            LOGGER.severe("Error processing trigger type `"+PIPELINE_TRIGGER_TYPE_CODE_CHANGE+"`: "+exc);
-          }
-
-          LOGGER.info(() -> "Add CodeChangeTrigger.");
-
-          break;
-        case PIPELINE_TRIGGER_TYPE_CRON:
-          PipelineTriggerCron cronTrigger = trigger.getCron();
-          if (cronTrigger == null || !cronTrigger.getEnabled()) {
-            LOGGER.warning("Trigger type `"+PIPELINE_TRIGGER_TYPE_CRON+"` has empty description or is disabled...");
-            break;
-          }
-
-          try {
-            triggerDescr = new TimerTrigger(cronTrigger.getRule());
-          } catch (ANTLRException exc) {
-            LOGGER.severe("Error processing trigger type `"+PIPELINE_TRIGGER_TYPE_CRON+"`: "+exc);
-          }
-
-          LOGGER.info(() -> "Add CronTrigger.");
-
-          break;
-        default:
-          LOGGER.warning("Trigger type `"+trigger.getType()+"` is not supported... skipping...");
-      }
-
-      if (triggerDescr != null) {
-	      jenkinsTriggers.add(triggerDescr);
-      }
-    }
-
-    job.setTriggers(jenkinsTriggers);
-	  job.save();
-
-	  LOGGER.info(() -> "Job trigger save done.");
-
-    return jenkinsTriggers;
-  }
 
 	public static List<Action> setJobRunParamsFromEnv(WorkflowJob job, List<PipelineParameter> pipelineParameters,
 			List<Action> buildActions) {
