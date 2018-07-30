@@ -13,13 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.constants;
 
 /**
+ * Alauda k8s resources annotations
  */
-public class Annotations {
-    public static final String JENKINS_JOB_PATH = "jenkins.alauda.io/job-path";
-    public static final String GENERATED_BY = "jenkins.alauda.io/generated-by";
-    public static final String GENERATED_BY_JENKINS = "jenkins";
-    public static final String DISABLE_SYNC_CREATE = "jenkins.alauda.io/disable-sync-create";
+public interface Annotations {
+    String JENKINS_JOB_PATH = "jenkins.alauda.io/job-path";
+    String GENERATED_BY = "jenkins.alauda.io/generated-by";
+    String GENERATED_BY_JENKINS = "jenkins";
+    String DISABLE_SYNC_CREATE = "jenkins.alauda.io/disable-sync-create";
 }

@@ -52,12 +52,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.getJobFromPipelineConfig;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.putJobWithPipelineConfig;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.CANCELLED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.watcher.PipelineWatcher.addEventToJenkinsJobRun;
-import static io.alauda.jenkins.devops.sync.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static java.util.Collections.sort;
@@ -164,71 +164,71 @@ public class JenkinsUtils {
 		return paramMap;
 	}
 
-  public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(WorkflowJob job, List<PipelineParameter> params,
-                                                                                  boolean replaceExisting) throws IOException {
-    Map<String, ParameterDefinition> paramMap = null;
-    if (params != null && params.size() > 0) {
-      // build list of current env var names for possible deletion of env
-      // vars currently stored
-      // as job params
-      // builds a list of job parameters
+    public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(WorkflowJob job,
+        List<PipelineParameter> params, boolean replaceExisting) throws IOException {
+        // get existing property defs, including any manually added from the
+        // jenkins console independent of PC
+        ParametersDefinitionProperty jenkinsParams = job.removeProperty(ParametersDefinitionProperty.class);
 
-      List<String> envKeys = new ArrayList<String>();
-      for (PipelineParameter parameter : params) {
-        envKeys.add(parameter.getName());
-      }
-      // get existing property defs, including any manually added from the
-      // jenkins console independent of PC
-      ParametersDefinitionProperty jenkinsParams = job.removeProperty(ParametersDefinitionProperty.class);
-      paramMap = new HashMap<String, ParameterDefinition>();
-      // store any existing parameters in map for easy key lookup
-      if (jenkinsParams != null) {
-        List<ParameterDefinition> existingParamList = jenkinsParams.getParameterDefinitions();
-        for (ParameterDefinition param : existingParamList) {
-          // if a user supplied param, add
-          if (param.getDescription() == null || !param.getDescription().equals(PARAM_FROM_ENV_DESCRIPTION))
-            paramMap.put(param.getName(), param);
-          else if (envKeys.contains(param.getName())) {
-            // the env var still exists on the PipelineConfig side so
-            // keep
-            paramMap.put(param.getName(), param);
-          }
-        }
-      }
+        Map<String, ParameterDefinition> paramMap = null;
+        if (params != null && params.size() > 0) {
+            // build list of current env var names for possible deletion of env
+            // vars currently stored
+            // as job params
+            // builds a list of job parameters
 
-      for (PipelineParameter param : params) {
-        ParameterDefinition jenkinsParam = null;
-        switch (param.getType()) {
-          case PIPELINE_PARAMETER_TYPE_STRING:
-            jenkinsParam = new StringParameterDefinition(param.getName(), param.getValue(),
-              param.getDescription());
-            break;
-          case PIPELINE_PARAMETER_TYPE_BOOLEAN:
-            jenkinsParam = new BooleanParameterDefinition(param.getName(), Boolean.valueOf(param.getValue()),
-              param.getDescription());
-            break;
-          default:
-            LOGGER.warning("Parameter type `"+param.getType()+"` is not supported.. skipping...");
-            break;
+            List<String> envKeys = new ArrayList<>();
+            for (PipelineParameter parameter : params) {
+                envKeys.add(parameter.getName());
+            }
+            paramMap = new HashMap<>();
+            // store any existing parameters in map for easy key lookup
+            if (jenkinsParams != null) {
+                List<ParameterDefinition> existingParamList = jenkinsParams.getParameterDefinitions();
+                for (ParameterDefinition param : existingParamList) {
+                    // if a user supplied param, add
+                    if (param.getDescription() == null || !param.getDescription().equals(PARAM_FROM_ENV_DESCRIPTION))
+                        paramMap.put(param.getName(), param);
+                    else if (envKeys.contains(param.getName())) {
+                        // the env var still exists on the PipelineConfig side so
+                        // keep
+                        paramMap.put(param.getName(), param);
+                    }
+                }
+            }
+
+            for (PipelineParameter param : params) {
+                ParameterDefinition jenkinsParam = null;
+                switch (param.getType()) {
+                    case PIPELINE_PARAMETER_TYPE_STRING:
+                        jenkinsParam = new StringParameterDefinition(param.getName(), param.getValue(), param.getDescription());
+                        break;
+                    case PIPELINE_PARAMETER_TYPE_BOOLEAN:
+                        jenkinsParam = new BooleanParameterDefinition(param.getName(), Boolean.valueOf(param.getValue()), param.getDescription());
+                        break;
+                    default:
+                        LOGGER.warning("Parameter type `" + param.getType() + "` is not supported.. skipping...");
+                        break;
+                }
+
+                if (jenkinsParam == null) {
+                    continue;
+                }
+                // TODO: This is made differently from the original source
+                // Need revisit this part if the parameters
+                if (replaceExisting || !paramMap.containsKey(jenkinsParam.getName())) {
+                    paramMap.put(jenkinsParam.getName(), jenkinsParam);
+                }
+            }
+
+            List<ParameterDefinition> newParamList = new ArrayList<>(paramMap.values());
+            job.addProperty(new ParametersDefinitionProperty(newParamList));
         }
 
-        if (jenkinsParam == null) {
-          continue;
-        }
-        // TODO: This is made differently from the original source
-        // Need revisit this part if the parameters
-        if (replaceExisting || !paramMap.containsKey(jenkinsParam.getName())) {
-          paramMap.put(jenkinsParam.getName(), jenkinsParam);
-        }
-      }
-
-      List<ParameterDefinition> newParamList = new ArrayList<ParameterDefinition>(paramMap.values());
-      job.addProperty(new ParametersDefinitionProperty(newParamList));
+        // force save here ... seen some timing issues with concurrent job updates and run initiations
+        job.save();
+        return paramMap;
     }
-    // force save here ... seen some timing issues with concurrent job updates and run initiations
-    job.save();
-    return paramMap;
-  }
 
   public static List<Trigger<?>> addJobTriggers(WorkflowJob job, List<PipelineTrigger> triggers) throws IOException {
 	  List<Trigger<?>> jenkinsTriggers = new ArrayList<>();
@@ -429,13 +429,13 @@ public class JenkinsUtils {
         }
 
         PipelineConfigProjectProperty pcProp = job.getProperty(PipelineConfigProjectProperty.class);
-        if (pcProp == null || pcProp.getPipelineRunPolicy() == null) {
+        if (pcProp == null) {
             LOGGER.warning("aborting trigger of pipeline " + pipeline
-                    + "because of missing pc project property or run policy");
+                    + "because of missing pc project property");
             return false;
         }
 
-        switch (pcProp.getPipelineRunPolicy()) {
+//        switch (pcProp.getPipelineRunPolicy()) {
           // TODO: Not implemented yet
 //        case SERIAL_LATEST_ONLY:
 //            cancelQueuedBuilds(job, pcProp.getUid());
@@ -449,8 +449,8 @@ public class JenkinsUtils {
 //                return false;
 //            }
 //            break;
-        default:
-        }
+//        default:
+//        }
 
 
         ObjectMeta meta = pipeline.getMetadata();
@@ -720,18 +720,18 @@ public class JenkinsUtils {
 		return getJobFromPipelineConfig(pipelineConfig);
 	}
 
-	public static void maybeScheduleNext(WorkflowJob job) {
-    PipelineConfigProjectProperty pcp = job.getProperty(PipelineConfigProjectProperty.class);
-		if (pcp == null) {
-			return;
-		}
+    public static void maybeScheduleNext(WorkflowJob job) {
+        PipelineConfigProjectProperty pcp = job.getProperty(PipelineConfigProjectProperty.class);
+        if (pcp == null) {
+            return;
+        }
 
-		// TODO: Change to filter on the API level
-		PipelineList list = filterNew(getAuthenticatedAlaudaClient().pipelines().inNamespace(pcp.getNamespace())
-      .withLabel(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcp.getName()).list());
-    LOGGER.info("Got new pipeline list: "+list.getItems());
-		handlePipelineList(job, list.getItems(), pcp);
-	}
+        // TODO: Change to filter on the API level
+        PipelineList list = filterNew(getAuthenticatedAlaudaClient().pipelines()
+                .inNamespace(pcp.getNamespace()).withLabel(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcp.getName()).list());
+        LOGGER.info("Got new pipeline list: " + list.getItems());
+        handlePipelineList(job, list.getItems(), pcp);
+    }
 
   public static PipelineList filterNew(PipelineList list) {
     if (list == null || list.getItems() == null || list.getItems().size() == 0) {
@@ -814,7 +814,7 @@ public class JenkinsUtils {
                 return rc;
 			}
 		});
-		boolean isSerial = PipelineRunPolicy.SERIAL.equals(pipelineConfigProjectProperty.getPipelineRunPolicy());
+		boolean isSerial = !job.isConcurrentBuild();//PipelineRunPolicy.SERIAL.equals(pipelineConfigProjectProperty.getPipelineRunPolicy());
 		boolean jobIsBuilding = job.isBuilding();
 		for (int i = 0; i < pipelines.size(); i++) {
 			Pipeline p = pipelines.get(i);

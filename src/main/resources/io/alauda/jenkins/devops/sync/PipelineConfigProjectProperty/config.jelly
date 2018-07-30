@@ -22,6 +22,5 @@
       <f:readOnlyTextbox field="name"/>
       <f:readOnlyTextbox field="uid"/>
       <f:readOnlyTextbox field="resourceVersion"/>
-      <f:readOnlyTextbox field="contextDir"/>
     </f:invisibleEntry>
 </j:jelly>

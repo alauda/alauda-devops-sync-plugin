@@ -25,10 +25,9 @@ import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.Annotations;
-import io.alauda.jenkins.devops.sync.Constants;
+import io.alauda.jenkins.devops.sync.constants.Annotations;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
-import io.alauda.jenkins.devops.sync.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
 
 import io.alauda.kubernetes.client.Config;
@@ -51,10 +50,10 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.PipelinePhases.PENDING;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.RUNNING;
-import static io.alauda.jenkins.devops.sync.Constants.FOLDER_DESCRIPTION;
-import static io.alauda.jenkins.devops.sync.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.PENDING;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.RUNNING;
+import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 import static java.util.logging.Level.FINE;
 
 /**
@@ -68,18 +67,14 @@ public class AlaudaUtils {
     private static String PLUGIN_NAME = "alauda-sync";
     
     static {
-        jenkinsPodNamespace = System
-                .getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
+        jenkinsPodNamespace = System.getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
         if (jenkinsPodNamespace != null && jenkinsPodNamespace.trim().length() > 0) {
             jenkinsPodNamespace = jenkinsPodNamespace.trim();
         } else {
             File f = new File(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
             if (f.exists()) {
-                FileReader fr = null;
-                BufferedReader br = null;
-                try {
-                    fr = new FileReader(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
-                    br = new BufferedReader(fr);
+                try (FileReader fr = new FileReader(Constants.KUBERNETES_SERVICE_ACCOUNT_NAMESPACE);
+                     BufferedReader br = new BufferedReader(fr)){
                     // should just be one line
                     jenkinsPodNamespace = br.readLine();
                     if (jenkinsPodNamespace != null && jenkinsPodNamespace.trim().length() > 0) {
@@ -90,13 +85,6 @@ public class AlaudaUtils {
                     logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
                 } catch (IOException e) {
                     logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
-                } finally {
-                    try {
-                        br.close();
-                        fr.close();
-                    } catch (Throwable e) {
-                        logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
-                    }
                 }
             }
         }
@@ -163,14 +151,18 @@ public class AlaudaUtils {
             logger.warning("bad input, null spec: " + pipeline);
             return false;
         }
-        if (pipeline.getSpec().getStrategy() == null) {
+
+        PipelineStrategy strategy = pipeline.getSpec().getStrategy();
+        if (strategy == null) {
             logger.warning("bad input, null strategy: " + pipeline);
             return false;
         }
-        return (
-          pipeline.getSpec().getStrategy().getJenkins() != null && (
-            StringUtils.isNotEmpty(pipeline.getSpec().getStrategy().getJenkins().getJenkinsfile()) ||
-            StringUtils.isNotEmpty(pipeline.getSpec().getStrategy().getJenkins().getJenkinsfilePath())
+
+        PipelineStrategyJenkins jenkins = strategy.getJenkins();
+
+        return (jenkins != null && (
+            StringUtils.isNotEmpty(jenkins.getJenkinsfile()) ||
+            StringUtils.isNotEmpty(jenkins.getJenkinsfilePath())
           )
         );
     }
@@ -479,56 +471,58 @@ public class AlaudaUtils {
     }
 
 
-  /**
-   * Lazily creates the PipelineConfigSource if need be then updates the git URL
-   *
-   * @param pipelineConfig
-   *            the PipelineConfig to update
-   * @param gitUrl
-   *            the URL to the git repo
-   * @param ref
-   *            the git ref (commit/branch/etc) for the build
-   */
-  public static void updateGitSourceUrl(PipelineConfig pipelineConfig,
-                                        String gitUrl, String ref) {
-    PipelineConfigSpec spec = pipelineConfig.getSpec();
-    if (spec == null) {
-      spec = new PipelineConfigSpec();
-      pipelineConfig.setSpec(spec);
+    /**
+     * Lazily creates the PipelineConfigSource if need be then updates the git URL
+     *
+     * @param pipelineConfig the PipelineConfig to update
+     * @param gitUrl         the URL to the git repo
+     * @param ref            the git ref (commit/branch/etc) for the build
+     */
+    public static void updateGitSourceUrl(PipelineConfig pipelineConfig, String gitUrl, String ref) {
+        PipelineConfigSpec spec = pipelineConfig.getSpec();
+        if (spec == null) {
+            spec = new PipelineConfigSpec();
+            pipelineConfig.setSpec(spec);
+        }
+        PipelineSource source = spec.getSource();
+        if (source == null) {
+            source = new PipelineSource();
+            spec.setSource(source);
+        }
+        PipelineSourceGit git = source.getGit();
+        if (git == null) {
+            git = new PipelineSourceGit();
+            source.setGit(git);
+        }
+        git.setUri(gitUrl);
+        git.setRef(ref);
     }
-    PipelineSource source = spec.getSource();
-    if (source == null) {
-      source = new PipelineSource();
-      spec.setSource(source);
-    }
-    PipelineSourceGit git = source.getGit();
-    if (git == null) {
-      git = new PipelineSourceGit();
-      source.setGit(git);
-    }
-    git.setUri(gitUrl);
-    git.setRef(ref);
-  }
 
     public static void updatePipelinePhase(Pipeline pipeline, String phase) {
-        logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}",
-                new Object[] { phase, pipeline.getMetadata().getNamespace(),
-                        pipeline.getMetadata().getName() });
+        logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}", new Object[]{phase, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()});
 
         // TODO: Change to use edit instead....
-      Pipeline pipe = getAuthenticatedAlaudaClient().pipelines()
-        .inNamespace(pipeline.getMetadata().getNamespace())
-        .withName(pipeline.getMetadata().getName()).get();
-      PipelineStatus stats = pipe.getStatus();
-      if (stats == null) {
-        stats = new PipelineStatusBuilder().build();
-      }
-      stats.setPhase(phase);
-      pipe.setStatus(stats);
-      getAuthenticatedAlaudaClient().pipelines()
-        .inNamespace(pipeline.getMetadata().getNamespace())
-        .withName(pipeline.getMetadata().getName())
-        .replace(pipe);
+        String namespace = pipeline.getMetadata().getNamespace();
+        String name = pipeline.getMetadata().getName();
+        Pipeline pipe = getAuthenticatedAlaudaClient().pipelines().inNamespace(namespace).withName(name).get();
+
+        if (pipe == null) {
+            logger.warning(() -> "Can't find Pipeline by namespace: " + namespace + ", name: " + name);
+            return;
+        }
+
+        PipelineStatus stats = pipe.getStatus();
+        if (stats == null) {
+            stats = new PipelineStatusBuilder().build();
+        }
+        stats.setPhase(phase);
+        pipe.setStatus(stats);
+
+        getAuthenticatedAlaudaClient()
+                .pipelines()
+                .inNamespace(namespace)
+                .withName(name)
+                .patch(pipe);
     }
 
     /**

@@ -34,6 +34,8 @@ import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
 import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.kubernetes.api.model.*;
@@ -71,7 +73,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getCurrentTimestamp;
-import static io.alauda.jenkins.devops.sync.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.formatTimestamp;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
@@ -212,7 +214,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
   }
 
-  protected synchronized void pollRun(Run run) {
+  private synchronized void pollRun(Run run) {
     if (!(run instanceof WorkflowRun)) {
       throw new IllegalStateException("Cannot poll a non-workflow run");
     }
@@ -446,8 +448,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     // override stages in case declarative has fooled base pipeline support
     wfRunExt.setStages(validStageList);
 
-    boolean needToUpdate = this.shouldUpdatePipeline(cause,
-      newNumStages, newNumFlowNodes, wfRunExt.getStatus());
+    boolean needToUpdate = this.shouldUpdatePipeline(cause, newNumStages, newNumFlowNodes, wfRunExt.getStatus());
     if (!needToUpdate) {
       return;
     }
@@ -507,6 +508,11 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         .inNamespace(cause.getNamespace())
         .withName(cause.getName()).get();
 
+      if(pipeline == null) {
+          logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
+          return;
+      }
+
       Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
       annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON, json);
       if (blueJson != null) {
@@ -544,7 +550,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         .pipelines()
         .inNamespace(namespace)
         .withName(pipeline.getMetadata().getName())
-        .replace(pipeline);
+              .patch(pipeline);
+//        .replace(pipeline);
       logger.fine("updated pipeline: " + result);
 
 //          DoneablePipeline builder = getAuthenticatedAlaudaClient()

@@ -1,4 +1,4 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.util;
 
 import hudson.model.Action;
 import hudson.model.CauseAction;
@@ -6,7 +6,6 @@ import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
-import io.alauda.jenkins.devops.sync.util.ParameterUtils;
 import io.alauda.kubernetes.api.model.*;
 
 import java.util.ArrayList;
@@ -14,11 +13,11 @@ import java.util.List;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
-import static io.alauda.jenkins.devops.sync.Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
-import static io.alauda.jenkins.devops.sync.Constants.PIPELINE_TRIGGER_TYPE_CRON;
-import static io.alauda.jenkins.devops.sync.Constants.PIPELINE_TRIGGER_TYPE_MANUAL;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_MANUAL;
 
-public class PipelineGenerator {
+public abstract class PipelineGenerator {
 
     private static final Logger LOGGER = Logger.getLogger(PipelineGenerator.class.getName());
     private static String TRIGGER_BY = "Triggered by Jenkins job at ";
@@ -100,7 +99,7 @@ public class PipelineGenerator {
         return buildPipelineSpec(config, null);
     }
 
-    public static PipelineSpec buildPipelineSpec(PipelineConfig config, String triggerURL) {
+    private static PipelineSpec buildPipelineSpec(PipelineConfig config, String triggerURL) {
         PipelineSpec pipeSpec = new PipelineSpec();
         PipelineConfigSpec spec = config.getSpec();
         pipeSpec.setPipelineConfig(new LocalObjectReference(config.getMetadata().getName()));

@@ -65,6 +65,8 @@ pipeline {
                   def branch = GIT_BRANCH.replace("/","-").replace("_","-")
                   RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
               }
+
+              sh 'echo "version=$GIT_COMMIT" > src/main/resources/debug.properties'
           }
           // installing golang coverage and report tools
           sh """
@@ -85,8 +87,18 @@ pipeline {
           stage('Build') {
               steps {
                   script {
+                      // setup kubectl
+                      if (GIT_BRANCH == "master") {
+                          // master is already merged
+                          deploy.setupStaging()
+
+                      } else {
+                          // pull-requests
+                          deploy.setupInt()
+                      }
+
                     sh """
-                        mvn clean install
+                        mvn clean install -U
 
                         if [ -d .tmp ]; then
                           rm -rf .tmp

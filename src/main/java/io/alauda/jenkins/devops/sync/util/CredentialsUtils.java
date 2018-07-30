@@ -6,14 +6,14 @@ import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 
+import com.iwombat.util.StringUtil;
 import hudson.model.Fingerprint;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.api.model.BuildConfig;
 import io.alauda.jenkins.devops.sync.*;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.Secret;
+import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
+import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
 
 import org.acegisecurity.context.SecurityContext;
@@ -26,17 +26,18 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.json.*;
 
 import static hudson.Util.fixNull;
-import static io.alauda.jenkins.devops.sync.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 public class CredentialsUtils {
 
     private final static Logger logger = Logger
             .getLogger(CredentialsUtils.class.getName());
-    
+
     public static synchronized Secret getSourceCredentials(
             BuildConfig buildConfig) {
         if (buildConfig.getSpec() != null
@@ -55,22 +56,26 @@ public class CredentialsUtils {
         return null;
     }
 
-  public static synchronized Secret getSourceCredentials(
-    PipelineConfig pipelineConfig) {
-    if (pipelineConfig.getSpec() != null
-      && pipelineConfig.getSpec().getSource() != null
-      && pipelineConfig.getSpec().getSource().getSecret() != null
-      && !pipelineConfig.getSpec().getSource().getSecret()
-      .getName().isEmpty()) {
-      Secret sourceSecret = AlaudaUtils.getAuthenticatedAlaudaClient()
-        .secrets()
-        .inNamespace(pipelineConfig.getMetadata().getNamespace())
-        .withName(
-          pipelineConfig.getSpec().getSource().getSecret()
-            .getName()).get();
-      return sourceSecret;
-    }
-    return null;
+  private static synchronized Secret getSourceCredentials(PipelineConfig pipelineConfig) {
+      PipelineConfigSpec spec = pipelineConfig.getSpec();
+      if(spec == null) {
+          return null;
+      }
+
+      PipelineSource source = spec.getSource();
+      if(source == null) {
+          return null;
+      }
+
+      LocalObjectReference secret = source.getSecret();
+      if(secret != null && StringUtils.isNotBlank(secret.getName())) {
+          return AlaudaUtils.getAuthenticatedAlaudaClient()
+                  .secrets()
+                  .inNamespace(pipelineConfig.getMetadata().getNamespace())
+                  .withName(secret.getName()).get();
+      }
+
+      return null;
   }
 
     public static synchronized String updateSourceCredentials(
@@ -98,8 +103,7 @@ public class CredentialsUtils {
         return credID;
     }
 
-  public static synchronized String updateSourceCredentials(
-    PipelineConfig pipelineConfig) throws IOException {
+  public static synchronized String updateSourceCredentials(PipelineConfig pipelineConfig) throws IOException {
     Secret sourceSecret = getSourceCredentials(pipelineConfig);
     String credID = null;
     if (sourceSecret != null) {
@@ -238,23 +242,28 @@ public class CredentialsUtils {
           logger.info("global plugin configuration is null");
           return "";
         }
-        String credentialsId = GlobalPluginConfiguration.get()
-                .getCredentialsId();
+
+        String credentialsId = GlobalPluginConfiguration.get().getCredentialsId();
         if (credentialsId.equals("")) {
             return "";
         }
 
+        String token = getToken(credentialsId);
+        return token == null ? "" : token;
+    }
+
+    public static String getToken(String credentialId) {
         AlaudaToken token = CredentialsMatchers.firstOrNull(
                 CredentialsProvider.lookupCredentials(AlaudaToken.class,
                         Jenkins.getActiveInstance(), ACL.SYSTEM,
                         Collections.<DomainRequirement> emptyList()),
-                CredentialsMatchers.withId(credentialsId));
+                CredentialsMatchers.withId(credentialId));
 
         if (token != null) {
             return token.getToken();
+        } else {
+            return null;
         }
-
-        return "";
     }
 
     private static Credentials lookupCredentials(String id) {
@@ -281,6 +290,7 @@ public class CredentialsUtils {
             return null;
         }
 
+        //kubernetes.io/service-account-token
         final String secretName = secretName(namespace, name);
         switch (secret.getType()) {
         case ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE:
@@ -314,6 +324,9 @@ public class CredentialsUtils {
           case ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER:
             String dockerData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_DOCKER);
             return newDockerCredentials(secretName, dockerData);
+            case ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN:
+                String token = secret.getData().get("token");
+                return newTokenCredentials(secretName, token);
         default:
             logger.log(Level.WARNING,
                     "Unknown secret type: " + secret.getType());
@@ -358,6 +371,14 @@ public class CredentialsUtils {
                 secretName, secretName, new String(Base64.decode(usernameData),
                         StandardCharsets.UTF_8), new String(
                         Base64.decode(passwordData), StandardCharsets.UTF_8));
+    }
+
+    public static Credentials newTokenCredentials(String secretName, String token) {
+        token = new String(Base64.decode(token), StandardCharsets.UTF_8);
+
+        hudson.util.Secret secret = hudson.util.Secret.fromString(token);
+        return new AlaudaToken(CredentialsScope.GLOBAL, secretName, null, secret);
+//        return new OpenShiftTokenCredentialImpl(CredentialsScope.GLOBAL, secretName(namespace, secretName), null, secret);
     }
 
     private static Credentials newDockerCredentials(String secretName, String dockerData) {
