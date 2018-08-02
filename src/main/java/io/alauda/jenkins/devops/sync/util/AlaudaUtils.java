@@ -544,11 +544,16 @@ public class AlaudaUtils {
 
     public static void updatePipelinePhase(Pipeline pipeline, String phase) {
         logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}", new Object[]{phase, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()});
+        AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.severe("Can't found alauda client.");
+            return;
+        }
 
         // TODO: Change to use edit instead....
         String namespace = pipeline.getMetadata().getNamespace();
         String name = pipeline.getMetadata().getName();
-        Pipeline pipe = getAuthenticatedAlaudaClient().pipelines().inNamespace(namespace).withName(name).get();
+        Pipeline pipe = client.pipelines().inNamespace(namespace).withName(name).get();
 
         if (pipe == null) {
             logger.warning(() -> "Can't find Pipeline by namespace: " + namespace + ", name: " + name);
@@ -562,8 +567,7 @@ public class AlaudaUtils {
         stats.setPhase(phase);
         pipe.setStatus(stats);
 
-        getAuthenticatedAlaudaClient()
-                .pipelines()
+        client.pipelines()
                 .inNamespace(namespace)
                 .withName(name)
                 .patch(pipe);
@@ -745,6 +749,11 @@ public class AlaudaUtils {
 
     public static boolean isBindingToCurrentJenkins(String namespace) {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.severe("Can't found alauda client.");
+            return false;
+        }
+
         String jenkinsService = GlobalPluginConfiguration.get().getJenkinsService();
 
         JenkinsBindingList jenkinsBindings = client.jenkinsBindings().inNamespace(namespace).list();

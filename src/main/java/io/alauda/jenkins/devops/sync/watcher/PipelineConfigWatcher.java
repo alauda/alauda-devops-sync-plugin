@@ -307,7 +307,7 @@ public class PipelineConfigWatcher implements BaseWatcher {
             String jobName = AlaudaUtils.jenkinsJobName(pipelineConfig);
             String jobFullName = AlaudaUtils.jenkinsJobFullName(pipelineConfig);
             WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
-            Jenkins activeInstance = Jenkins.getActiveInstance();
+            Jenkins activeInstance = Jenkins.getInstance();
             ItemGroup parent = activeInstance;
             if (job == null) {
               job = (WorkflowJob) activeInstance.getItemByFullName(jobFullName);
@@ -479,7 +479,7 @@ public class PipelineConfigWatcher implements BaseWatcher {
               job.delete();
             } finally {
               PipelineConfigToJobMap.removeJobWithPipelineConfig(pipelineConfig);
-              Jenkins.getActiveInstance().rebuildDependencyGraphAsync();
+              Jenkins.getInstance().rebuildDependencyGraphAsync();
               deleteCompleted(pipelineConfig.getMetadata().getNamespace() + pipelineConfig.getMetadata().getName());
             }
             return null;

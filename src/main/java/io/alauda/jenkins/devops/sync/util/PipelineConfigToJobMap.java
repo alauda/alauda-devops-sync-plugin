@@ -22,7 +22,7 @@ public class PipelineConfigToJobMap {
 
   public static synchronized void initializePipelineConfigToJobMap() {
     if (pipelineConfigToJobMap == null) {
-      List<WorkflowJob> jobs = Jenkins.getActiveInstance().getAllItems(
+      List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(
         WorkflowJob.class);
       pipelineConfigToJobMap = new ConcurrentHashMap<>(jobs.size());
       for (WorkflowJob job : jobs) {

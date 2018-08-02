@@ -43,7 +43,9 @@ import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
@@ -92,6 +94,7 @@ public class PipelineConfigToJobMapper {
                     jenkinsfilePath = DEFAULT_JENKINS_FILEPATH;
                 }
 
+                @Nonnull
                 PipelineSourceGit gitSource = source.getGit();
                 String branchRef = gitSource.getRef();
                 List<BranchSpec> branchSpecs = Collections.emptyList();

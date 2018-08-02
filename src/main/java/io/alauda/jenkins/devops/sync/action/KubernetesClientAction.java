@@ -5,6 +5,7 @@ import hudson.model.UnprotectedRootAction;
 import hudson.util.HttpResponses;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.listener.JenkinsPipelineJobListener;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.kubernetes.client.Config;
 import io.alauda.kubernetes.client.KubernetesClientException;
@@ -21,11 +22,14 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 @Extension
 @Symbol("alauda")
 @ExportedBean
 public class KubernetesClientAction implements UnprotectedRootAction {
+    private static final Logger logger = Logger.getLogger(KubernetesClientAction.class.getName());
+
     @CheckForNull
     @Override
     public String getIconFileName() {
@@ -73,7 +77,7 @@ public class KubernetesClientAction implements UnprotectedRootAction {
                 return HttpResponses.okJSON(pro);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.severe(e.getMessage());
         }
 
         return HttpResponses.errorJSON("no debug file");

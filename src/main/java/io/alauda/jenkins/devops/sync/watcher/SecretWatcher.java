@@ -70,7 +70,7 @@ public class SecretWatcher implements BaseWatcher {
     @Override
     public void init(String[] namespaces) {
         if (trackedSecrets == null) {
-            trackedSecrets = new ConcurrentHashMap<String, String>();
+            trackedSecrets = new ConcurrentHashMap<>();
         }
 
         for (String namespace : namespaces) {
@@ -166,9 +166,7 @@ public class SecretWatcher implements BaseWatcher {
         String uid = secret.getMetadata().getUid();
         String rv = secret.getMetadata().getResourceVersion();
         String savedRV = trackedSecrets.get(uid);
-        if (savedRV == null || !savedRV.equals(rv))
-            return true;
-        return false;
+        return (savedRV == null || !savedRV.equals(rv));
     }
 
     private void deleteCredential(final Secret secret) throws Exception {

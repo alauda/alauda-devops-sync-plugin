@@ -15,6 +15,7 @@ import org.junit.*;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.TestExtension;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.List;
 
@@ -28,7 +29,7 @@ public class PipelineWatcherTest {
     private DevOpsInit devOpsInit;
 
     @Before
-    public void setup() throws IOException {
+    public void setup() throws InterruptedException {
         devOpsInit = new DevOpsInit().init();
         client = devOpsInit.getClient();
         GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
@@ -133,7 +134,9 @@ public class PipelineWatcherTest {
             Thread.sleep(1000);
         }
         assertNotNull(build);
-        assertTrue(build.getLog(), build.isBuilding());
+        @Nonnull // just for sonar check
+        String log = build.getLog();
+        assertTrue(log, build.isBuilding());
         return build;
     }
 

@@ -133,15 +133,13 @@ public class JenkinsPipelineJobListener extends ItemListener {
           if (annotations != null) {
             generatedBySyncPlugin = Annotations.GENERATED_BY_JENKINS.equals(annotations.get(Annotations.GENERATED_BY));
           }
-          // hacking for test
-          generatedBySyncPlugin = true;
+
           try {
             if (!generatedBySyncPlugin) {
               logger.info("PipelineConfig " + property.getNamespace() + "/" + property.getName() + " will not" + " be deleted since it was not created by " + " the sync plugin");
             } else {
               logger.info("Deleting PipelineConfig " + property.getNamespace() + "/" + property.getName());
               AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(namespace).withName(pipelineConfigName).delete();
-
             }
           } catch (KubernetesClientException e) {
             if (HTTP_NOT_FOUND != e.getCode()) {
@@ -336,48 +334,46 @@ public class JenkinsPipelineJobListener extends ItemListener {
         }
     }
 
-  private boolean hasEmbeddedPipelineOrValidSource(PipelineConfig pipelineConfig) {
-    PipelineConfigSpec spec = pipelineConfig.getSpec();
-    if (spec != null) {
-      PipelineStrategy strategy = spec.getStrategy();
-      if (strategy != null) {
+    private boolean hasEmbeddedPipelineOrValidSource(PipelineConfig pipelineConfig) {
+        PipelineConfigSpec spec = pipelineConfig.getSpec();
+        if (spec != null) {
+            PipelineStrategy strategy = spec.getStrategy();
+            if (strategy != null) {
 
-        PipelineStrategyJenkins jenkinsPipelineStrategy = strategy.getJenkins();
-        if (jenkinsPipelineStrategy != null) {
-          if (StringUtils.isNotBlank(jenkinsPipelineStrategy.getJenkinsfile())) {
-            return true;
-          }
-          if (StringUtils.isNotBlank(jenkinsPipelineStrategy.getJenkinsfilePath())) {
-            PipelineSource source = spec.getSource();
-            if (source != null) {
-              PipelineSourceGit git = source.getGit();
-              if (git != null) {
-                if (StringUtils.isNotBlank(git.getUri())) {
-                  return true;
+                PipelineStrategyJenkins jenkinsPipelineStrategy = strategy.getJenkins();
+                if (jenkinsPipelineStrategy != null) {
+                    if (StringUtils.isNotBlank(jenkinsPipelineStrategy.getJenkinsfile())) {
+                        return true;
+                    }
+                    if (StringUtils.isNotBlank(jenkinsPipelineStrategy.getJenkinsfilePath())) {
+                        PipelineSource source = spec.getSource();
+                        if (source != null) {
+                            PipelineSourceGit git = source.getGit();
+                            if (git != null) {
+                                return (StringUtils.isNotBlank(git.getUri()));
+                            }
+                            // TODO support other SCMs
+                        }
+                    }
                 }
-              }
-              // TODO support other SCMs
             }
-          }
         }
-      }
+        return false;
     }
-    return false;
-  }
 
-  /**
-   * TODO is there a cleaner way to get this class injected with any new
-   * configuration from GlobalPluginConfiguration?
-   */
-  private void reconfigure() {
-    GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
-    if (config != null) {
-      this.jobNamePattern = config.getJobNamePattern();
-      this.jenkinsService = config.getJenkinsService();
-      this.server = config.getServer();
-      init();
+    /**
+     * TODO is there a cleaner way to get this class injected with any new
+     * configuration from GlobalPluginConfiguration?
+     */
+    private void reconfigure() {
+        GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
+        if (config != null) {
+            this.jobNamePattern = config.getJobNamePattern();
+            this.jenkinsService = config.getJenkinsService();
+            this.server = config.getServer();
+            init();
+        }
     }
-  }
 
     @Override
     public String toString() {

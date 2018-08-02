@@ -68,14 +68,14 @@ import static java.util.logging.Level.WARNING;
 import static org.apache.commons.lang.StringUtils.isBlank;
 
 /**
+ * @author suren
  */
 public class JenkinsUtils {
-
 	private static final Logger LOGGER = Logger.getLogger(JenkinsUtils.class.getName());
 	private static final String PARAM_FROM_ENV_DESCRIPTION = "From Alauda DevOps PipelineConfig Parameter";
 
 	public static Job getJob(String job) {
-		TopLevelItem item = Jenkins.getActiveInstance().getItem(job);
+		TopLevelItem item = Jenkins.getInstance().getItem(job);
 		if (item instanceof Job) {
 			return (Job) item;
 		}
@@ -84,7 +84,7 @@ public class JenkinsUtils {
 
 	public static String getRootUrl() {
 		// TODO is there a better place to find this?
-		String root = Jenkins.getActiveInstance().getRootUrl();
+		String root = Jenkins.getInstance().getRootUrl();
 		if (root == null || root.length() == 0) {
 			root = "http://localhost:8080/";
 		}
@@ -399,10 +399,10 @@ public class JenkinsUtils {
 		return buildActions;
 	}
 
+	@NotNull
     public static List<ParameterValue> getParameterValues(List<PipelineParameter> pipelineParameters) {
-        List<ParameterValue> envVarList = new ArrayList<ParameterValue>();
+        List<ParameterValue> envVarList = new ArrayList<>();
         if (pipelineParameters != null && pipelineParameters.size() > 0) {
-
             for (PipelineParameter pipeParam : pipelineParameters) {
                 ParameterValue paramValue = null;
                 switch (pipeParam.getType()) {
@@ -415,7 +415,7 @@ public class JenkinsUtils {
                                 Boolean.valueOf(pipeParam.getValue()), pipeParam.getDescription());
                         break;
                     default:
-                        LOGGER.warning("Parameter type `" + pipeParam.getType() + "` is not supported.. skipping...");
+                        LOGGER.warning(() -> "Parameter type `" + pipeParam.getType() + "` is not supported.. skipping...");
                         break;
                 }
 
@@ -448,24 +448,6 @@ public class JenkinsUtils {
                     + "because of missing pc project property");
             return false;
         }
-
-//        switch (pcProp.getPipelineRunPolicy()) {
-          // TODO: Not implemented yet
-//        case SERIAL_LATEST_ONLY:
-//            cancelQueuedBuilds(job, pcProp.getUid());
-//            if (job.isBuilding()) {
-//                return false;
-//            }
-//            break;
-//        case SERIAL:
-//            if (job.isInQueue() || job.isBuilding()) {
-//              LOGGER.info("pipeline job  is building... or in queue.... : "+pipeline.getMetadata().getName()+" - job "+job);
-//                return false;
-//            }
-//            break;
-//        default:
-//        }
-
 
         ObjectMeta meta = pipeline.getMetadata();
         String namespace = meta.getNamespace();
@@ -525,20 +507,6 @@ public class JenkinsUtils {
             }
           }
 
-//            SourceRevision sourceRevision = pipeline.getSpec().getRevision();
-//            if (sourceGit != null && sourceRevision != null) {
-//                GitSourceRevision gitSourceRevision = sourceRevision.getGit();
-//                if (gitSourceRevision != null) {
-//                    try {
-//                        URIish repoURL = new URIish(sourceGit.getUri());
-//                        pipelineActions.add(new RevisionParameterAction(
-//                                gitSourceRevision.getCommit(), repoURL));
-//                    } catch (URISyntaxException e) {
-//                        LOGGER.log(SEVERE, "Failed to parse git repo URL"
-//                                + sourceGit.getUri(), e);
-//                    }
-//                }
-//            }
           LOGGER.info("pipeline got cause....: "+pipeline.getMetadata().getName()+" pipeline actions "+pipelineActions);
 
             // params added by user in jenkins ui
@@ -549,7 +517,7 @@ public class JenkinsUtils {
                     pipelineActions, userProvidedParams);
 
             putJobWithPipelineConfig(job, pipelineConfig);
-            LOGGER.info("pipeline config update with job: "+pipeline.getMetadata().getName()+" pipeline config "+pipelineConfig.getMetadata().getName());
+            LOGGER.info(() -> "pipeline config update with job: "+pipeline.getMetadata().getName()+" pipeline config "+pipelineConfig.getMetadata().getName());
 
             Action[] actionArray = pipelineActions.toArray(new Action[pipelineActions.size()]);
             if (job.scheduleBuild2(0, actionArray) != null) {
@@ -562,10 +530,12 @@ public class JenkinsUtils {
                     Thread.sleep(50l);
                 } catch (InterruptedException e) {
                     // Ignore
+                    LOGGER.log(Level.SEVERE, "updatePipelinePhase Interrupted", e);
+                    Thread.currentThread().interrupt();
                 }
                 return true;
             } else {
-              LOGGER.info("Will not schedule build for this pipeline: "+pipeline.getMetadata().getName());
+              LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipeline.getMetadata().getName());
             }
 
             return false;
@@ -589,11 +559,7 @@ public class JenkinsUtils {
 			return;
 		}
 
-		try {
-			updatePipelinePhase(pipeline, CANCELLED);
-		} catch (Exception e) {
-			throw e;
-		}
+        updatePipelinePhase(pipeline, CANCELLED);
 	}
 
 	private static WorkflowRun getRun(WorkflowJob job, Pipeline pipeline) {
@@ -625,7 +591,7 @@ public class JenkinsUtils {
           LOGGER.info("Deleting run: " + run.toString());
             run.delete();
         } catch (IOException e) {
-            LOGGER.warning("Unable to delete run " + run.toString() + ":" + e.getMessage());
+            LOGGER.warning(() -> "Unable to delete run " + run.toString() + ":" + e.getMessage());
         }
 	}
 
@@ -687,7 +653,7 @@ public class JenkinsUtils {
 	public static boolean cancelQueuedPipeline(WorkflowJob job, Pipeline pipeline) {
 	  LOGGER.info("cancelling queued pipeline: "+pipeline.getMetadata().getName());
 		String pipelineUid = pipeline.getMetadata().getUid();
-		final Queue pipelineQueue = Jenkins.getActiveInstance().getQueue();
+		final Queue pipelineQueue = Jenkins.getInstance().getQueue();
 		for (final Queue.Item item : pipelineQueue.getItems()) {
 			for (Cause cause : item.getCauses()) {
 				if (cause instanceof JenkinsPipelineCause && ((JenkinsPipelineCause) cause).getUid().equals(pipelineUid)) {
@@ -705,8 +671,8 @@ public class JenkinsUtils {
 	}
 
 	public static void cancelQueuedBuilds(WorkflowJob job, String pcUid) {
-    LOGGER.info("cancelling queued pipeline by uuid: "+pcUid);
-		Queue pipelineQueue = Jenkins.getActiveInstance().getQueue();
+        LOGGER.info(() -> "cancelling queued pipeline by uuid: "+pcUid);
+		Queue pipelineQueue = Jenkins.getInstance().getQueue();
 		for (Queue.Item item : pipelineQueue.getItems()) {
 			for (Cause cause : item.getCauses()) {
 				if (cause instanceof JenkinsPipelineCause) {
@@ -791,7 +757,7 @@ public class JenkinsUtils {
                 if (p1.getMetadata().getAnnotations() == null
                         || p1.getMetadata().getAnnotations()
                                 .get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER) == null) {
-                    LOGGER.warning("cannot compare pipeline "
+                    LOGGER.warning(() -> "cannot compare pipeline "
                             + p1.getMetadata().getName()
                             + " from namespace "
                             + p1.getMetadata().getNamespace()
@@ -802,7 +768,7 @@ public class JenkinsUtils {
                 if (p2.getMetadata().getAnnotations() == null
                         || p2.getMetadata().getAnnotations()
                                 .get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER) == null) {
-                    LOGGER.warning("cannot compare pipeline "
+                    LOGGER.warning(() -> "cannot compare pipeline "
                             + p2.getMetadata().getName()
                             + " from namespace "
                             + p2.getMetadata().getNamespace()
@@ -908,127 +874,5 @@ public class JenkinsUtils {
 			name = name.substring(0, name.length() - masterSuffix.length());
 		}
 		return name;
-	}
-
-	public static void removePodTemplate(PodTemplate podTemplate) {
-		KubernetesCloud kubeCloud = JenkinsUtils.getKubernetesCloud();
-		if (kubeCloud != null) {
-			LOGGER.info("Removing PodTemplate: " + podTemplate.getName());
-			// NOTE - PodTemplate does not currently override hashCode, equals,
-			// so
-			// the KubernetsCloud.removeTemplate currently is broken;
-			// kubeCloud.removeTemplate(podTemplate);
-			List<PodTemplate> list = kubeCloud.getTemplates();
-			Iterator<PodTemplate> iter = list.iterator();
-			while (iter.hasNext()) {
-				PodTemplate pt = iter.next();
-				if (pt.getName().equals(podTemplate.getName())) {
-					iter.remove();
-				}
-			}
-			// now set new list back into cloud
-			kubeCloud.setTemplates(list);
-			try {
-				// pedantic mvn:findbugs
-				Jenkins jenkins = Jenkins.getInstance();
-				if (jenkins != null)
-					jenkins.save();
-			} catch (IOException e) {
-				LOGGER.log(Level.SEVERE, "removePodTemplate", e);
-			}
-
-			if (LOGGER.isLoggable(Level.FINE)) {
-				LOGGER.fine("PodTemplates now:");
-				for (PodTemplate pt : kubeCloud.getTemplates()) {
-					LOGGER.fine(pt.getName());
-				}
-			}
-		}
-	}
-
-	public static List<PodTemplate> getPodTemplates() {
-		KubernetesCloud kubeCloud = JenkinsUtils.getKubernetesCloud();
-		if (kubeCloud != null) {
-			// create copy of list for more flexiblity in loops
-			ArrayList<PodTemplate> list = new ArrayList<PodTemplate>();
-			list.addAll(kubeCloud.getTemplates());
-			return list;
-		} else {
-			return null;
-		}
-	}
-
-	public static boolean hasPodTemplate(String name) {
-		if (name == null)
-			return false;
-		KubernetesCloud kubeCloud = JenkinsUtils.getKubernetesCloud();
-		if (kubeCloud != null) {
-			List<PodTemplate> list = kubeCloud.getTemplates();
-			for (PodTemplate pod : list) {
-				if (name.equals(pod.getName()))
-					return true;
-			}
-		}
-		return false;
-	}
-
-	public static void addPodTemplate(PodTemplate podTemplate) {
-		// clear out existing template with same name; k8s plugin maintains
-		// list, not map
-		removePodTemplate(podTemplate);
-
-		KubernetesCloud kubeCloud = JenkinsUtils.getKubernetesCloud();
-		if (kubeCloud != null) {
-			LOGGER.info("Adding PodTemplate: " + podTemplate.getName());
-			kubeCloud.addTemplate(podTemplate);
-			try {
-				// pedantic mvn:findbugs
-				Jenkins jenkins = Jenkins.getInstance();
-				if (jenkins != null)
-					jenkins.save();
-			} catch (IOException e) {
-				LOGGER.log(Level.SEVERE, "addPodTemplate", e);
-			}
-		}
-	}
-
-	public static KubernetesCloud getKubernetesCloud() {
-		// pedantic mvn:findbugs
-		Jenkins jenkins = Jenkins.getInstance();
-		if (jenkins == null)
-			return null;
-		Cloud openShiftCloud = jenkins.getCloud("openshift");
-		if (openShiftCloud instanceof KubernetesCloud) {
-			return (KubernetesCloud) openShiftCloud;
-		}
-
-		return null;
-	}
-
-	public static PodTemplate podTemplateInit(String name, String image, String label) {
-		PodTemplate podTemplate = new PodTemplate(image, new ArrayList<PodVolumes.PodVolume>());
-		// with the above ctor guarnateed to have 1 container
-		// also still force our image as the special case "jnlp" container for
-		// the KubernetesSlave;
-		// attempts to use the "jenkinsci/jnlp-slave:alpine" image for a
-		// separate jnlp container
-		// have proved unsuccessful (could not access gihub.com for example)
-		podTemplate.getContainers().get(0).setName("jnlp");
-		// podTemplate.setInstanceCap(Integer.MAX_VALUE);
-		podTemplate.setName(name);
-		podTemplate.setLabel(label);
-		podTemplate.setAlwaysPullImage(true);
-		podTemplate.setCommand("");
-		podTemplate.setArgs("${computer.jnlpmac} ${computer.name}");
-		podTemplate.setRemoteFs("/tmp");
-		String podName = System.getenv().get("HOSTNAME");
-		if (podName != null) {
-			Pod pod = getAuthenticatedAlaudaClient().pods().withName(podName).get();
-			if (pod != null) {
-				podTemplate.setServiceAccount(pod.getSpec().getServiceAccountName());
-			}
-		}
-
-		return podTemplate;
 	}
 }

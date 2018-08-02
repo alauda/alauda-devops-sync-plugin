@@ -88,7 +88,7 @@ import static java.util.logging.Level.*;
 public class PipelineSyncRunListener extends RunListener<Run> {
   private static final Logger logger = Logger.getLogger(PipelineSyncRunListener.class.getName());
 
-  private long pollPeriodMs = 1000 * 5;  // 5 seconds
+  private long pollPeriodMs = 1000L * 5;  // 5 seconds
   private long delayPollPeriodMs = 1000; // 1 seconds
   private static final long maxDelay = 30000;
 
@@ -243,9 +243,10 @@ public class PipelineSyncRunListener extends RunListener<Run> {
       }
       throw e;
     } catch (InterruptedException e) {
-        e.printStackTrace();
+        logger.log(Level.SEVERE, "update pipeline interrupted", e);
+        Thread.currentThread().interrupt();
     } catch (TimeoutException e) {
-        e.printStackTrace();
+        logger.log(Level.SEVERE, "update pipeline timeout", e);
     }
   }
 

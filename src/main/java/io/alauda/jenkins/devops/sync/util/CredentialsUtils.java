@@ -229,7 +229,7 @@ public class CredentialsUtils {
                             + "which is referenced by jobs: " + sb.toString());
                 }
                 CredentialsStore s = CredentialsProvider
-                        .lookupStores(Jenkins.getActiveInstance()).iterator()
+                        .lookupStores(Jenkins.getInstance()).iterator()
                         .next();
                 s.removeCredentials(Domain.global(), existingCred);
                 logger.info("Deleted credential " + id + " from Secret " + name
@@ -271,7 +271,7 @@ public class CredentialsUtils {
     public static String getToken(String credentialId) {
         AlaudaToken token = CredentialsMatchers.firstOrNull(
                 CredentialsProvider.lookupCredentials(AlaudaToken.class,
-                        Jenkins.getActiveInstance(), ACL.SYSTEM,
+                        Jenkins.getInstance(), ACL.SYSTEM,
                         Collections.<DomainRequirement> emptyList()),
                 CredentialsMatchers.withId(credentialId));
 

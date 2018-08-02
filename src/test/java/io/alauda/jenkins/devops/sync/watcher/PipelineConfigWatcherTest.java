@@ -44,7 +44,7 @@ public class PipelineConfigWatcherTest {
     private DevOpsInit devOpsInit;
 
     @Before
-    public void setup() throws IOException {
+    public void setup() throws InterruptedException {
         devOpsInit = new DevOpsInit().init();
         client = devOpsInit.getClient();
         GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
@@ -123,6 +123,7 @@ public class PipelineConfigWatcherTest {
 
         // delete from jenkins
         job.delete();
+        assertNotExists(jobName);
         assertNull(devOpsInit.getPipelineConfig(client, jobName));
 
         // delete from k8s
@@ -133,6 +134,15 @@ public class PipelineConfigWatcherTest {
         devOpsInit.deletePipelineConfig(client, jobName);
         Thread.sleep(3000);
         assertNull(JobUtils.findJob(j.jenkins, folderName, jobName));
+    }
+
+    private void assertNotExists(String jobName) {
+        for(int i = 0; i < 4; i++) {
+            PipelineConfig config = devOpsInit.getPipelineConfig(client, jobName);
+            if(config == null) {
+                return;
+            }
+        }
     }
 
     @Test
@@ -258,8 +268,8 @@ public class PipelineConfigWatcherTest {
             }
             Thread.sleep(1000);
         }
-        StringBuffer buf = new StringBuffer(target.getStatus() != null && target.getStatus().getMessage() != null ? target.getStatus().getMessage(): "");
-        if(target.getStatus().getConditions() != null) {
+        StringBuffer buf = new StringBuffer(target != null && target.getStatus() != null && target.getStatus().getMessage() != null ? target.getStatus().getMessage(): "");
+        if(target != null && target.getStatus().getConditions() != null) {
             target.getStatus().getConditions().forEach(condition -> {
                 buf.append("\n").append(condition.getMessage());
             });

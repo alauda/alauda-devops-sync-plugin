@@ -401,7 +401,7 @@ public class PipelineWatcher implements BaseWatcher {
   private static synchronized void reconcileRunsAndPipelines() {
     logger.info("Reconciling job runs and pipelines");
 
-    List<WorkflowJob> jobs = Jenkins.getActiveInstance().getAllItems(WorkflowJob.class);
+    List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
 
     for (WorkflowJob job : jobs) {
       PipelineConfigProjectProperty pcpp = job.getProperty(PipelineConfigProjectProperty.class);

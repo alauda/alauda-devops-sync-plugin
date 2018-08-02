@@ -260,7 +260,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
             GlobalPluginConfiguration.LOGGER.info("Waiting for Jenkins to be started");
 
             while(true) {
-              Jenkins instance = Jenkins.getActiveInstance();
+              Jenkins instance = Jenkins.getInstance();
               InitMilestone initLevel = instance.getInitLevel();
               GlobalPluginConfiguration.LOGGER.fine("Jenkins init level: " + initLevel.toString());
               if (initLevel == InitMilestone.COMPLETED) {
@@ -270,11 +270,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
 
               GlobalPluginConfiguration.LOGGER.fine("Jenkins not ready...");
 
-              try {
                 Thread.sleep(500L);
-              } catch (InterruptedException var4) {
-                ;
-              }
             }
           }
         };
