@@ -99,7 +99,7 @@ pipeline {
                       }
 
                     sh """
-                        mvn clean install -U
+                        mvn clean install -U findbugs:findbugs
 
                         if [ -d .tmp ]; then
                           rm -rf .tmp
@@ -193,6 +193,9 @@ pipeline {
               echo "damn!"
                 // deploy.notificationFailed(DEPLOYMENT, DINGDING_BOT, "流水线失败了", RELEASE_BUILD)
             }
+        }
+        always {
+            junit "**/target/surefire-reports/**/*.xml"
         }
     }
 }
