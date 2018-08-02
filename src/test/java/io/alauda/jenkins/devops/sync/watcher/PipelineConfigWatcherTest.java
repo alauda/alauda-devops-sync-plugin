@@ -7,6 +7,7 @@ import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
 import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.util.DevOpsInit;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
@@ -14,6 +15,7 @@ import io.alauda.jenkins.devops.sync.util.JobUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.alauda.kubernetes.api.model.*;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.junit.After;
@@ -64,7 +66,7 @@ public class PipelineConfigWatcherTest {
         assertEquals(workflowJob.isConcurrentBuild(), PipelineConfigUtils.isParallel(config));
         assertNotEquals(workflowJob.isConcurrentBuild(), PipelineConfigUtils.isSerialPolicy(config));
 
-        // check pipeline trigger
+        // check pipeline run
         Pipeline pipeline = devOpsInit.createPipeline(client, jobName);
         assertNotNull(pipeline);
         Thread.sleep(3000);
@@ -78,7 +80,7 @@ public class PipelineConfigWatcherTest {
         CpsFlowDefinition cpsFlowDefinition = getCpsFlowDefinition(folderName, jobName);
         assertEquals("jenkinsfile update failed", script, cpsFlowDefinition.getScript());
 
-        // check pipeline trigger after update jenkinsfile
+        // check pipeline run after update jenkinsfile
         pipeline = devOpsInit.createPipeline(client, jobName);
         assertNotNull(pipeline);
         Thread.sleep(3000);
@@ -86,6 +88,28 @@ public class PipelineConfigWatcherTest {
         build = jobItem.getBuildByNumber(2);
         assertNotNull(build);
         assertEquals(Result.SUCCESS, build.getResult());
+    }
+
+    @Test
+    public void scmPipeline() throws Exception {
+        // lack git source info
+        PipelineConfig config = devOpsInit.createPipelineConfig(client, null, "jenkinsfile", null);
+        PipelineConfig targetConfig = assertPhase(config, PipelineConfigPhase.ERROR);
+        PipelineConfigStatus status = targetConfig.getStatus();
+        assertNotNull(status.getMessage());
+        List<Condition> conditions = status.getConditions();
+        assertEquals(1, conditions.size());
+        conditions.forEach(condition -> {
+            assertNotNull(condition.getMessage());
+            assertNotNull(condition.getReason());
+        });
+
+        // correct pipeline
+        config = devOpsInit.createPipelineConfig(client, null, "jenkinsfile", null, devOpsInit.getSecretName());
+        targetConfig = assertPhase(config, PipelineConfigPhase.READY);
+        ObjectMeta meta = targetConfig.getMetadata();
+        WorkflowJob wfJob = JobUtils.findWorkflowJob(j.jenkins, meta.getNamespace(), meta.getName());
+        assertEquals(CpsScmFlowDefinition.class, wfJob.getDefinition().getClass());
     }
 
     @Test
@@ -202,14 +226,48 @@ public class PipelineConfigWatcherTest {
         assertEquals(triggers.size(), k8sTriggers.size());
 
         // add triggers from k8s
-        final String cron = "* * * * *";
+        final String cron = "* * * * 1";
         config = devOpsInit.createPipelineConfig(client);
         devOpsInit.addCronTrigger4PipelineConfig(client, config.getMetadata().getName(), cron);
-        Thread.sleep(3000);
+        assertPhase(config, PipelineConfigPhase.READY);
         job = JobUtils.findWorkflowJob(j.jenkins, folderName, config.getMetadata().getName());
         assertNotNull(job);
         assertEquals(1, job.getTriggers().size());
         assertEquals(cron, job.getTriggers().values().toArray(new Trigger[]{})[0].getSpec());
+
+        // add invalid trigger from k8s
+        final String invalidCron = "bad";
+        config = devOpsInit.createPipelineConfig(client, "echo '2'", invalidCron);
+        config = assertPhase(config, PipelineConfigPhase.ERROR);
+        assertNotNull(config.getStatus().getMessage());
+        List<Condition> conditions = config.getStatus().getConditions();
+        assertNotNull(conditions);
+        assertEquals(1, conditions.size());
+        conditions.forEach(condition -> assertNotNull(condition.getMessage()));
+    }
+
+    private PipelineConfig assertPhase(final PipelineConfig config, final String phase) throws InterruptedException {
+        assertNotNull(config);
+        String name = config.getMetadata().getName();
+
+        PipelineConfig target = null;
+        for(int i = 0; i < 8; i++) {
+            target = devOpsInit.getPipelineConfig(client, name);
+            if(phase.equals(target.getStatus().getPhase())) {
+                break;
+            }
+            Thread.sleep(1000);
+        }
+        StringBuffer buf = new StringBuffer(target.getStatus() != null && target.getStatus().getMessage() != null ? target.getStatus().getMessage(): "");
+        if(target.getStatus().getConditions() != null) {
+            target.getStatus().getConditions().forEach(condition -> {
+                buf.append("\n").append(condition.getMessage());
+            });
+        }
+
+        assertEquals(buf.toString(), phase, target.getStatus().getPhase());
+
+        return target;
     }
 
     private CpsFlowDefinition getCpsFlowDefinition(String folderName, String jobName) throws Exception {

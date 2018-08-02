@@ -12,6 +12,7 @@ import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.api.model.BuildConfig;
 import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
 import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
@@ -29,17 +30,17 @@ import java.util.logging.Logger;
 
 import org.json.*;
 
+import javax.validation.constraints.NotNull;
+
 import static hudson.Util.fixNull;
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 public class CredentialsUtils {
 
-    private final static Logger logger = Logger
-            .getLogger(CredentialsUtils.class.getName());
+    private final static Logger logger = Logger.getLogger(CredentialsUtils.class.getName());
 
-    public static synchronized Secret getSourceCredentials(
-            BuildConfig buildConfig) {
+    public static synchronized Secret getSourceCredentials(BuildConfig buildConfig) {
         if (buildConfig.getSpec() != null
                 && buildConfig.getSpec().getSource() != null
                 && buildConfig.getSpec().getSource().getSourceSecret() != null
@@ -56,7 +57,7 @@ public class CredentialsUtils {
         return null;
     }
 
-  private static synchronized Secret getSourceCredentials(PipelineConfig pipelineConfig) {
+  private static synchronized Secret getSourceCredentials(final PipelineConfig pipelineConfig) {
       PipelineConfigSpec spec = pipelineConfig.getSpec();
       if(spec == null) {
           return null;
@@ -78,8 +79,7 @@ public class CredentialsUtils {
       return null;
   }
 
-    public static synchronized String updateSourceCredentials(
-            BuildConfig buildConfig) throws IOException {
+    public static synchronized String updateSourceCredentials(BuildConfig buildConfig) throws IOException {
         Secret sourceSecret = getSourceCredentials(buildConfig);
         String credID = null;
         if (sourceSecret != null) {
@@ -103,30 +103,34 @@ public class CredentialsUtils {
         return credID;
     }
 
-  public static synchronized String updateSourceCredentials(PipelineConfig pipelineConfig) throws IOException {
-    Secret sourceSecret = getSourceCredentials(pipelineConfig);
-    String credID = null;
-    if (sourceSecret != null) {
-      credID = upsertCredential(sourceSecret, sourceSecret
-        .getMetadata().getNamespace(), sourceSecret.getMetadata()
-        .getName());
-      if (credID != null)
+    /**
+     * @param pipelineConfig
+     * @return
+     * @throws IOException
+     * @throws InvalidSecretException
+     */
+    public static synchronized String updateSourceCredentials(final PipelineConfig pipelineConfig) throws IOException {
+        final Secret sourceSecret = getSourceCredentials(pipelineConfig);
+        final String credID;
+        if (sourceSecret != null) {
+            final ObjectMeta metadata = sourceSecret.getMetadata();
+            final String namespace = metadata.getNamespace();
+            final String name = metadata.getName();
 
-        PipelineConfigSecretToCredentialsMap.linkPCSecretToCredential(
-          NamespaceName.create(pipelineConfig).toString(), credID);
+            credID = upsertCredential(sourceSecret, namespace, name);
 
-    } else {
-      // call delete and remove any credential that fits the
-      // project/bcname pattern
-      credID = PipelineConfigSecretToCredentialsMap
-        .unlinkPCSecretToCrendential(NamespaceName.create(
-          pipelineConfig).toString());
-      if (credID != null)
-        deleteCredential(credID, NamespaceName.create(pipelineConfig),
-          pipelineConfig.getMetadata().getResourceVersion());
+            PipelineConfigSecretToCredentialsMap.linkPCSecretToCredential(NamespaceName.create(pipelineConfig).toString(), credID);
+        } else {
+            // call delete and remove any credential that fits the
+            // project/bcname pattern
+            credID = PipelineConfigSecretToCredentialsMap.unlinkPCSecretToCrendential(NamespaceName.create(pipelineConfig).toString());
+            if (credID != null) {
+                deleteCredential(credID, NamespaceName.create(pipelineConfig), pipelineConfig.getMetadata().getResourceVersion());
+            }
+        }
+
+        return credID;
     }
-    return credID;
-  }
 
   public static synchronized void deleteSourceCredentials(
     PipelineConfig pipelineConfig) throws IOException {
@@ -157,27 +161,38 @@ public class CredentialsUtils {
         return null;
     }
 
-    private static String upsertCredential(Secret secret, String namespace,
-            String secretName) throws IOException {
-        String id = null;
+    /**
+     *
+     * @param secret secret obj
+     * @param namespace k8s namespace
+     * @param secretName secret name
+     * @return credential id
+     * @throws IOException in case io exception
+     * @throws InvalidSecretException if get a not support secret
+     */
+    @NotNull
+    private static String upsertCredential(final Secret secret, final String namespace, final String secretName)
+            throws IOException {
+        final String id = secretName(namespace, secretName);
         if (secret != null) {
-            Credentials creds = secretToCredentials(secret);
-            if (creds == null)
-                return null;
-            id = secretName(namespace, secretName);
-            Credentials existingCreds = lookupCredentials(id);
+            Credentials credentials = secretToCredentials(secret);
+            if (credentials == null) {
+                throw new InvalidSecretException(secret.getKind());
+            }
+
+            Credentials existingCredentials = lookupCredentials(id);
             final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
             try {
                 CredentialsStore s = CredentialsProvider
-                        .lookupStores(Jenkins.getActiveInstance()).iterator()
+                        .lookupStores(Jenkins.getInstance()).iterator()
                         .next();
-                if (existingCreds != null) {
-                    s.updateCredentials(Domain.global(), existingCreds, creds);
+                if (existingCredentials != null) {
+                    s.updateCredentials(Domain.global(), existingCredentials, credentials);
                     logger.info("Updated credential " + id + " from Secret "
                             + NamespaceName.create(secret) + " with revision: "
                             + secret.getMetadata().getResourceVersion());
                 } else {
-                    s.addCredentials(Domain.global(), creds);
+                    s.addCredentials(Domain.global(), credentials);
                     logger.info("Created credential " + id + " from Secret "
                             + NamespaceName.create(secret) + " with revision: "
                             + secret.getMetadata().getResourceVersion());
@@ -187,6 +202,7 @@ public class CredentialsUtils {
                 SecurityContextHolder.setContext(previousContext);
             }
         }
+
         return id;
     }
     
@@ -266,11 +282,11 @@ public class CredentialsUtils {
         }
     }
 
-    private static Credentials lookupCredentials(String id) {
+    public static Credentials lookupCredentials(String id) {
         return CredentialsMatchers.firstOrNull(CredentialsProvider
                 .lookupCredentials(Credentials.class,
-                        Jenkins.getActiveInstance(), ACL.SYSTEM,
-                        Collections.<DomainRequirement> emptyList()),
+                        Jenkins.getInstance(), ACL.SYSTEM,
+                        Collections.emptyList()),
                 CredentialsMatchers.withId(id));
     }
 
@@ -284,53 +300,39 @@ public class CredentialsUtils {
         final Map<String, String> data = secret.getData();
 
         if (data == null) {
-            logger.log(
-                    Level.WARNING,
-                    "An Kubernetes secret was marked for import, but it has no secret data.  No credential will be created.");
+            logger.log(Level.WARNING, "An Kubernetes secret was marked for import, but it has no secret data.  No credential will be created.");
             return null;
         }
 
         //kubernetes.io/service-account-token
         final String secretName = secretName(namespace, name);
         switch (secret.getType()) {
-        case ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE:
-            String usernameData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_USERNAME);
-            String passwordData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD);
-            if (isNotBlank(usernameData) && isNotBlank(passwordData)) {
-                return newUsernamePasswordCredentials(secretName, usernameData,
-                        passwordData);
-            }
-            String sshKeyData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY);
-            if (isNotBlank(sshKeyData)) {
-                return newSSHUserCredential(secretName,
-                        data.get(ALAUDA_DEVOPS_SECRETS_DATA_USERNAME), sshKeyData);
-            }
+            case ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE:
+                String usernameData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_USERNAME);
+                String passwordData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD);
+                if (isNotBlank(usernameData) && isNotBlank(passwordData)) {
+                    return newUsernamePasswordCredentials(secretName, usernameData, passwordData);
+                }
+                String sshKeyData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY);
+                if (isNotBlank(sshKeyData)) {
+                    return newSSHUserCredential(secretName, data.get(ALAUDA_DEVOPS_SECRETS_DATA_USERNAME), sshKeyData);
+                }
 
-            logger.log(
-                    Level.WARNING,
-                    "Opaque secret either requires {0} and {1} fields for basic auth or {2} field for SSH key",
-                    new Object[] {ALAUDA_DEVOPS_SECRETS_DATA_USERNAME,
-                      ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD,
-                      ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY});
-            return null;
-        case ALAUDA_DEVOPS_SECRETS_TYPE_BASICAUTH:
-            return newUsernamePasswordCredentials(secretName,
-                    data.get(ALAUDA_DEVOPS_SECRETS_DATA_USERNAME),
-                    data.get(ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD));
-        case ALAUDA_DEVOPS_SECRETS_TYPE_SSH:
-            return newSSHUserCredential(secretName,
-                    data.get(ALAUDA_DEVOPS_SECRETS_DATA_USERNAME),
-                    data.get(ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY));
-          case ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER:
-            String dockerData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_DOCKER);
-            return newDockerCredentials(secretName, dockerData);
+                logger.log(Level.WARNING, "Opaque secret either requires {0} and {1} fields for basic auth or {2} field for SSH key", new Object[]{ALAUDA_DEVOPS_SECRETS_DATA_USERNAME, ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD, ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY});
+                return null;
+            case ALAUDA_DEVOPS_SECRETS_TYPE_BASICAUTH:
+                return newUsernamePasswordCredentials(secretName, data.get(ALAUDA_DEVOPS_SECRETS_DATA_USERNAME), data.get(ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD));
+            case ALAUDA_DEVOPS_SECRETS_TYPE_SSH:
+                return newSSHUserCredential(secretName, data.get(ALAUDA_DEVOPS_SECRETS_DATA_USERNAME), data.get(ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY));
+            case ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER:
+                String dockerData = data.get(ALAUDA_DEVOPS_SECRETS_DATA_DOCKER);
+                return newDockerCredentials(secretName, dockerData);
             case ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN:
                 String token = secret.getData().get("token");
                 return newTokenCredentials(secretName, token);
-        default:
-            logger.log(Level.WARNING,
-                    "Unknown secret type: " + secret.getType());
-            return null;
+            default:
+                logger.log(Level.WARNING, "Unknown secret type: " + secret.getType());
+                return null;
         }
     }
 
@@ -373,12 +375,16 @@ public class CredentialsUtils {
                         Base64.decode(passwordData), StandardCharsets.UTF_8));
     }
 
+    /**
+     * @param secretName secret name
+     * @param token should encoded by base64
+     * @return credential
+     */
     public static Credentials newTokenCredentials(String secretName, String token) {
         token = new String(Base64.decode(token), StandardCharsets.UTF_8);
 
         hudson.util.Secret secret = hudson.util.Secret.fromString(token);
         return new AlaudaToken(CredentialsScope.GLOBAL, secretName, null, secret);
-//        return new OpenShiftTokenCredentialImpl(CredentialsScope.GLOBAL, secretName(namespace, secretName), null, secret);
     }
 
     private static Credentials newDockerCredentials(String secretName, String dockerData) {

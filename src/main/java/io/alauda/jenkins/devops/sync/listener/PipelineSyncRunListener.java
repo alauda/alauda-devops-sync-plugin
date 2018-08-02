@@ -707,7 +707,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
       && GlobalPluginConfiguration.isItEnabled();
   }
 
-  public class BlueJsonStage {
+  private static class BlueJsonStage {
     public StageNodeExt stage;
     public BlueRunResult result;
     public List<BluePipelineNode.Edge> edges;
@@ -728,7 +728,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
      */
   }
 
-  public class PipelineJson {
+  private static class PipelineJson {
     public String start_stage_id;
     public List<PipelineStage> stages;
 
@@ -745,7 +745,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
   }
 
-  public class PipelineStage {
+  private static class PipelineStage {
     public String id;
     public String name;
     public String status;
@@ -755,10 +755,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     public Long pause_duration_millis;
     public List<BluePipelineNode.Edge> edges;
 
-    public PipelineStage() {
-    }
-
-    public PipelineStage(String id, String name, String status, String result, String start_time, Long duration_millis, Long pause_duration_millis, List<BluePipelineNode.Edge> edges) {
+    PipelineStage(String id, String name, String status, String result, String start_time, Long duration_millis, Long pause_duration_millis, List<BluePipelineNode.Edge> edges) {
       this.id = id;
       this.name = name;
       this.status = status;

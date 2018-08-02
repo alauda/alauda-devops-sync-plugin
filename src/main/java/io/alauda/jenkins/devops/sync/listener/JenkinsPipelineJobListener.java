@@ -28,6 +28,7 @@ import io.alauda.devops.client.dsl.PipelineConfigResource;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -39,6 +40,7 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import java.util.logging.Level;
@@ -73,11 +75,6 @@ public class JenkinsPipelineJobListener extends ItemListener {
         this.jenkinsService = jenkinsService;
         this.jobNamePattern = jobNamePattern;
         init();
-    }
-
-    @Override
-    public String toString() {
-        return "JenkinsPipelineJobListener{" + "server='" + server + '\'' + ", jenkinsService='" + jenkinsService + '\'' + ", namespace='" + namespaces + '\'' + ", jobNamePattern='" + jobNamePattern + '\'' + '}';
     }
 
     private void init() {
@@ -330,6 +327,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
                         .withSource(spec.getSource())
                         .withStrategy(spec.getStrategy())
                         .endSpec()
+                        .withNewStatus().withPhase(PipelineConfigPhase.READY).endStatus()
                         .done();
                 logger.info("PipelineConfig update success, " + jobName);
             } catch (Exception e) {
@@ -380,4 +378,11 @@ public class JenkinsPipelineJobListener extends ItemListener {
       init();
     }
   }
+
+    @Override
+    public String toString() {
+        return "JenkinsPipelineJobListener{" + "server='" + server + '\'' + ", jenkinsService='"
+                + jenkinsService + '\'' + ", namespace='" + Arrays.toString(namespaces) + '\''
+                + ", jobNamePattern='" + jobNamePattern + '\'' + '}';
+    }
 }

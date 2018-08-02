@@ -67,5 +67,4 @@ public interface Constants {
     String JOB_STATUS_SKIPPED = "SKIPPED";
     String JOB_STATUS_NOT_BUILT = "NOT_BUILT";
     String JOB_STATUS_UNKNOWN = "UNKNOWN";
-
 }
