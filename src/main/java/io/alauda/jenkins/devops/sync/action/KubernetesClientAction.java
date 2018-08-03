@@ -5,7 +5,6 @@ import hudson.model.UnprotectedRootAction;
 import hudson.util.HttpResponses;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.listener.JenkinsPipelineJobListener;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.kubernetes.client.Config;
 import io.alauda.kubernetes.client.KubernetesClientException;

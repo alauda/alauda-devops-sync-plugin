@@ -15,18 +15,17 @@
  */
 package io.alauda.jenkins.devops.sync.listener;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import com.google.common.base.Objects;
-
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.model.listeners.ItemListener;
-
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.dsl.PipelineConfigResource;
-import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
@@ -41,10 +40,8 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import javax.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 

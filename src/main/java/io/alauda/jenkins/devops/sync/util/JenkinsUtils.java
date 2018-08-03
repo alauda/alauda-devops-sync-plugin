@@ -16,52 +16,47 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import antlr.ANTLRException;
+import com.cloudbees.plugins.credentials.CredentialsParameterDefinition;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.*;
 import hudson.model.Job;
+import hudson.model.Queue;
 import hudson.plugins.git.RevisionParameterAction;
 import hudson.security.ACL;
-import hudson.slaves.Cloud;
-import hudson.triggers.*;
-import io.alauda.jenkins.devops.sync.*;
-import io.alauda.kubernetes.api.model.*;
+import hudson.triggers.SCMTrigger;
+import hudson.triggers.SafeTimerTask;
+import hudson.triggers.TimerTrigger;
+import hudson.triggers.Trigger;
 import io.alauda.devops.api.model.JenkinsPipelineBuildStrategy;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
-
 import org.apache.commons.lang.StringUtils;
-import org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud;
-import org.csanchez.jenkins.plugins.kubernetes.PodTemplate;
-import org.csanchez.jenkins.plugins.kubernetes.PodVolumes;
 import org.eclipse.jgit.transport.URIish;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-
-import com.cloudbees.plugins.credentials.CredentialsParameterDefinition;
 import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
 
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
+import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.getJobFromPipelineConfig;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.putJobWithPipelineConfig;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.watcher.PipelineWatcher.addEventToJenkinsJobRun;
-import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static java.util.Collections.sort;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;

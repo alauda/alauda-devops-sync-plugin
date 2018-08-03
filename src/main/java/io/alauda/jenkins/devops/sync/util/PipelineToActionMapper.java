@@ -15,11 +15,11 @@
  */
 package io.alauda.jenkins.devops.sync.util;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import hudson.model.CauseAction;
 import hudson.model.ParametersAction;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PipelineToActionMapper {
 

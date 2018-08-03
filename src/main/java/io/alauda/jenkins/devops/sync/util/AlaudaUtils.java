@@ -17,45 +17,36 @@ package io.alauda.jenkins.devops.sync.util;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import hudson.model.ItemGroup;
 import hudson.BulkChange;
 import hudson.model.Item;
+import hudson.model.ItemGroup;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.kubernetes.api.model.*;
-
 import io.alauda.kubernetes.client.Config;
 import io.alauda.kubernetes.client.Version;
 import jenkins.model.Jenkins;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.util.*;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.PENDING;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.RUNNING;
 import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.*;
 import static java.util.logging.Level.FINE;
 
 public class AlaudaUtils {

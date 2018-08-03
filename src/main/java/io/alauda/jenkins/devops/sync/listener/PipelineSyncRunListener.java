@@ -15,17 +15,10 @@
  */
 package io.alauda.jenkins.devops.sync.listener;
 
-import com.cloudbees.workflow.rest.external.AtomFlowNodeExt;
-import com.cloudbees.workflow.rest.external.FlowNodeExt;
-import com.cloudbees.workflow.rest.external.PendingInputActionsExt;
-import com.cloudbees.workflow.rest.external.RunExt;
-import com.cloudbees.workflow.rest.external.StageNodeExt;
-import com.cloudbees.workflow.rest.external.StatusExt;
+import com.cloudbees.workflow.rest.external.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import com.fasterxml.jackson.databind.SerializationFeature;
-
 import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.Result;
@@ -33,7 +26,8 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
-import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
@@ -47,7 +41,6 @@ import io.jenkins.blueocean.rest.model.BlueRun;
 import io.jenkins.blueocean.rest.model.BlueRun.BlueRunResult;
 import jenkins.model.Jenkins;
 import jenkins.util.Timer;
-
 import org.apache.commons.httpclient.HttpStatus;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputAction;
@@ -55,16 +48,10 @@ import org.jenkinsci.plugins.workflow.support.steps.input.InputStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import javax.annotation.Nonnull;
-
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -72,10 +59,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getCurrentTimestamp;
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.formatTimestamp;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.logging.Level.*;
 

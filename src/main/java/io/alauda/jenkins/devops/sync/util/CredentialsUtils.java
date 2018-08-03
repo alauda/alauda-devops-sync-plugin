@@ -5,32 +5,27 @@ import com.cloudbees.plugins.credentials.*;
 import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
-
-import com.iwombat.util.StringUtil;
 import hudson.model.Fingerprint;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.api.model.BuildConfig;
-import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
 import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
-
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.apache.commons.lang.StringUtils;
+import org.json.JSONObject;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import org.json.*;
-
-import javax.validation.constraints.NotNull;
 
 import static hudson.Util.fixNull;
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;

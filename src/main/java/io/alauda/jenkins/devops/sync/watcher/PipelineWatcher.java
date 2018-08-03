@@ -17,32 +17,29 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.security.ACL;
-import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.PipelineComparator;
+import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.util.*;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
-
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
-import static io.alauda.jenkins.devops.sync.util.JenkinsUtils.cancelPipeline;
 import static java.util.logging.Level.WARNING;
 
 /**

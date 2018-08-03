@@ -17,7 +17,6 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.kubernetes.api.model.JenkinsBinding;
 import io.alauda.kubernetes.api.model.JenkinsBindingList;
 import io.alauda.kubernetes.client.Watch;

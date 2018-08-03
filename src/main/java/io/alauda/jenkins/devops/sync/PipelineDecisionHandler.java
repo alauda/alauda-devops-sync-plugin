@@ -16,13 +16,7 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
-import hudson.model.Action;
-import hudson.model.ParameterValue;
-import hudson.model.Cause;
-import hudson.model.CauseAction;
-import hudson.model.ParametersAction;
-import hudson.model.Queue;
-
+import hudson.model.*;
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;

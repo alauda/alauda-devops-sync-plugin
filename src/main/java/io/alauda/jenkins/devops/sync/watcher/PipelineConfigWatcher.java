@@ -17,7 +17,6 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import antlr.ANTLRException;
 import com.cloudbees.hudson.plugins.folder.Folder;
-
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.model.ItemGroup;
@@ -27,28 +26,27 @@ import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
+import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.constants.PipelineRunPolicy;
 import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
-import io.alauda.kubernetes.api.model.PipelineConfigList;
-
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
-
 import org.apache.tools.ant.filters.StringInputStream;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
 import javax.xml.transform.Source;
 import javax.xml.transform.stream.StreamSource;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -59,7 +57,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.parseResourceVersion;
 import static java.util.logging.Level.SEVERE;
 
 /**
