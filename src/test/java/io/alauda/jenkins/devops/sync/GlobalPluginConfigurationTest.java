@@ -25,6 +25,13 @@ public class GlobalPluginConfigurationTest {
         assertNotNull(page.getElementByName("_.credentialsId"));
         assertNotNull(page.getElementByName("_.jenkinsService"));
         assertNotNull(page.getElementByName("_.enabled"));
+
+        assertTrue(GlobalPluginConfiguration.isItEnabled());
+
+        GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
+        assertNotNull(config);
+        assertNotNull(config.getDisplayName());
+        assertNotNull(config.getNamespaces());
     }
 
     @Test

@@ -78,6 +78,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         try {
             this.configChange();
         } catch (KubernetesClientException e) {
+            LOGGER.log(Level.SEVERE, "trigger config change failed.", e);
         }
     }
 
@@ -86,14 +87,15 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
 
         try {
             this.configChange();
-        } catch (KubernetesClientException e) {
-        }
 
-        LOGGER.info("Alauda GlobalPluginConfiguration is started.");
+            LOGGER.info("Alauda GlobalPluginConfiguration is started.");
+        } catch (KubernetesClientException e) {
+            LOGGER.log(Level.SEVERE, "trigger config change failed.", e);
+        }
     }
 
     public static GlobalPluginConfiguration get() {
-        return (GlobalPluginConfiguration) GlobalConfiguration.all().get(GlobalPluginConfiguration.class);
+        return GlobalConfiguration.all().get(GlobalPluginConfiguration.class);
     }
 
     public static boolean isItEnabled() {
@@ -177,9 +179,10 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         this.skipBranchSuffix = skipBranchSuffix;
     }
 
+    @Nonnull
     public String[] getNamespaces() {
         if(namespaces == null) {
-            return null;
+            return new String[]{};
         }
         return Arrays.copyOf(namespaces, namespaces.length);
     }
