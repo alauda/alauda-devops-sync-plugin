@@ -11,7 +11,6 @@ import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.junit.Rule;
 import org.junit.Test;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.List;
 
@@ -119,7 +118,13 @@ public class PipelineWatcherTest {
             Thread.sleep(1000);
         }
         assertNotNull(build);
-        assertTrue(build.getLog() == null ? "" : build.getLog(), build.isBuilding());
+
+        // check null just for sonar rules
+        if(build == null) {
+            return null;
+        }
+
+        assertTrue(build.getLog(), build.isBuilding());
         return build;
     }
 

@@ -86,12 +86,11 @@ public class PipelineConfigToJobMapper {
 
         if (StringUtils.isBlank(jenkinsfile)) {
             // Is this a Jenkinsfile from Git SCM?
-            if (isValidSource(source)) {
+            if (source != null && isValidSource(source)) { // check null just for sonar rules
                 if (jenkinsfilePath == null) {
                     jenkinsfilePath = DEFAULT_JENKINS_FILEPATH;
                 }
 
-                @Nonnull
                 PipelineSourceGit gitSource = source.getGit();
                 String branchRef = gitSource.getRef();
                 List<BranchSpec> branchSpecs = Collections.emptyList();
