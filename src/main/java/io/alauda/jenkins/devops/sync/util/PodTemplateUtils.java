@@ -8,6 +8,7 @@ import org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud;
 import org.csanchez.jenkins.plugins.kubernetes.PodTemplate;
 import org.csanchez.jenkins.plugins.kubernetes.PodVolumes;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -22,14 +23,14 @@ public abstract class PodTemplateUtils {
 
     private PodTemplateUtils() {}
 
-    public static boolean removePodTemplate(PodTemplate podTemplate) {
-        if(podTemplate == null) {
+    public static boolean removePodTemplate(String name) {
+        if(name == null || name.isEmpty()) {
             return false;
         }
 
         KubernetesCloud kubeCloud = PodTemplateUtils.getKubernetesCloud();
         if (kubeCloud != null) {
-            LOGGER.info(() -> "Removing PodTemplate: " + podTemplate.getName());
+            LOGGER.info(() -> "Removing PodTemplate: " + name);
             // NOTE - PodTemplate does not currently override hashCode, equals,
             // so
             // the KubernetsCloud.removeTemplate currently is broken;
@@ -38,7 +39,7 @@ public abstract class PodTemplateUtils {
             Iterator<PodTemplate> iter = list.iterator();
             while (iter.hasNext()) {
                 PodTemplate pt = iter.next();
-                if (pt.getName().equals(podTemplate.getName())) {
+                if (pt.getName().equals(name)) {
                     iter.remove();
                 }
             }
@@ -65,13 +66,14 @@ public abstract class PodTemplateUtils {
         return false;
     }
 
+    @Nonnull
     public static List<PodTemplate> getPodTemplates() {
         KubernetesCloud kubeCloud = PodTemplateUtils.getKubernetesCloud();
         if (kubeCloud != null) {
             // create copy of list for more flexiblity in loops
             return new ArrayList<>(kubeCloud.getTemplates());
         } else {
-            return null;
+            return new ArrayList<>();
         }
     }
 
@@ -98,11 +100,12 @@ public abstract class PodTemplateUtils {
 
         // clear out existing template with same name; k8s plugin maintains
         // list, not map
-        removePodTemplate(podTemplate);
+        String name = podTemplate.getName();
+        removePodTemplate(name);
 
         KubernetesCloud kubeCloud = PodTemplateUtils.getKubernetesCloud();
         if (kubeCloud != null) {
-            LOGGER.info(() -> "Adding PodTemplate: " + podTemplate.getName());
+            LOGGER.info(() -> "Adding PodTemplate: " + name);
             kubeCloud.addTemplate(podTemplate);
             try {
                 // pedantic mvn:findbugs

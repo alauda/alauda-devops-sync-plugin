@@ -16,7 +16,6 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import antlr.ANTLRException;
-import com.cloudbees.plugins.credentials.CredentialsParameterDefinition;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.*;
 import hudson.model.Job;
@@ -41,6 +40,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
 
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
@@ -84,8 +84,8 @@ public abstract class JenkinsUtils {
 	public static String getRootUrl() {
 		// TODO is there a better place to find this?
 		String root = Jenkins.getInstance().getRootUrl();
-		if (root == null || root.length() == 0) {
-			root = "http://localhost:8080/";
+		if (root == null || StringUtils.isBlank(root)) {
+			root = ROOT_URL;
 		}
 		return root;
 	}
@@ -302,93 +302,94 @@ public abstract class JenkinsUtils {
         return exceptions;
     }
 
-	public static List<Action> setJobRunParamsFromEnv(WorkflowJob job, List<PipelineParameter> pipelineParameters,
+//	public static List<Action> setJobRunParamsFromEnv(WorkflowJob job, List<PipelineParameter> pipelineParameters,
+//			List<Action> buildActions) {
+//		List<String> envKeys = new ArrayList<>();
+//		List<ParameterValue> envVarList = new ArrayList<>();
+//
+//		// add any existing job params that were not env vars, using their
+//		// default values
+//		ParametersDefinitionProperty params = job.getProperty(ParametersDefinitionProperty.class);
+//		if (params != null) {
+//			List<ParameterDefinition> existingParamList = params.getParameterDefinitions();
+//			for (ParameterDefinition param : existingParamList) {
+//				if (!envKeys.contains(param.getName())) {
+//					String type = param.getType();
+//					switch (type) {
+//					case "BooleanParameterDefinition":
+//						BooleanParameterDefinition bpd = (BooleanParameterDefinition) param;
+//						envVarList.add(bpd.getDefaultParameterValue());
+//						break;
+//					case "ChoiceParameterDefintion":
+//						ChoiceParameterDefinition cpd = (ChoiceParameterDefinition) param;
+//						envVarList.add(cpd.getDefaultParameterValue());
+//						break;
+//					case "CredentialsParameterDefinition":
+//						CredentialsParameterDefinition crpd = (CredentialsParameterDefinition) param;
+//						envVarList.add(crpd.getDefaultParameterValue());
+//						break;
+//					case "FileParameterDefinition":
+//						FileParameterDefinition fpd = (FileParameterDefinition) param;
+//						envVarList.add(fpd.getDefaultParameterValue());
+//						break;
+//					// don't currently support since sync-plugin does not claim
+//					// subversion plugin as a direct dependency
+//					/*
+//					 * case "ListSubversionTagsParameterDefinition":
+//					 * ListSubversionTagsParameterDefinition lpd =
+//					 * (ListSubversionTagsParameterDefinition)param;
+//					 * envVarList.add(lpd.getDefaultParameterValue()); break;
+//					 */
+//					case "PasswordParameterDefinition":
+//						PasswordParameterDefinition ppd = (PasswordParameterDefinition) param;
+//						envVarList.add(ppd.getDefaultParameterValue());
+//						break;
+//					case "RunParameterDefinition":
+//						RunParameterDefinition rpd = (RunParameterDefinition) param;
+//						envVarList.add(rpd.getDefaultParameterValue());
+//						break;
+//					case "StringParameterDefinition":
+//						StringParameterDefinition spd = (StringParameterDefinition) param;
+//						envVarList.add(spd.getDefaultParameterValue());
+//						break;
+//					default:
+//						// used to have the following:
+//						// envVarList.add(new
+//						// StringParameterValue(param.getName(),
+//						// (param.getDefaultParameterValue() != null &&
+//						// param.getDefaultParameterValue().getValue() != null ?
+//						// param.getDefaultParameterValue().getValue().toString()
+//						// : "")));
+//						// but mvn verify complained
+//						ParameterValue pv = param.getDefaultParameterValue();
+//						if (pv != null) {
+//							Object val = pv.getValue();
+//							if (val != null) {
+//								envVarList.add(new StringParameterValue(param.getName(), val.toString()));
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//
+//		if (envVarList.size() > 0) {
+//            buildActions.add(new ParametersAction(envVarList));
+//        }
+//
+//		return buildActions;
+//	}
+
+    @CheckForNull
+	public static List<Action> setJobRunParamsFromEnvAndUIParams(List<PipelineParameter> pipelineParameters,
 			List<Action> buildActions) {
-		List<String> envKeys = new ArrayList<>();
-		List<ParameterValue> envVarList = new ArrayList<>();
-
-		// add any existing job params that were not env vars, using their
-		// default values
-		ParametersDefinitionProperty params = job.getProperty(ParametersDefinitionProperty.class);
-		if (params != null) {
-			List<ParameterDefinition> existingParamList = params.getParameterDefinitions();
-			for (ParameterDefinition param : existingParamList) {
-				if (!envKeys.contains(param.getName())) {
-					String type = param.getType();
-					switch (type) {
-					case "BooleanParameterDefinition":
-						BooleanParameterDefinition bpd = (BooleanParameterDefinition) param;
-						envVarList.add(bpd.getDefaultParameterValue());
-						break;
-					case "ChoiceParameterDefintion":
-						ChoiceParameterDefinition cpd = (ChoiceParameterDefinition) param;
-						envVarList.add(cpd.getDefaultParameterValue());
-						break;
-					case "CredentialsParameterDefinition":
-						CredentialsParameterDefinition crpd = (CredentialsParameterDefinition) param;
-						envVarList.add(crpd.getDefaultParameterValue());
-						break;
-					case "FileParameterDefinition":
-						FileParameterDefinition fpd = (FileParameterDefinition) param;
-						envVarList.add(fpd.getDefaultParameterValue());
-						break;
-					// don't currently support since sync-plugin does not claim
-					// subversion plugin as a direct dependency
-					/*
-					 * case "ListSubversionTagsParameterDefinition":
-					 * ListSubversionTagsParameterDefinition lpd =
-					 * (ListSubversionTagsParameterDefinition)param;
-					 * envVarList.add(lpd.getDefaultParameterValue()); break;
-					 */
-					case "PasswordParameterDefinition":
-						PasswordParameterDefinition ppd = (PasswordParameterDefinition) param;
-						envVarList.add(ppd.getDefaultParameterValue());
-						break;
-					case "RunParameterDefinition":
-						RunParameterDefinition rpd = (RunParameterDefinition) param;
-						envVarList.add(rpd.getDefaultParameterValue());
-						break;
-					case "StringParameterDefinition":
-						StringParameterDefinition spd = (StringParameterDefinition) param;
-						envVarList.add(spd.getDefaultParameterValue());
-						break;
-					default:
-						// used to have the following:
-						// envVarList.add(new
-						// StringParameterValue(param.getName(),
-						// (param.getDefaultParameterValue() != null &&
-						// param.getDefaultParameterValue().getValue() != null ?
-						// param.getDefaultParameterValue().getValue().toString()
-						// : "")));
-						// but mvn verify complained
-						ParameterValue pv = param.getDefaultParameterValue();
-						if (pv != null) {
-							Object val = pv.getValue();
-							if (val != null) {
-								envVarList.add(new StringParameterValue(param.getName(), val.toString()));
-							}
-						}
-					}
-				}
-			}
-		}
-
-		if (envVarList.size() > 0) {
-            buildActions.add(new ParametersAction(envVarList));
-        }
-
-		return buildActions;
-	}
-
-	public static List<Action> setJobRunParamsFromEnvAndUIParams(WorkflowJob job, List<PipelineParameter> pipelineParameters,
-			List<Action> buildActions, ParametersAction params) {
         if(buildActions == null || pipelineParameters == null) {
-            return buildActions;
+            return null;
         }
 
         List<ParameterValue> envVarList = getParameterValues(pipelineParameters);
         if (envVarList.size() == 0) {
-            return buildActions;
+            return null;
         }
 
         buildActions.add(new ParametersAction(envVarList));
@@ -396,29 +397,36 @@ public abstract class JenkinsUtils {
 		return buildActions;
 	}
 
-	@NotNull
+	@Nonnull
     public static List<ParameterValue> getParameterValues(List<PipelineParameter> pipelineParameters) {
         List<ParameterValue> envVarList = new ArrayList<>();
-        if (pipelineParameters != null && pipelineParameters.size() > 0) {
-            for (PipelineParameter pipeParam : pipelineParameters) {
-                ParameterValue paramValue = null;
-                switch (pipeParam.getType()) {
-                    case PIPELINE_PARAMETER_TYPE_STRING:
-                        paramValue = new StringParameterValue(pipeParam.getName(),
-                                pipeParam.getValue(), pipeParam.getDescription());
-                        break;
-                    case PIPELINE_PARAMETER_TYPE_BOOLEAN:
-                        paramValue = new BooleanParameterValue(pipeParam.getName(),
-                                Boolean.valueOf(pipeParam.getValue()), pipeParam.getDescription());
-                        break;
-                    default:
-                        LOGGER.warning(() -> "Parameter type `" + pipeParam.getType() + "` is not supported.. skipping...");
-                        break;
-                }
+        if (pipelineParameters == null) {
+            return envVarList;
+        }
 
-                if (paramValue != null) {
-                    envVarList.add(paramValue);
-                }
+        for (PipelineParameter pipeParam : pipelineParameters) {
+            ParameterValue paramValue = null;
+            String type = pipeParam.getType();
+            if(type == null) {
+                continue;
+            }
+
+            switch (type) {
+                case PIPELINE_PARAMETER_TYPE_STRING:
+                    paramValue = new StringParameterValue(pipeParam.getName(),
+                            pipeParam.getValue(), pipeParam.getDescription());
+                    break;
+                case PIPELINE_PARAMETER_TYPE_BOOLEAN:
+                    paramValue = new BooleanParameterValue(pipeParam.getName(),
+                            Boolean.valueOf(pipeParam.getValue()), pipeParam.getDescription());
+                    break;
+                default:
+                    LOGGER.warning(() -> "Parameter type `" + pipeParam.getType() + "` is not supported.. skipping...");
+                    break;
+            }
+
+            if (paramValue != null) {
+                envVarList.add(paramValue);
             }
         }
 
@@ -507,16 +515,19 @@ public abstract class JenkinsUtils {
           LOGGER.info("pipeline got cause....: "+pipeline.getMetadata().getName()+" pipeline actions "+pipelineActions);
 
             // params added by user in jenkins ui
-            ParametersAction userProvidedParams = PipelineToActionMapper
-                    .removeParameterAction(pipeline.getMetadata().getName());
+            PipelineToActionMapper.removeParameterAction(pipeline.getMetadata().getName());
 
-            pipelineActions = setJobRunParamsFromEnvAndUIParams(job, pipeline.getSpec().getParameters(),
-                    pipelineActions, userProvidedParams);
+            pipelineActions = setJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
 
             putJobWithPipelineConfig(job, pipelineConfig);
             LOGGER.info(() -> "pipeline config update with job: "+pipeline.getMetadata().getName()+" pipeline config "+pipelineConfig.getMetadata().getName());
 
-            Action[] actionArray = pipelineActions.toArray(new Action[pipelineActions.size()]);
+            Action[] actionArray = null;
+            if(pipelineActions == null || pipelineActions.size() == 0) {
+                actionArray = new Action[]{};
+            } else {
+                actionArray = pipelineActions.toArray(new Action[pipelineActions.size()]);
+            }
             if (job.scheduleBuild2(0, actionArray) != null) {
 
                 updatePipelinePhase(pipeline, QUEUED);
@@ -531,7 +542,7 @@ public abstract class JenkinsUtils {
                 }
                 return true;
             } else {
-              LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipeline.getMetadata().getName());
+                LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipeline.getMetadata().getName());
             }
 
             return false;

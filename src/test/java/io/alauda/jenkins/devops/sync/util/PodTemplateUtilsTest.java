@@ -17,9 +17,10 @@ public class PodTemplateUtilsTest {
 
         assertFalse(PodTemplateUtils.hasPodTemplate("hello"));
         assertFalse(PodTemplateUtils.hasPodTemplate(null));
-        assertNull(PodTemplateUtils.getPodTemplates());
+        assertNotNull(PodTemplateUtils.getPodTemplates());
         assertFalse(PodTemplateUtils.addPodTemplate(null));
         assertFalse(PodTemplateUtils.removePodTemplate(null));
+        assertFalse(PodTemplateUtils.removePodTemplate("hello"));
     }
 
     @Test

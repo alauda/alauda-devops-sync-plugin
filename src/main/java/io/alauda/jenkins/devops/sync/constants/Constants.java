@@ -18,6 +18,8 @@ package io.alauda.jenkins.devops.sync.constants;
 public final class Constants {
     private Constants(){}
 
+    public static final String ROOT_URL = "http://localhost:8080/";
+
     public static final String ALAUDA_DEVOPS_DEFAULT_NAMESPACE = "default";
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER = "alauda.io/pipeline.number";
