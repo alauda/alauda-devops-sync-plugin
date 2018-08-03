@@ -5,16 +5,12 @@ import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Config;
 
-import javax.swing.tree.AbstractLayoutCache;
-import java.io.Closeable;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -187,9 +183,14 @@ public class DevOpsInit {
     public Pipeline createPipeline(AlaudaDevOpsClient client, String configName, Map<String, String> paramMap) {
         PipelineConfig pipelineConfig = client.pipelineConfigs().inNamespace(namespace).withName(configName).get();
         List<PipelineParameter> params = pipelineConfig.getSpec().getParameters();
+        List<PipelineParameter> pipelineParameters = new ArrayList<>();
 
         params.forEach(p -> {
-            p.setValue(paramMap.get(p.getName()));
+            PipelineParameter pipParam = new PipelineParameterBuilder().withType(p.getType())
+                    .withName(p.getName())
+                    .withValue(paramMap.get(p.getName()))
+                    .withDescription(p.getDescription()).build();
+            pipelineParameters.add(pipParam);
         });
 
         return client.pipelines().createNew()
@@ -198,7 +199,7 @@ public class DevOpsInit {
                 .withLabels(Collections.singletonMap(TEST_FLAG, TEST_FLAG_VALUE))
                 .endMetadata()
                 .withNewSpec()
-                .withParameters(params)
+                .withParameters(pipelineParameters)
                 .withNewPipelineConfig(configName)
                 .withNewJenkinsBinding(bindingName)
                 .withRunPolicy(PIPELINE_RUN_POLICY_SERIAL)

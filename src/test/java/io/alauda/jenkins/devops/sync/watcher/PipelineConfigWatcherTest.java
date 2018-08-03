@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_PARAMETER_TYPE_BOOLEAN;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_PARAMETER_TYPE_STRING;
 import static io.alauda.jenkins.devops.sync.util.JobUtils.findJob;
 import static io.alauda.jenkins.devops.sync.util.JobUtils.findWorkflowJob;
 import static org.hamcrest.Matchers.containsString;
@@ -151,17 +153,23 @@ public class PipelineConfigWatcherTest {
         final String paramName = "name";
         final String script = "echo env." + paramName;
         final Map<String, String> paramMap = new HashMap<>();
-        paramMap.put(paramName, "string");
+        paramMap.put(paramName, PIPELINE_PARAMETER_TYPE_STRING);
 
         PipelineConfig config = j.getDevOpsInit().createPipelineConfigWithParams(j.getClient(), paramMap, script);
         final String folderName = j.getDevOpsInit().getNamespace();
         final String jobName = config.getMetadata().getName();
 
         Job jobItem = findJob(j.jenkins, folderName, jobName);
+        assertNotNull(jobItem);
         final String randomName = System.currentTimeMillis() + "-alauda";
         paramMap.put(paramName, randomName);
         j.getDevOpsInit().createPipeline(j.getClient(), jobName, paramMap);
-        Thread.sleep(3000);
+        for(int i = 0; i < 4; i++) {
+            if(jobItem.isBuilding()) {
+                break;
+            }
+            Thread.sleep(1000);
+        }
         j.waitUntilNoActivity();
 
         Run build = jobItem.getBuildByNumber(1);
@@ -173,8 +181,8 @@ public class PipelineConfigWatcherTest {
 
         // change params
         String paramRelease = "isRelease";
-        paramMap.put(paramRelease, "boolean"); // the value should be type of param in here
-        paramMap.put(paramName, "string");
+        paramMap.put(paramRelease, PIPELINE_PARAMETER_TYPE_BOOLEAN); // the value should be type of param in here
+        paramMap.put(paramName, PIPELINE_PARAMETER_TYPE_STRING);
         config = j.getDevOpsInit().updatePipelineConfigWithParams(j.getClient(), jobName, paramMap, script);
         assertNotNull(config);
         Thread.sleep(2000);

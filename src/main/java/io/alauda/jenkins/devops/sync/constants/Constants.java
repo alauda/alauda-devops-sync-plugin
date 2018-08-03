@@ -46,7 +46,7 @@ public final class Constants {
     public static final String KUBERNETES_SERVICE_ACCOUNT_NAMESPACE = "/run/secrets/kubernetes.io/serviceaccount/namespace";
 
 
-    public static final String PIPELINE_PARAMETER_TYPE_STRING = "public static final String";
+    public static final String PIPELINE_PARAMETER_TYPE_STRING = "string";
     public static final String PIPELINE_PARAMETER_TYPE_BOOLEAN = "boolean";
 
 
