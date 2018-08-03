@@ -6,6 +6,8 @@ import java.util.Calendar;
 import java.util.Date;
 
 public abstract class TimeUtils {
+    private TimeUtils(){}
+
     public static Date getUTCTime() throws ParseException {
         StringBuilder UTCTimeBuffer = new StringBuilder();
         Calendar cal = Calendar.getInstance() ;

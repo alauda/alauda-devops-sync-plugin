@@ -19,10 +19,12 @@ import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAla
 public abstract class PodTemplateUtils {
     private static final Logger LOGGER = Logger.getLogger(PodTemplateUtils.class.getName());
 
+    private PodTemplateUtils() {}
+
     public static void removePodTemplate(PodTemplate podTemplate) {
         KubernetesCloud kubeCloud = PodTemplateUtils.getKubernetesCloud();
         if (kubeCloud != null) {
-            LOGGER.info("Removing PodTemplate: " + podTemplate.getName());
+            LOGGER.info(() -> "Removing PodTemplate: " + podTemplate.getName());
             // NOTE - PodTemplate does not currently override hashCode, equals,
             // so
             // the KubernetsCloud.removeTemplate currently is broken;
@@ -85,7 +87,7 @@ public abstract class PodTemplateUtils {
 
         KubernetesCloud kubeCloud = PodTemplateUtils.getKubernetesCloud();
         if (kubeCloud != null) {
-            LOGGER.info("Adding PodTemplate: " + podTemplate.getName());
+            LOGGER.info(() -> "Adding PodTemplate: " + podTemplate.getName());
             kubeCloud.addTemplate(podTemplate);
             try {
                 // pedantic mvn:findbugs
@@ -100,8 +102,6 @@ public abstract class PodTemplateUtils {
     public static KubernetesCloud getKubernetesCloud() {
         // pedantic mvn:findbugs
         Jenkins jenkins = Jenkins.getInstance();
-        if (jenkins == null)
-            return null;
         Cloud openShiftCloud = jenkins.getCloud("openshift");
         if (openShiftCloud instanceof KubernetesCloud) {
             return (KubernetesCloud) openShiftCloud;

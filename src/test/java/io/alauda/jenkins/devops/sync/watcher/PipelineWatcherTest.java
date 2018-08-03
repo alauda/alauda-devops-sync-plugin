@@ -2,6 +2,7 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import hudson.model.Result;
 import hudson.model.Run;
+import io.alauda.jenkins.devops.sync.ActivityWaitException;
 import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.kubernetes.api.model.Pipeline;
@@ -22,7 +23,7 @@ public class PipelineWatcherTest {
     public JenkinsK8sRule j = new JenkinsK8sRule();
 
     @Test
-    public void triggerPipeline() throws Exception {
+    public void triggerPipeline() throws Exception, ActivityWaitException {
         PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();
@@ -42,7 +43,7 @@ public class PipelineWatcherTest {
     }
 
     @Test
-    public void wrongJenkinsfile() throws Exception {
+    public void wrongJenkinsfile() throws Exception, ActivityWaitException {
         PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), "asf");
         final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();
@@ -61,7 +62,7 @@ public class PipelineWatcherTest {
     }
 
     @Test
-    public void deletePipeline() throws Exception {
+    public void deletePipeline() throws Exception, ActivityWaitException {
         PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();
@@ -78,7 +79,7 @@ public class PipelineWatcherTest {
     }
 
     @Test
-    public void cancelPipeline() throws Exception {
+    public void cancelPipeline() throws Exception, ActivityWaitException {
         PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), "sleep 9999");
         final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();
@@ -128,16 +129,20 @@ public class PipelineWatcherTest {
         return build;
     }
 
-    private Pipeline trigger(String pipelineConfigName) throws Exception {
+    private Pipeline trigger(String pipelineConfigName) throws InterruptedException, ActivityWaitException {
         return trigger(pipelineConfigName, true);
     }
 
-    private Pipeline trigger(String pipelineConfigName, boolean wait) throws Exception {
+    private Pipeline trigger(String pipelineConfigName, boolean wait) throws ActivityWaitException, InterruptedException {
         Pipeline pipeline = j.getDevOpsInit().createPipeline(j.getClient(), pipelineConfigName);
         assertNotNull(pipeline);
         Thread.sleep(3000);
         if(wait) {
-            j.waitUntilNoActivity();
+            try {
+                j.waitUntilNoActivity();
+            } catch (Exception e) {
+                throw new ActivityWaitException("Jenkins wait activity error.", e);
+            }
         }
         return pipeline;
     }

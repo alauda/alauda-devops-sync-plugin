@@ -16,6 +16,8 @@
 package io.alauda.jenkins.devops.sync.constants;
 
 public final class Constants {
+    private Constants(){}
+
     public static final String ALAUDA_DEVOPS_DEFAULT_NAMESPACE = "default";
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER = "alauda.io/pipeline.number";
@@ -45,10 +47,8 @@ public final class Constants {
     public static final String ALAUDA_PROJECT_ENV_VAR_NAME = "PROJECT_NAME";
     public static final String KUBERNETES_SERVICE_ACCOUNT_NAMESPACE = "/run/secrets/kubernetes.io/serviceaccount/namespace";
 
-
     public static final String PIPELINE_PARAMETER_TYPE_STRING = "string";
     public static final String PIPELINE_PARAMETER_TYPE_BOOLEAN = "boolean";
-
 
     public static final String PIPELINE_TRIGGER_TYPE_MANUAL = "manual";
     public static final String PIPELINE_TRIGGER_TYPE_CRON = "cron";

@@ -49,12 +49,14 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTI
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.*;
 import static java.util.logging.Level.FINE;
 
-public class AlaudaUtils {
+public abstract class AlaudaUtils {
     private final static Logger logger = Logger.getLogger(AlaudaUtils.class.getName());
+    private static final String PLUGIN_NAME = "alauda-sync";
 
     private static AlaudaDevOpsClient alaudaClient;
     private static String jenkinsPodNamespace = null;
-    private static String PLUGIN_NAME = "alauda-sync";
+
+    private AlaudaUtils(){}
     
     static {
         jenkinsPodNamespace = System.getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
@@ -176,19 +178,17 @@ public class AlaudaUtils {
     }
 
 
-  /**
-   * Finds the Jenkins job name for the given {@link PipelineConfig}.
-   *
-   * @param pc
-   *            the PipelineConfig
-   * @return the jenkins job name for the given BuildConfig
-   */
-  public static String jenkinsJobName(PipelineConfig pc) {
-    String namespace = pc.getMetadata().getNamespace();
-    String name = pc.getMetadata().getName();
-    return jenkinsJobName(namespace, name);
-
-  }
+    /**
+     * Finds the Jenkins job name for the given {@link PipelineConfig}.
+     *
+     * @param pc the PipelineConfig
+     * @return the jenkins job name for the given BuildConfig
+     */
+    public static String jenkinsJobName(PipelineConfig pc) {
+        String namespace = pc.getMetadata().getNamespace();
+        String name = pc.getMetadata().getName();
+        return jenkinsJobName(namespace, name);
+    }
 
     /**
      * Creates the Jenkins Job name for the given pipelineConfigName

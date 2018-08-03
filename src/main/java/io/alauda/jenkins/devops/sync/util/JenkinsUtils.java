@@ -65,9 +65,11 @@ import static org.apache.commons.lang.StringUtils.isBlank;
 /**
  * @author suren
  */
-public class JenkinsUtils {
+public abstract class JenkinsUtils {
 	private static final Logger LOGGER = Logger.getLogger(JenkinsUtils.class.getName());
 	private static final String PARAM_FROM_ENV_DESCRIPTION = "From Alauda DevOps PipelineConfig Parameter";
+
+	private JenkinsUtils(){}
 
 	public static Job getJob(String job) {
 		TopLevelItem item = Jenkins.getInstance().getItem(job);
@@ -77,6 +79,7 @@ public class JenkinsUtils {
 		return null;
 	}
 
+	@NotNull
 	public static String getRootUrl() {
 		// TODO is there a better place to find this?
 		String root = Jenkins.getInstance().getRootUrl();
@@ -112,18 +115,18 @@ public class JenkinsUtils {
 			boolean replaceExisting) throws IOException {
 		List<EnvVar> envs = strat.getEnv();
         Map<String, ParameterDefinition> paramMap = null;
-		if (envs.size() > 0) {
+		if (envs != null && envs.size() > 0) {
 			// build list of current env var names for possible deletion of env
 			// vars currently stored
 			// as job params
-			List<String> envKeys = new ArrayList<String>();
+			List<String> envKeys = new ArrayList<>();
 			for (EnvVar env : envs) {
 				envKeys.add(env.getName());
 			}
 			// get existing property defs, including any manually added from the
 			// jenkins console independent of BC
 			ParametersDefinitionProperty params = job.removeProperty(ParametersDefinitionProperty.class);
-			paramMap = new HashMap<String, ParameterDefinition>();
+			paramMap = new HashMap<>();
 			// store any existing parameters in map for easy key lookup
 			if (params != null) {
 				List<ParameterDefinition> existingParamList = params.getParameterDefinitions();
@@ -153,7 +156,7 @@ public class JenkinsUtils {
 					paramMap.put(env.getName(), envVar);
 				}
 			}
-			List<ParameterDefinition> newParamList = new ArrayList<ParameterDefinition>(paramMap.values());
+			List<ParameterDefinition> newParamList = new ArrayList<>(paramMap.values());
 			job.addProperty(new ParametersDefinitionProperty(newParamList));
 		}
 		// force save here ... seen some timing issues with concurrent job updates and run initiations
@@ -831,6 +834,7 @@ public class JenkinsUtils {
 		return job.getRelativeNameFrom(Jenkins.getInstance());
 	}
 
+	@NotNull
 	public static String getBuildConfigName(WorkflowJob job) {
 		String name = getFullJobName(job);
 		GlobalPluginConfiguration config = GlobalPluginConfiguration.get();

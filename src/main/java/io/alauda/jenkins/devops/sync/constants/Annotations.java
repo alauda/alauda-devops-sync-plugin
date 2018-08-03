@@ -19,6 +19,7 @@ package io.alauda.jenkins.devops.sync.constants;
  * Alauda k8s resources annotations
  */
 public final class Annotations {
+    private Annotations(){}
     public static final String JENKINS_JOB_PATH = "jenkins.alauda.io/job-path";
     public static final String GENERATED_BY = "jenkins.alauda.io/generated-by";
     public static final String GENERATED_BY_JENKINS = "jenkins";
