@@ -4,6 +4,8 @@ import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 
 public abstract class PipelineConfigUtils {
+    private PipelineConfigUtils(){}
+
     public static boolean isSerialPolicy(PipelineConfig pipelineConfig) {
         if(pipelineConfig == null) {
             throw new IllegalArgumentException("param can't be null");

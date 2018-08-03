@@ -11,6 +11,8 @@ import io.alauda.kubernetes.api.model.PipelineParameterBuilder;
  * @author suren
  */
 public abstract class ParameterUtils {
+    private ParameterUtils(){}
+
     public static PipelineParameter to(ParameterValue parameterValue) {
         if(parameterValue == null) {
             return null;

@@ -1,6 +1,7 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import hudson.slaves.Cloud;
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.kubernetes.api.model.Pod;
 import jenkins.model.Jenkins;
 import org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud;
@@ -21,7 +22,11 @@ public abstract class PodTemplateUtils {
 
     private PodTemplateUtils() {}
 
-    public static void removePodTemplate(PodTemplate podTemplate) {
+    public static boolean removePodTemplate(PodTemplate podTemplate) {
+        if(podTemplate == null) {
+            return false;
+        }
+
         KubernetesCloud kubeCloud = PodTemplateUtils.getKubernetesCloud();
         if (kubeCloud != null) {
             LOGGER.info(() -> "Removing PodTemplate: " + podTemplate.getName());
@@ -43,17 +48,21 @@ public abstract class PodTemplateUtils {
                 // pedantic mvn:findbugs
                 Jenkins jenkins = Jenkins.getInstance();
                 jenkins.save();
+
+                return true;
             } catch (IOException e) {
                 LOGGER.log(Level.SEVERE, "removePodTemplate", e);
-            }
-
-            if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.fine("PodTemplates now:");
-                for (PodTemplate pt : kubeCloud.getTemplates()) {
-                    LOGGER.fine(pt.getName());
+            } finally {
+                if (LOGGER.isLoggable(Level.FINE)) {
+                    LOGGER.fine("PodTemplates now:");
+                    for (PodTemplate pt : kubeCloud.getTemplates()) {
+                        LOGGER.fine(pt.getName());
+                    }
                 }
             }
         }
+
+        return false;
     }
 
     public static List<PodTemplate> getPodTemplates() {
@@ -67,8 +76,10 @@ public abstract class PodTemplateUtils {
     }
 
     public static boolean hasPodTemplate(String name) {
-        if (name == null)
+        if (name == null){
             return false;
+        }
+
         KubernetesCloud kubeCloud = PodTemplateUtils.getKubernetesCloud();
         if (kubeCloud != null) {
             List<PodTemplate> list = kubeCloud.getTemplates();
@@ -80,7 +91,11 @@ public abstract class PodTemplateUtils {
         return false;
     }
 
-    public static void addPodTemplate(PodTemplate podTemplate) {
+    public static boolean addPodTemplate(PodTemplate podTemplate) {
+        if(podTemplate == null) {
+            return false;
+        }
+
         // clear out existing template with same name; k8s plugin maintains
         // list, not map
         removePodTemplate(podTemplate);
@@ -92,10 +107,13 @@ public abstract class PodTemplateUtils {
             try {
                 // pedantic mvn:findbugs
                 Jenkins.getInstance().save();
+                return true;
             } catch (IOException e) {
                 LOGGER.log(Level.SEVERE, "addPodTemplate", e);
             }
         }
+
+        return false;
     }
 
 
@@ -128,7 +146,13 @@ public abstract class PodTemplateUtils {
         podTemplate.setRemoteFs("/tmp");
         String podName = System.getenv().get("HOSTNAME");
         if (podName != null) {
-            Pod pod = getAuthenticatedAlaudaClient().pods().withName(podName).get();
+            AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
+
+            Pod pod = null;
+            if(client != null) {
+                pod = client.pods().withName(podName).get();
+            }
+
             if (pod != null) {
                 podTemplate.setServiceAccount(pod.getSpec().getServiceAccountName());
             }

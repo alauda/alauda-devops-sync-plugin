@@ -31,9 +31,10 @@ import static hudson.Util.fixNull;
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
-public class CredentialsUtils {
-
+public abstract class CredentialsUtils {
     private final static Logger logger = Logger.getLogger(CredentialsUtils.class.getName());
+
+    private CredentialsUtils(){}
 
     public static synchronized Secret getSourceCredentials(BuildConfig buildConfig) {
         if (buildConfig.getSpec() != null

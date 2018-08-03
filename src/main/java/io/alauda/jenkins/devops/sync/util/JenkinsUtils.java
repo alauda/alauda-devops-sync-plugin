@@ -41,6 +41,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
 
+import javax.annotation.Nonnull;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -96,14 +97,15 @@ public abstract class JenkinsUtils {
             if (job == null) {
                 // this should not occur if an impersonate call has been made higher up
                 // the stack
-                LOGGER.warning("A run of workflow job " + workflowJob.getName() + " unexpectantly not saved to disk.");
+                LOGGER.warning(() -> "A run of workflow job " + workflowJob.getName() + " unexpectantly not saved to disk.");
                 return false;
             }
             ParametersDefinitionProperty props = job.getProperty(ParametersDefinitionProperty.class);
             List<String> names = props.getParameterDefinitionNames();
             for (String name : names) {
                 if (!paramMap.containsKey(name)) {
-                    LOGGER.warning("A run of workflow job " + job.getName() + " was expecting parameter " + name + ", but it is not in the parameter list");
+                    LOGGER.warning(() -> "A run of workflow job " + job.getName() + " was expecting parameter "
+                            + name + ", but it is not in the parameter list");
                     return false;
                 }
             }
@@ -207,7 +209,7 @@ public abstract class JenkinsUtils {
                         jenkinsParam = new BooleanParameterDefinition(param.getName(), Boolean.valueOf(param.getValue()), param.getDescription());
                         break;
                     default:
-                        LOGGER.warning("Parameter type `" + param.getType() + "` is not supported.. skipping...");
+                        LOGGER.warning(() -> "Parameter type `" + param.getType() + "` is not supported.. skipping...");
                         break;
                 }
 
@@ -255,7 +257,7 @@ public abstract class JenkinsUtils {
                     PipelineTriggerCodeChange codeTrigger = pipelineTrigger.getCodeChange();
 
                     if (codeTrigger == null || !codeTrigger.getEnabled()) {
-                        LOGGER.warning("Trigger type `" + PIPELINE_TRIGGER_TYPE_CODE_CHANGE + "` has empty description or is disabled...");
+                        LOGGER.warning(() -> "Trigger type `" + PIPELINE_TRIGGER_TYPE_CODE_CHANGE + "` has empty description or is disabled...");
                         break;
                     }
 
@@ -264,7 +266,7 @@ public abstract class JenkinsUtils {
 
                         LOGGER.info(() -> "Add CodeChangeTrigger.");
                     } catch (ANTLRException exc) {
-                        LOGGER.severe("Error processing trigger type `" + PIPELINE_TRIGGER_TYPE_CODE_CHANGE + "`: " + exc);
+                        LOGGER.log(Level.SEVERE, String.format("Error processing trigger type %s", PIPELINE_TRIGGER_TYPE_CODE_CHANGE), exc);
                         exceptions.add(exc);
                     }
 
@@ -272,7 +274,7 @@ public abstract class JenkinsUtils {
                 case PIPELINE_TRIGGER_TYPE_CRON:
                     PipelineTriggerCron cronTrigger = pipelineTrigger.getCron();
                     if (cronTrigger == null || !cronTrigger.getEnabled()) {
-                        LOGGER.warning("Trigger type `" + PIPELINE_TRIGGER_TYPE_CRON + "` has empty description or is disabled...");
+                        LOGGER.warning(() -> "Trigger type `" + PIPELINE_TRIGGER_TYPE_CRON + "` has empty description or is disabled...");
                         break;
                     }
 
@@ -281,22 +283,19 @@ public abstract class JenkinsUtils {
 
                         LOGGER.info(() -> "Add CronTrigger.");
                     } catch (ANTLRException exc) {
-                        LOGGER.severe("Error processing trigger type `" + PIPELINE_TRIGGER_TYPE_CRON + "`: " + exc);
+                        LOGGER.log(Level.SEVERE, String.format("Error processing trigger type %s", PIPELINE_TRIGGER_TYPE_CRON), exc);
                         exceptions.add(exc);
                     }
 
                     break;
                 default:
-                    LOGGER.warning("Trigger type `" + pipelineTrigger.getType() + "` is not supported... skipping...");
+                    LOGGER.warning(() -> "Trigger type `" + pipelineTrigger.getType() + "` is not supported... skipping...");
             }
 
             if(trigger != null) {
                 job.addTrigger(trigger);
             }
         }
-
-//        job.setTriggers(exceptions);
-//        job.save();
 
         LOGGER.info(() -> "Job trigger save done.");
 
@@ -428,21 +427,21 @@ public abstract class JenkinsUtils {
 
     public static boolean triggerJob(WorkflowJob job, Pipeline pipeline)
             throws IOException {
-	      LOGGER.info("will trigger pipeline: "+pipeline.getMetadata().getName());
+	      LOGGER.info(() -> "will trigger pipeline: "+pipeline.getMetadata().getName());
         if (isAlreadyTriggered(job, pipeline)) {
-          LOGGER.info("pipeline already triggered: "+pipeline.getMetadata().getName());
+          LOGGER.info(() -> "pipeline already triggered: "+pipeline.getMetadata().getName());
             return false;
         }
 
         String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
         if (isBlank(pipelineConfigName)) {
-          LOGGER.info("pipeline has not config: "+pipeline.getMetadata().getName());
+          LOGGER.info(() -> "pipeline has not config: "+pipeline.getMetadata().getName());
             return false;
         }
 
         PipelineConfigProjectProperty pcProp = job.getProperty(PipelineConfigProjectProperty.class);
         if (pcProp == null) {
-            LOGGER.warning("aborting trigger of pipeline " + pipeline
+            LOGGER.warning(() -> "aborting trigger of pipeline " + pipeline
                     + "because of missing pc project property");
             return false;
         }
@@ -453,13 +452,13 @@ public abstract class JenkinsUtils {
                 .pipelineConfigs().inNamespace(namespace)
                 .withName(pipelineConfigName).get();
         if (pipelineConfig == null) {
-            LOGGER.info("pipeline config not found....: "+pipeline.getMetadata().getName()+" - config name "+pipelineConfigName);
+            LOGGER.info(() -> "pipeline config not found....: "+pipeline.getMetadata().getName()+" - config name "+pipelineConfigName);
             return false;
         }
 
         // sync on intern of name should guarantee sync on same actual obj
         synchronized (pipelineConfig.getMetadata().getUid().intern()) {
-          LOGGER.info("pipeline config source credentials: "+pipelineConfig.getMetadata().getName());
+          LOGGER.info(() -> "pipeline config source credentials: "+pipelineConfig.getMetadata().getName());
 
             updateSourceCredentials(pipelineConfig);
 
@@ -474,13 +473,13 @@ public abstract class JenkinsUtils {
                 if (LOGGER.isLoggable(Level.FINE)) {
                     LOGGER.fine("Adding existing causes...");
                     for (Cause c : originalCauseAction.getCauses()) {
-                        LOGGER.fine("orginal cause: " + c.getShortDescription());
+                        LOGGER.log(Level.FINE, "trigger error", c);
                     }
                 }
                 newCauses.addAll(originalCauseAction.getCauses());
                 if (LOGGER.isLoggable(Level.FINE)) {
                     for (Cause c : newCauses) {
-                        LOGGER.fine("new cause: " + c.getShortDescription());
+                        LOGGER.log(Level.FINE, "trigger error", c);
                     }
                 }
             }
@@ -527,7 +526,6 @@ public abstract class JenkinsUtils {
                 try {
                     Thread.sleep(50l);
                 } catch (InterruptedException e) {
-                    // Ignore
                     LOGGER.log(Level.SEVERE, "updatePipelinePhase Interrupted", e);
                     Thread.currentThread().interrupt();
                 }
@@ -711,13 +709,13 @@ public abstract class JenkinsUtils {
         handlePipelineList(job, list.getItems(), pcp);
     }
 
-  public static PipelineList filterNew(PipelineList list) {
-    if (list == null || list.getItems() == null || list.getItems().size() == 0) {
-      return list;
+    public static PipelineList filterNew(PipelineList list) {
+        if (list == null || list.getItems() == null || list.getItems().size() == 0) {
+            return list;
+        }
+        list.getItems().removeIf(p -> !isNew(p.getStatus()));
+        return list;
     }
-    list.getItems().removeIf(p -> !isNew(p.getStatus()));
-    return list;
-  }
 
 	public static void handlePipelineList(WorkflowJob job, List<Pipeline> pipelines,
                                         PipelineConfigProjectProperty pipelineConfigProjectProperty) {
@@ -830,12 +828,13 @@ public abstract class JenkinsUtils {
 		}
 	}
 
-	public static String getFullJobName(WorkflowJob job) {
+    @Nonnull
+    public static String getFullJobName(@Nonnull WorkflowJob job) {
 		return job.getRelativeNameFrom(Jenkins.getInstance());
 	}
 
-	@NotNull
-	public static String getBuildConfigName(WorkflowJob job) {
+	@Nonnull
+	public static String getBuildConfigName(@Nonnull WorkflowJob job) {
 		String name = getFullJobName(job);
 		GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
 		String[] paths = name.split("/");

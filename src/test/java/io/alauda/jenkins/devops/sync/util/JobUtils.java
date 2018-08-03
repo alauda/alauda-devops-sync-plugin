@@ -8,7 +8,9 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-public class JobUtils {
+public abstract class JobUtils {
+    private JobUtils(){}
+
     public static Job findJob(Jenkins jenkins, String folderName, String jobName)
             throws InterruptedException {
         Job jobItem = null;
