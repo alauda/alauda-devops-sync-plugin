@@ -58,10 +58,7 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTI
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 import static java.util.logging.Level.FINE;
 
-/**
- */
 public class AlaudaUtils {
-
     private final static Logger logger = Logger.getLogger(AlaudaUtils.class.getName());
 
     private static AlaudaDevOpsClient alaudaClient;
@@ -123,48 +120,6 @@ public class AlaudaUtils {
           logger.warning("Config builder could not build a configuration for Alauda Connection");
       }
     }
-
-    public static void trustAllHttpsCertificates() {
-        try {
-            javax.net.ssl.TrustManager[] trustAllCerts = new javax.net.ssl.TrustManager[1];
-            javax.net.ssl.TrustManager tm = new MiTM();
-            trustAllCerts[0] = tm;
-            javax.net.ssl.SSLContext sc;
-            sc = javax.net.ssl.SSLContext.getInstance("SSL");
-            sc.init(null, trustAllCerts, null);
-            javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-        } catch (NoSuchAlgorithmException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (KeyManagementException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-    }
-
-    static class MiTM implements javax.net.ssl.TrustManager,
-            javax.net.ssl.X509TrustManager {
-        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-            return null;
-        }
-
-        public boolean isServerTrusted(java.security.cert.X509Certificate[] certs) {
-            return true;
-        }
-
-        public boolean isClientTrusted(java.security.cert.X509Certificate[] certs) {
-            return true;
-        }
-
-        public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) throws java.security.cert.CertificateException {
-            return;
-        }
-
-        public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) throws java.security.cert.CertificateException {
-            return;
-        }
-    }
-
 
     public synchronized static AlaudaDevOpsClient getAlaudaClient() {
         return alaudaClient;
@@ -590,19 +545,16 @@ public class AlaudaUtils {
         return new NamespaceName(namespace, jobName);
     }
 
-  /**
-   * Maps a Jenkins Job name to an PipelineConfig name
-   *
-   * @return the namespaced name for the PipelineConfig
-   * @param jobName
-   *            the job to associate to a PipelineConfig name
-   * @param namespace
-   *            the default namespace that Jenkins is running inside
-   */
-  public static NamespaceName pipelineConfigNameFromJenkinsJobName(
-    String jobName, String namespace) {
-    return new NamespaceName(namespace, jobName);
-  }
+    /**
+     * Maps a Jenkins Job name to an PipelineConfig name
+     *
+     * @param jobName   the job to associate to a PipelineConfig name
+     * @param namespace the default namespace that Jenkins is running inside
+     * @return the namespaced name for the PipelineConfig
+     */
+    public static NamespaceName pipelineConfigNameFromJenkinsJobName(String jobName, String namespace) {
+        return new NamespaceName(namespace, jobName);
+    }
 
     public static long parseResourceVersion(HasMetadata obj) {
         return parseResourceVersion(obj.getMetadata().getResourceVersion());
@@ -628,31 +580,6 @@ public class AlaudaUtils {
         return dateFormatter.parseMillis(timestamp);
     }
 
-//    public static boolean isResourceWithoutStateEqual(HasMetadata oldObj,
-//            HasMetadata newObj) {
-//        try {
-//            byte[] oldDigest = MessageDigest.getInstance("MD5").digest(
-//                    dumpWithoutRuntimeStateAsYaml(oldObj).getBytes(
-//                            StandardCharsets.UTF_8));
-//            byte[] newDigest = MessageDigest.getInstance("MD5").digest(
-//                    dumpWithoutRuntimeStateAsYaml(newObj).getBytes(
-//                            StandardCharsets.UTF_8));
-//            return Arrays.equals(oldDigest, newDigest);
-//        } catch (NoSuchAlgorithmException | JsonProcessingException e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
-//
-//    public static String dumpWithoutRuntimeStateAsYaml(HasMetadata obj)
-//            throws JsonProcessingException {
-//        ObjectMapper statelessMapper = new ObjectMapper(new YAMLFactory());
-//        statelessMapper.addMixInAnnotations(ObjectMeta.class,
-//                ObjectMetaMixIn.class);
-//        statelessMapper.addMixInAnnotations(ReplicationController.class,
-//                StatelessReplicationControllerMixIn.class);
-//        return statelessMapper.writeValueAsString(obj);
-//    }
-
     public static boolean isCancellable(PipelineStatus pipelineStatus) {
         String phase = pipelineStatus.getPhase();
         return phase.equals(QUEUED) || phase.equals(PENDING)
@@ -661,8 +588,6 @@ public class AlaudaUtils {
 
     public static boolean isNew(PipelineStatus pipelineStatus) {
         return pipelineStatus.getPhase().equals(PENDING);
-//      String phase = pipelineStatus.getPhase();
-//      return phase.equals(PENDING) || phase.equals(QUEUED);
     }
 
     public static boolean isCancelled(PipelineStatus status) {

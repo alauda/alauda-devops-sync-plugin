@@ -2,18 +2,14 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import hudson.model.Result;
 import hudson.model.Run;
-import hudson.model.queue.QueueTaskFuture;
-import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.util.DevOpsInit;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.*;
-import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.TestExtension;
+import org.junit.Rule;
+import org.junit.Test;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -24,23 +20,12 @@ import static org.junit.Assert.*;
 
 public class PipelineWatcherTest {
     @Rule
-    public JenkinsRule j = new JenkinsRule();
-    private AlaudaDevOpsClient client;
-    private DevOpsInit devOpsInit;
-
-    @Before
-    public void setup() throws InterruptedException {
-        devOpsInit = new DevOpsInit().init();
-        client = devOpsInit.getClient();
-        GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
-        config.setJenkinsService(devOpsInit.getJenkinsName());
-        config.configChange();
-    }
+    public JenkinsK8sRule j = new JenkinsK8sRule();
 
     @Test
     public void triggerPipeline() throws Exception {
-        PipelineConfig config = devOpsInit.createPipelineConfig(client);
-        final String folderName = devOpsInit.getNamespace();
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();
 
         WorkflowJob workflowJob = findWorkflowJob(j.jenkins, folderName, pipCfgName);
@@ -52,15 +37,15 @@ public class PipelineWatcherTest {
             assertNotNull(build);
 
             j.waitForCompletion(build);
-            List<Pipeline> pipelineList = devOpsInit.getPipelines(client);
+            List<Pipeline> pipelineList = j.getDevOpsInit().getPipelines(j.getClient());
             assertEquals(PipelinePhases.COMPLETE, pipelineList.get(i - 1).getStatus().getPhase());
         }
     }
 
     @Test
     public void wrongJenkinsfile() throws Exception {
-        PipelineConfig config = devOpsInit.createPipelineConfig(client, "asf");
-        final String folderName = devOpsInit.getNamespace();
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), "asf");
+        final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();
 
         WorkflowJob workflowJob = findWorkflowJob(j.jenkins, folderName, pipCfgName);
@@ -71,15 +56,15 @@ public class PipelineWatcherTest {
 
         assertEquals(Result.FAILURE, build.getResult());
         Thread.sleep(3000);
-        List<Pipeline> pipelineList = devOpsInit.getPipelines(client);
+        List<Pipeline> pipelineList = j.getDevOpsInit().getPipelines(j.getClient());
         assertEquals(1, pipelineList.size());
         assertEquals(PipelinePhases.FAILED, pipelineList.get(0).getStatus().getPhase());
     }
 
     @Test
     public void deletePipeline() throws Exception {
-        PipelineConfig config = devOpsInit.createPipelineConfig(client);
-        final String folderName = devOpsInit.getNamespace();
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();
 
         WorkflowJob workflowJob = findWorkflowJob(j.jenkins, folderName, pipCfgName);
@@ -89,14 +74,14 @@ public class PipelineWatcherTest {
             WorkflowRun lastBuild = workflowJob.getLastBuild();
             assertNotNull(lastBuild);
             lastBuild.delete();
-            assertEquals(0, devOpsInit.getPipelines(client).size());
+            assertEquals(0, j.getDevOpsInit().getPipelines(j.getClient()).size());
         }
     }
 
     @Test
     public void cancelPipeline() throws Exception {
-        PipelineConfig config = devOpsInit.createPipelineConfig(client, "sleep 9999");
-        final String folderName = devOpsInit.getNamespace();
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), "sleep 9999");
+        final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();
 
         Pipeline pipeline = trigger(pipCfgName, false);
@@ -110,14 +95,14 @@ public class PipelineWatcherTest {
         Thread.sleep(3000);
 
         final String pipelineName = pipeline.getMetadata().getName();
-        pipeline = devOpsInit.getPipeline(client, pipelineName);
+        pipeline = j.getDevOpsInit().getPipeline(j.getClient(), pipelineName);
         assertNotNull(String.format("no pipeline[%s], in namespace[%s]", pipelineName, folderName), pipeline);
         assertEquals("cancel job failed", PipelinePhases.CANCELLED, pipeline.getStatus().getPhase());
 
         // check point, cancel from k8s
         pipeline = trigger(pipCfgName, false);
         build = ensureRunning(workflowJob, 2);
-        devOpsInit.abortPipeline(client, pipeline.getMetadata().getName());
+        j.getDevOpsInit().abortPipeline(j.getClient(), pipeline.getMetadata().getName());
         Thread.sleep(3000);
         assertFalse("cancel job failed", build.isBuilding());
         assertEquals(Result.ABORTED, build.getResult());
@@ -134,9 +119,7 @@ public class PipelineWatcherTest {
             Thread.sleep(1000);
         }
         assertNotNull(build);
-        @Nonnull // just for sonar check
-        String log = build.getLog();
-        assertTrue(log, build.isBuilding());
+        assertTrue(build.getLog() == null ? "" : build.getLog(), build.isBuilding());
         return build;
     }
 
@@ -145,17 +128,12 @@ public class PipelineWatcherTest {
     }
 
     private Pipeline trigger(String pipelineConfigName, boolean wait) throws Exception {
-        Pipeline pipeline = devOpsInit.createPipeline(client, pipelineConfigName);
+        Pipeline pipeline = j.getDevOpsInit().createPipeline(j.getClient(), pipelineConfigName);
         assertNotNull(pipeline);
         Thread.sleep(3000);
         if(wait) {
             j.waitUntilNoActivity();
         }
         return pipeline;
-    }
-
-    @After
-    public void tearDown() throws IOException {
-        devOpsInit.close();
     }
 }

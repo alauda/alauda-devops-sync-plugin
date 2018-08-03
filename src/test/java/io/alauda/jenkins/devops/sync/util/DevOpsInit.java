@@ -16,11 +16,15 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.ZoneId;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.alauda.devops.client.models.PipelineConfigStatus.PipelineConfigPhaseCreating;
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_RUN_POLICY_SERIAL;
 
 public class DevOpsInit {
+    private final static Logger logger = Logger.getLogger(DevOpsInit.class.getName());
+
     public static final String TEST_FLAG = "alauda.test";
     public static final String TEST_FLAG_VALUE = "true";
 
@@ -326,7 +330,8 @@ public class DevOpsInit {
     }
 
     private void cleanExpireResources() {
-        final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        final String formatTxt = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+        final SimpleDateFormat format = new SimpleDateFormat(formatTxt);
         final ProjectList projects = getClient().projects().list();
         if(projects != null && projects.getItems() != null) {
             List<Project> items = projects.getItems();
@@ -345,7 +350,7 @@ public class DevOpsInit {
 
                     expire = format.parse(createTime).after(expireTime.getTime());
                 } catch (ParseException e) {
-                    e.printStackTrace();
+                    logger.log(Level.SEVERE, String.format("wrong time format: %s", formatTxt), e);
                 }
 
                 if(expire) {
