@@ -3,6 +3,7 @@ package io.alauda.jenkins.devops.sync.util;
 import hudson.model.Action;
 import hudson.model.FreeStyleProject;
 import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
+import io.alauda.jenkins.devops.sync.WithoutK8s;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.api.model.PipelineList;
 import io.alauda.kubernetes.api.model.PipelineParameter;
@@ -26,6 +27,7 @@ public class JenkinsUtilsTest {
     public JenkinsK8sRule j = new JenkinsK8sRule();
 
     @Test
+    @WithoutK8s
     public void getJob() throws IOException {
         FreeStyleProject freeStyleProject = j.createFreeStyleProject();
 
@@ -34,6 +36,7 @@ public class JenkinsUtilsTest {
     }
 
     @Test
+    @WithoutK8s
     public void getRootUrl() {
         assertNotNull(JenkinsUtils.getRootUrl());
 
@@ -44,7 +47,7 @@ public class JenkinsUtilsTest {
         assertEquals(ROOT_URL, JenkinsUtils.getRootUrl());
 
         config.setUrl(" ");
-        assertEquals(ROOT_URL, JenkinsUtils.getRootUrl());
+        assertEquals(" /", JenkinsUtils.getRootUrl());
     }
 
     @Test
