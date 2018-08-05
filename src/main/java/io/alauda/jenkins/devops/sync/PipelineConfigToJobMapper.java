@@ -48,13 +48,13 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.DEFAULT_JENKINS_FILEPATH;
 import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
-
-public class PipelineConfigToJobMapper {
-    public static final String JENKINS_PIPELINE_BUILD_STRATEGY = "JenkinsPipeline";
-    public static final String DEFAULT_JENKINS_FILEPATH = "Jenkinsfile";
+public abstract class PipelineConfigToJobMapper {
     private static final Logger LOGGER = Logger.getLogger(PipelineConfigToJobMapper.class.getName());
+
+    private PipelineConfigToJobMapper(){}
 
     /**
      * Create FlowDefinition according PipelineConfig.
@@ -137,7 +137,7 @@ public class PipelineConfigToJobMapper {
      * @param type type of PipelineTrigger
      * @return target PipelineTrigger. Return null if can not find it.
      */
-    private static PipelineTrigger findPipelineTriggers(PipelineConfig pipelineConfig, String type) {
+    private static PipelineTrigger findPipelineTriggers(@Nonnull PipelineConfig pipelineConfig, @Nonnull String type) {
         List<PipelineTrigger> triggers = pipelineConfig.getSpec().getTriggers();
         if (triggers == null) {
             return null;
@@ -223,10 +223,6 @@ public class PipelineConfigToJobMapper {
             if (scriptPath != null && scriptPath.trim().length() > 0) {
                 boolean rc = false;
                 PipelineSource source = getOrCreatePipelineSource(spec);
-//        String bcContextDir = "";
-//        if (StringUtils.isNotBlank(bcContextDir) && scriptPath.startsWith(bcContextDir)) {
-//          scriptPath = scriptPath.replaceFirst("^" + bcContextDir + "/?", "");
-//        }
 
                 if (!scriptPath.equals(pipelineStrategyJenkins.getJenkinsfilePath())) {
                     LOGGER.log(Level.FINE, "updating PipelineConfig " + namespaceName + " jenkinsfile path to " + scriptPath + " from ");
@@ -308,8 +304,9 @@ public class PipelineConfigToJobMapper {
         }
     }
 
-    public static boolean isSupportParamType(ParameterDefinition paramDef) {
-        return (paramDef instanceof StringParameterDefinition) || (paramDef instanceof BooleanParameterDefinition);
+    public static boolean isSupportParamType(@Nonnull ParameterDefinition paramDef) {
+        return (StringParameterDefinition.class.equals(paramDef.getClass()))
+                || (BooleanParameterDefinition.class.equals(paramDef.getClass()));
     }
 
     @Nonnull
@@ -334,7 +331,7 @@ public class PipelineConfigToJobMapper {
      * @param parameterDefinition ParameterDefinition
      * @return param type
      */
-    public static String paramType(ParameterDefinition parameterDefinition) {
+    public static String paramType(@Nonnull ParameterDefinition parameterDefinition) {
         Map<String, String> map = new HashMap<String, String>();
         map.put(new StringParameterDefinition("", "").getType(), Constants.PIPELINE_PARAMETER_TYPE_STRING);
         map.put(new BooleanParameterDefinition("", false, "").getType(), Constants.PIPELINE_PARAMETER_TYPE_BOOLEAN);

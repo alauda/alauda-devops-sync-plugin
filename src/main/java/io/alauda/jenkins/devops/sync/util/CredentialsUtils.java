@@ -9,6 +9,7 @@ import hudson.model.Fingerprint;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.api.model.BuildConfig;
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
 import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
@@ -432,8 +433,12 @@ public abstract class CredentialsUtils {
      * @return true if found.
      */
     public static boolean hasCredentials() {
-        return !StringUtils.isEmpty(AlaudaUtils.getAuthenticatedAlaudaClient()
-                .getConfiguration().getOauthToken());
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            return false;
+        }
+
+        return !StringUtils.isEmpty(client.getConfiguration().getOauthToken());
     }
 
 }

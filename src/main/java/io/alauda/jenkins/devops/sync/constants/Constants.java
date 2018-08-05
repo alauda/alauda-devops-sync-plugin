@@ -69,4 +69,6 @@ public final class Constants {
     public static final String JOB_STATUS_SKIPPED = "SKIPPED";
     public static final String JOB_STATUS_NOT_BUILT = "NOT_BUILT";
     public static final String JOB_STATUS_UNKNOWN = "UNKNOWN";
+
+    public static final String DEFAULT_JENKINS_FILEPATH = "Jenkinsfile";
 }

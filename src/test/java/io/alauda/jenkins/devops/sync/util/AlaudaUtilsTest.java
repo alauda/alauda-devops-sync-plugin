@@ -5,8 +5,7 @@ import io.alauda.kubernetes.api.model.PipelineConfig;
 import org.junit.Rule;
 import org.junit.Test;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class AlaudaUtilsTest {
     @Rule
@@ -18,6 +17,7 @@ public class AlaudaUtilsTest {
         assertNotNull(config);
 
         assertTrue(AlaudaUtils.isPipelineStrategyPipelineConfig(config));
+        assertFalse(AlaudaUtils.isPipelineStrategyPipelineConfig(null));
     }
 
     @Test

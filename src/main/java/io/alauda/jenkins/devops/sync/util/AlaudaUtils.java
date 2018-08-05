@@ -168,6 +168,9 @@ public abstract class AlaudaUtils {
      *         to a Jenkins Job
      */
     public static boolean isPipelineStrategyPipelineConfig(PipelineConfig pc) {
+        if(pc == null) {
+            return false;
+        }
       return (
         pc.getSpec().getStrategy().getJenkins() != null
         && (

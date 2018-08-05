@@ -32,6 +32,9 @@ public class GlobalPluginConfigurationTest {
         assertNotNull(config);
         assertNotNull(config.getDisplayName());
         assertNotNull(config.getNamespaces());
+
+        config.reWatchAllNamespace("fake-ns");
+        assertTrue(config.isEnabled());
     }
 
     @Test
