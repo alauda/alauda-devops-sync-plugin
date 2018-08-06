@@ -89,20 +89,23 @@ public class PipelineConfigWatcher implements BaseWatcher {
 
   private Watch watcher;
 
-  @Override
-  public void watch() {
-    PipelineConfigList list = AlaudaUtils.getAuthenticatedAlaudaClient()
-            .pipelineConfigs().inAnyNamespace().list();
-    String ver = "0";
-    if(list != null) {
-      ver = list.getMetadata().getResourceVersion();
-    }
+    @Override
+    public void watch() {
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if (client == null) {
+            logger.severe("client is null, when watch Secret");
+            return;
+        }
 
-    watcher = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
-            .inAnyNamespace()
-            .withResourceVersion(ver)
-            .watch(new WatcherCallback<PipelineConfig>(this, null));
-  }
+        PipelineConfigList list = client.pipelineConfigs().inAnyNamespace().list();
+        String ver = "0";
+        if (list != null) {
+            ver = list.getMetadata().getResourceVersion();
+        }
+
+        watcher = client.pipelineConfigs().inAnyNamespace()
+                .withResourceVersion(ver).watch(new WatcherCallback<>(this, null));
+    }
 
     @Override
     public void stop() {

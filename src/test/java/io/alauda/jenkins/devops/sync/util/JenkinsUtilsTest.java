@@ -67,6 +67,7 @@ public class JenkinsUtilsTest {
 
     @Test
     @WithoutJenkins
+    @WithoutK8s
     public void filterNew() {
         assertNull(JenkinsUtils.filterNew(null));
 
@@ -78,21 +79,21 @@ public class JenkinsUtilsTest {
         assertEquals(0, JenkinsUtils.filterNew(list).getItems().size());
 
         // one of them is null
-        assertNull(JenkinsUtils.setJobRunParamsFromEnvAndUIParams(Collections.EMPTY_LIST, null));
-        assertNull(JenkinsUtils.setJobRunParamsFromEnvAndUIParams(null, Collections.EMPTY_LIST));
+        assertNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(Collections.EMPTY_LIST, null));
+        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(null, Collections.EMPTY_LIST));
 
         List<Action> buildActions = new ArrayList<>();
         // empty
         List<PipelineParameter> pipelineParameters = new ArrayList<>();
-        assertNull(JenkinsUtils.setJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions));
+        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions));
 
         // not supported type
         pipelineParameters.add(new PipelineParameter());
-        assertNull(JenkinsUtils.setJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions));
+        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions));
 
         // supported type
         pipelineParameters.add(new PipelineParameter("", "sdf", PIPELINE_PARAMETER_TYPE_STRING, "sdf"));
-        buildActions = JenkinsUtils.setJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions);
+        buildActions = JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions);
         assertNotNull(buildActions);
         assertEquals(1, buildActions.size());
     }

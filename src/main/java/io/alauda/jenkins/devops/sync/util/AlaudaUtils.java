@@ -171,13 +171,20 @@ public abstract class AlaudaUtils {
         if(pc == null) {
             return false;
         }
-      return (
-        pc.getSpec().getStrategy().getJenkins() != null
-        && (
-          StringUtils.isNotEmpty(pc.getSpec().getStrategy().getJenkins().getJenkinsfile())
-          || StringUtils.isNotEmpty(pc.getSpec().getStrategy().getJenkins().getJenkinsfilePath())
-        )
-      );
+        PipelineStrategy strategy = pc.getSpec().getStrategy();
+        if(strategy == null) {
+            return false;
+        }
+
+        PipelineStrategyJenkins jenkins = strategy.getJenkins();
+        if(jenkins == null) {
+            return false;
+        }
+
+        return (
+                StringUtils.isNotEmpty(jenkins.getJenkinsfile())
+                        || StringUtils.isNotEmpty(jenkins.getJenkinsfilePath())
+        );
     }
 
 

@@ -8,6 +8,7 @@ import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
 import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
+import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.JobUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
@@ -39,7 +40,7 @@ public class PipelineConfigWatcherTest {
 
     @Test
     public void simpleJobSync() throws Exception {
-        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        final PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         final String folderName = j.getDevOpsInit().getNamespace();
         final String jobName = config.getMetadata().getName();
 
@@ -54,7 +55,7 @@ public class PipelineConfigWatcherTest {
         // check pipeline run
         Pipeline pipeline = j.getDevOpsInit().createPipeline(j.getClient(), jobName);
         assertNotNull(pipeline);
-        Thread.sleep(3000);
+        afterRunning(pipeline.getMetadata().getName());
         j.waitUntilNoActivity();
         Run build = jobItem.getBuildByNumber(1);
         assertNotNull(build);
@@ -68,11 +69,33 @@ public class PipelineConfigWatcherTest {
         // check pipeline run after update jenkinsfile
         pipeline = j.getDevOpsInit().createPipeline(j.getClient(), jobName);
         assertNotNull(pipeline);
-        Thread.sleep(3000);
+        afterRunning(pipeline.getMetadata().getName());
         j.waitUntilNoActivity();
         build = jobItem.getBuildByNumber(2);
         assertNotNull(build);
         assertEquals(Result.SUCCESS, build.getResult());
+    }
+
+    private void afterRunning(String jobName) throws InterruptedException {
+        for(int i = 0; i < 6; i++) {
+            Pipeline pipeline = j.getDevOpsInit().getPipeline(j.getClient(), jobName);
+            if(pipeline == null) {
+                break;
+            }
+            PipelineStatus status = pipeline.getStatus();
+            if(status != null) {
+                String phase = status.getPhase();
+
+                if(PipelinePhases.RUNNING.equals(phase)
+                        || PipelinePhases.COMPLETE.equals(phase)
+                        || PipelinePhases.ERROR.equals(phase)
+                        || PipelinePhases.FAILED.equals(phase)
+                        || PipelinePhases.CANCELLED.equals(phase)){
+                    break;
+                }
+            }
+            Thread.sleep(1000);
+        }
     }
 
     @Test

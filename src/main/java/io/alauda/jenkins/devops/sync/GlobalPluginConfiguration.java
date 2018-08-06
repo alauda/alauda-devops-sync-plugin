@@ -39,6 +39,7 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -226,9 +227,15 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         reloadNamespaces();
 
         // put the new guy at first
-        List<String> namespaceList = Arrays.asList(namespaces);
-        namespaceList.remove(namespace);
-        namespaceList.add(0, namespace);
+        List<String> namespaceList = new ArrayList<>();
+        namespaceList.add(namespace);
+        for(String old : namespaces) {
+            if(old.equals(namespace)) {
+                continue;
+            }
+
+            namespaceList.add(old);
+        }
         namespaces = namespaceList.toArray(new String[]{});
 
         startWatchers();

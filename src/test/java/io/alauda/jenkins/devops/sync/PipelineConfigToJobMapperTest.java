@@ -5,7 +5,8 @@ import hudson.model.StringParameterDefinition;
 import hudson.model.TextParameterDefinition;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.PipelineConfig;
-import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition;
+import io.alauda.kubernetes.api.model.PipelineConfigBuilder;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.junit.Rule;
 import org.junit.Test;
@@ -20,12 +21,14 @@ public class PipelineConfigToJobMapperTest {
     @Test
     public void mapPipelineConfigToFlow() throws Exception {
         assertNull(PipelineConfigToJobMapper.mapPipelineConfigToFlow(null));
-        assertNull(PipelineConfigToJobMapper.mapPipelineConfigToFlow(new PipelineConfig()));
+        PipelineConfig config = new PipelineConfigBuilder().withNewSpec().withNewStrategy()
+                .withNewJenkins().endJenkins().endStrategy().endSpec().build();
+        assertNull(PipelineConfigToJobMapper.mapPipelineConfigToFlow(config));
 
-        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         FlowDefinition flow = PipelineConfigToJobMapper.mapPipelineConfigToFlow(config);
         assertNotNull(flow);
-        assertEquals(CpsScmFlowDefinition.class, flow.getClass());
+        assertEquals(CpsFlowDefinition.class, flow.getClass());
     }
 
     @Test

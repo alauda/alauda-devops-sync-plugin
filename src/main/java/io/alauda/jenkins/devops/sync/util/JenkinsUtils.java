@@ -293,15 +293,15 @@ public abstract class JenkinsUtils {
     }
 
     @CheckForNull
-	public static List<Action> setJobRunParamsFromEnvAndUIParams(List<PipelineParameter> pipelineParameters,
-			List<Action> buildActions) {
+	public static List<Action> putJobRunParamsFromEnvAndUIParams(List<PipelineParameter> pipelineParameters,
+                                                                 List<Action> buildActions) {
         if(buildActions == null || pipelineParameters == null) {
-            return null;
+            return buildActions;
         }
 
         List<ParameterValue> envVarList = getParameterValues(pipelineParameters);
         if (envVarList.size() == 0) {
-            return null;
+            return buildActions;
         }
 
         buildActions.add(new ParametersAction(envVarList));
@@ -345,17 +345,19 @@ public abstract class JenkinsUtils {
         return envVarList;
     }
 
-    public static boolean triggerJob(WorkflowJob job, Pipeline pipeline)
+    public static boolean triggerJob(@Nonnull WorkflowJob job, @Nonnull Pipeline pipeline)
             throws IOException {
-	      LOGGER.info(() -> "will trigger pipeline: "+pipeline.getMetadata().getName());
+        final String pipelineName = pipeline.getMetadata().getName();
+	    LOGGER.info(() -> "will trigger pipeline: " + pipelineName);
+
         if (isAlreadyTriggered(job, pipeline)) {
-          LOGGER.info(() -> "pipeline already triggered: "+pipeline.getMetadata().getName());
+          LOGGER.info(() -> "pipeline already triggered: "+pipelineName);
             return false;
         }
 
         String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
         if (isBlank(pipelineConfigName)) {
-          LOGGER.info(() -> "pipeline has not config: "+pipeline.getMetadata().getName());
+          LOGGER.info(() -> "pipeline has not config: "+pipelineName);
             return false;
         }
 
@@ -372,7 +374,7 @@ public abstract class JenkinsUtils {
                 .pipelineConfigs().inNamespace(namespace)
                 .withName(pipelineConfigName).get();
         if (pipelineConfig == null) {
-            LOGGER.info(() -> "pipeline config not found....: "+pipeline.getMetadata().getName()+" - config name "+pipelineConfigName);
+            LOGGER.info(() -> "pipeline config not found....: "+pipelineName+" - config name "+pipelineConfigName);
             return false;
         }
 
@@ -388,7 +390,7 @@ public abstract class JenkinsUtils {
             List<Cause> newCauses = new ArrayList<>();
             newCauses.add(new JenkinsPipelineCause(pipeline, pcProp.getUid()));
             CauseAction originalCauseAction = PipelineToActionMapper
-                    .removeCauseAction(pipeline.getMetadata().getName());
+                    .removeCauseAction(pipelineName);
             if (originalCauseAction != null) {
                 if (LOGGER.isLoggable(Level.FINE)) {
                     LOGGER.fine("Adding existing causes...");
@@ -424,18 +426,18 @@ public abstract class JenkinsUtils {
             }
           }
 
-          LOGGER.info("pipeline got cause....: "+pipeline.getMetadata().getName()+" pipeline actions "+pipelineActions);
+          LOGGER.info("pipeline got cause....: "+pipelineName+" pipeline actions "+pipelineActions);
 
             // params added by user in jenkins ui
-            PipelineToActionMapper.removeParameterAction(pipeline.getMetadata().getName());
+            PipelineToActionMapper.removeParameterAction(pipelineName);
 
-            pipelineActions = setJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
+            putJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
 
             putJobWithPipelineConfig(job, pipelineConfig);
-            LOGGER.info(() -> "pipeline config update with job: "+pipeline.getMetadata().getName()+" pipeline config "+pipelineConfig.getMetadata().getName());
+            LOGGER.info(() -> "pipeline config update with job: "+pipelineName+" pipeline config "+pipelineConfig.getMetadata().getName());
 
-            Action[] actionArray = null;
-            if(pipelineActions == null || pipelineActions.size() == 0) {
+            Action[] actionArray;
+            if(pipelineActions.size() == 0) {
                 actionArray = new Action[]{};
             } else {
                 actionArray = pipelineActions.toArray(new Action[pipelineActions.size()]);
@@ -454,7 +456,7 @@ public abstract class JenkinsUtils {
                 }
                 return true;
             } else {
-                LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipeline.getMetadata().getName());
+                LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipelineName);
             }
 
             return false;

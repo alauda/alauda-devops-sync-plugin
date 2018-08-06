@@ -235,6 +235,7 @@ public class DevOpsInit {
 
         return client.pipelines().createNew()
                 .withNewMetadata()
+                .withGenerateName("pipeline-test-")
                 .withNamespace(namespace)
                 .withLabels(Collections.singletonMap(TEST_FLAG, TEST_FLAG_VALUE))
                 .endMetadata()

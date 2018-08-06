@@ -17,6 +17,7 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.security.ACL;
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.PipelineComparator;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
@@ -40,6 +41,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
 /**
@@ -64,14 +66,20 @@ public class PipelineWatcher implements BaseWatcher {
 
     @Override
     public void watch() {
-        PipelineList list = AlaudaUtils.getAuthenticatedAlaudaClient()
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.severe("client is null, when watch Pipeline");
+            return;
+        }
+
+        PipelineList list = client
                 .pipelines().inAnyNamespace().list();
         String ver = "0";
         if(list != null) {
             ver = list.getMetadata().getResourceVersion();
         }
 
-        watcher = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
+        watcher = client.pipelines()
                 .inAnyNamespace()
                 .withResourceVersion(ver)
                 .watch(new WatcherCallback<Pipeline>(this, null));
@@ -146,14 +154,14 @@ public class PipelineWatcher implements BaseWatcher {
                 deleteEventToJenkinsJobRun(pipeline);
                 break;
             case ERROR:
-                logger.warning("watch for pipeline " + pipeline.getMetadata().getName() + " received error event ");
+                logger.warning("watch for pipeline " + pipelineName + " received error event ");
                 break;
             default:
-                logger.warning("watch for pipeline " + pipeline.getMetadata().getName() + " received unknown event " + action);
+                logger.warning("watch for pipeline " + pipelineName + " received unknown event " + action);
                 break;
             }
         } catch (Exception e) {
-            logger.log(WARNING, "Caught: " + e, e);
+            logger.log(SEVERE, String.format("Caught exception when %s", action), e);
         }
     }
 
