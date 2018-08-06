@@ -4,6 +4,7 @@ import hudson.slaves.Cloud;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.kubernetes.api.model.Pod;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang.StringUtils;
 import org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud;
 import org.csanchez.jenkins.plugins.kubernetes.PodTemplate;
 import org.csanchez.jenkins.plugins.kubernetes.PodVolumes;
@@ -24,7 +25,7 @@ public abstract class PodTemplateUtils {
     private PodTemplateUtils() {}
 
     public static boolean removePodTemplate(String name) {
-        if(name == null || name.isEmpty()) {
+        if(StringUtils.isBlank(name)) {
             return false;
         }
 
@@ -78,7 +79,7 @@ public abstract class PodTemplateUtils {
     }
 
     public static boolean hasPodTemplate(String name) {
-        if (name == null){
+        if (StringUtils.isBlank(name)){
             return false;
         }
 
