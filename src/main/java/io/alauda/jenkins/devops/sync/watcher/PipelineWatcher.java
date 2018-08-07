@@ -19,7 +19,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
-import io.alauda.jenkins.devops.sync.PipelineComparator;
+import io.alauda.jenkins.devops.sync.PipelineNumComparator;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.constants.Constants;
@@ -42,7 +42,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static java.util.logging.Level.SEVERE;
-import static java.util.logging.Level.WARNING;
 
 /**
  * @author suren
@@ -173,7 +172,7 @@ public class PipelineWatcher implements BaseWatcher {
 
     public synchronized static void onInitialPipelines(PipelineList pipelineList) {
         List<Pipeline> items = pipelineList.getItems();
-        Collections.sort(items, new PipelineComparator());
+        Collections.sort(items, new PipelineNumComparator());
 
         // We need to sort the builds into their build configs so we can
         // handle build run policies correctly.
@@ -247,7 +246,7 @@ public class PipelineWatcher implements BaseWatcher {
                 continue;
             }
             List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
-            JenkinsUtils.handlePipelineList(job, pipelines, bcp);
+            JenkinsUtils.handlePipelineList(job, pipelines);
         }
     }
 

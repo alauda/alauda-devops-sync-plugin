@@ -1,6 +1,7 @@
 package io.alauda.jenkins.devops.sync;
 
 import com.gargoylesoftware.htmlunit.html.*;
+import hudson.util.FormValidation;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -35,6 +36,12 @@ public class GlobalPluginConfigurationTest {
 
         config.reWatchAllNamespace("fake-ns");
         assertTrue(config.isEnabled());
+
+        // Constructor
+        config = new GlobalPluginConfiguration(true, "test", "hello", null, null, null, null);
+        FormValidation formValidation = config.doVerifyConnect("", "");
+        assertNotNull(formValidation);
+        assertEquals(FormValidation.Kind.OK, formValidation.kind);
     }
 
     @Test

@@ -228,7 +228,6 @@ public class PipelineConfigWatcherTest {
             List<ParameterDefinition> paramDefs = paramDefPro.getParameterDefinitions();
             paramDefs.add(new StringParameterDefinition(paramOther, paramOtherValue));
 
-
             JenkinsUtils.addJobParamForPipelineParameters(wfJob, null, true);
             wfJob.removeProperty(ParametersDefinitionProperty.class);
             wfJob.addProperty(new ParametersDefinitionProperty(paramDefs));

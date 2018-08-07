@@ -303,6 +303,22 @@ public class DevOpsInit {
         return project.done();
     }
 
+    public ServiceAccount createServiceAccounts(AlaudaDevOpsClient client) {
+        return client.serviceAccounts().createNew()
+                .withNewMetadata().withNamespace(namespace)
+                .withGenerateName("serviceaccounttest").endMetadata()
+                .done();
+    }
+
+    public Pod createPod(AlaudaDevOpsClient client, final String accountName) {
+        return client.pods().createNew()
+                .withNewMetadata().withNamespace(namespace).withGenerateName("pod-test-").endMetadata()
+                .withNewSpec().withServiceAccountName(accountName)
+                .addNewContainer().withName("as").withImage("sdf").endContainer()
+                .endSpec()
+                .done();
+    }
+
     public String getNamespace() {
         return namespace;
     }

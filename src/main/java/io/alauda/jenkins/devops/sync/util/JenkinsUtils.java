@@ -27,8 +27,10 @@ import hudson.triggers.SafeTimerTask;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
 import io.alauda.devops.api.model.JenkinsPipelineBuildStrategy;
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.PipelineComparator;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
@@ -58,10 +60,8 @@ import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCr
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.getJobFromPipelineConfig;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.putJobWithPipelineConfig;
 import static io.alauda.jenkins.devops.sync.watcher.PipelineWatcher.addEventToJenkinsJobRun;
-import static java.util.Collections.sort;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
-import static org.apache.commons.lang.StringUtils.isBlank;
 
 /**
  * @author suren
@@ -355,12 +355,7 @@ public abstract class JenkinsUtils {
             return false;
         }
 
-        String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
-        if (isBlank(pipelineConfigName)) {
-          LOGGER.info(() -> "pipeline has not config: "+pipelineName);
-            return false;
-        }
-
+        final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
         PipelineConfigProjectProperty pcProp = job.getProperty(PipelineConfigProjectProperty.class);
         if (pcProp == null) {
             LOGGER.warning(() -> "aborting trigger of pipeline " + pipeline
@@ -608,13 +603,15 @@ public abstract class JenkinsUtils {
 		}
 	}
 
-	public static WorkflowJob getJobFromPipeline(Pipeline pipeline) {
-		String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
-		if (StringUtils.isEmpty(pipelineConfigName)) {
-			return null;
-		}
+	public static WorkflowJob getJobFromPipeline(@Nonnull Pipeline pipeline) {
+        AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
+        if(client == null) {
+            return null;
+        }
+
+		String configName = pipeline.getSpec().getPipelineConfig().getName();
 		PipelineConfig pipelineConfig = getAuthenticatedAlaudaClient().pipelineConfigs()
-				.inNamespace(pipeline.getMetadata().getNamespace()).withName(pipelineConfigName).get();
+				.inNamespace(pipeline.getMetadata().getNamespace()).withName(configName).get();
 		if (pipelineConfig == null) {
 			return null;
 		}
@@ -631,7 +628,7 @@ public abstract class JenkinsUtils {
         PipelineList list = filterNew(getAuthenticatedAlaudaClient().pipelines()
                 .inNamespace(pcp.getNamespace()).withLabel(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcp.getName()).list());
         LOGGER.info("Got new pipeline list: " + list.getItems());
-        handlePipelineList(job, list.getItems(), pcp);
+        handlePipelineList(job, list.getItems());
     }
 
     public static PipelineList filterNew(PipelineList list) {
@@ -642,80 +639,12 @@ public abstract class JenkinsUtils {
         return list;
     }
 
-	public static void handlePipelineList(WorkflowJob job, List<Pipeline> pipelines,
-                                        PipelineConfigProjectProperty pipelineConfigProjectProperty) {
+	public static void handlePipelineList(WorkflowJob job, List<Pipeline> pipelines) {
 		if (pipelines.isEmpty()) {
 			return;
 		}
-		// TODO: not implemented yet
-    boolean isSerialLatestOnly = false;
-//		boolean isSerialLatestOnly = SERIAL_LATEST_ONLY.equals(pipelineConfigProjectProperty.getPipelineRunPolicy());
-//		if (isSerialLatestOnly) {
-//			// Try to cancel any pipelines that haven't actually started, waiting
-//			// for executor perhaps.
-//			cancelNotYetStartedPipeliness(job, pipelineConfigProjectProperty.getUid());
-//		}
-		sort(pipelines, new Comparator<Pipeline>() {
-			@Override
-			public int compare(Pipeline p1, Pipeline p2) {
-				// Order so cancellations are first in list so we can stop
-				// processing build list when build run policy is
-				// SerialLatestOnly and job is currently building.
-				Boolean p1Cancelled = p1.getStatus() != null && p1.getStatus().getPhase() != null
-						? isCancelled(p1.getStatus())
-						: false;
-				Boolean p2Cancelled = p2.getStatus() != null && p2.getStatus().getPhase() != null
-						? isCancelled(p2.getStatus())
-						: false;
-				// Inverse comparison as boolean comparison would put false
-				// before true. Could have inverted both cancellation
-				// states but this removes that step.
-				int cancellationCompare = p2Cancelled.compareTo(p1Cancelled);
-				if (cancellationCompare != 0) {
-					return cancellationCompare;
-				}
-
-                if (p1.getMetadata().getAnnotations() == null
-                        || p1.getMetadata().getAnnotations()
-                                .get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER) == null) {
-                    LOGGER.warning(() -> "cannot compare pipeline "
-                            + p1.getMetadata().getName()
-                            + " from namespace "
-                            + p1.getMetadata().getNamespace()
-                            + ", has bad annotations: "
-                            + p1.getMetadata().getAnnotations());
-                    return 0;
-                }
-                if (p2.getMetadata().getAnnotations() == null
-                        || p2.getMetadata().getAnnotations()
-                                .get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER) == null) {
-                    LOGGER.warning(() -> "cannot compare pipeline "
-                            + p2.getMetadata().getName()
-                            + " from namespace "
-                            + p2.getMetadata().getNamespace()
-                            + ", has bad annotations: "
-                            + p2.getMetadata().getAnnotations());
-                    return 0;
-                }
-                int rc = 0;
-                try {
-                    rc = Long.compare(
-
-                            Long.parseLong(p1
-                                    .getMetadata()
-                                    .getAnnotations()
-                                    .get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER)),
-                            Long.parseLong(p2
-                                    .getMetadata()
-                                    .getAnnotations()
-                                    .get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER)));
-                } catch (Throwable t) {
-                    LOGGER.log(Level.FINE, "handlePipelineList", t);
-                }
-                return rc;
-			}
-		});
-		boolean isSerial = !job.isConcurrentBuild();//PipelineRunPolicy.SERIAL.equals(pipelineConfigProjectProperty.getPipelineRunPolicy());
+        Collections.sort(pipelines, new PipelineComparator());
+		boolean isSerial = !job.isConcurrentBuild();
 		boolean jobIsBuilding = job.isBuilding();
 		for (int i = 0; i < pipelines.size(); i++) {
 			Pipeline p = pipelines.get(i);
@@ -723,21 +652,17 @@ public abstract class JenkinsUtils {
 				continue;
 			// For SerialLatestOnly we should try to cancel all pipelines before
 			// the latest one requested.
-			if (isSerialLatestOnly) {
-				// If the job is currently building, then let's return on the
-				// first non-cancellation request so we do not try to
-				// queue a new build.
-				if (jobIsBuilding && !isCancelled(p.getStatus())) {
-					return;
-				}
+            if (jobIsBuilding && !isCancelled(p.getStatus())) {
+                return;
+            }
 
-				if (i < pipelines.size() - 1) {
-					cancelQueuedPipeline(job, p);
-					// TODO: maybe not necessary?
-					updatePipelinePhase(p, CANCELLED);
-					continue;
-				}
-			}
+            if (i < pipelines.size() - 1) {
+                cancelQueuedPipeline(job, p);
+                // TODO: maybe not necessary?
+                updatePipelinePhase(p, CANCELLED);
+                continue;
+            }
+
 			boolean buildAdded = false;
 			try {
 				buildAdded = addEventToJenkinsJobRun(p);

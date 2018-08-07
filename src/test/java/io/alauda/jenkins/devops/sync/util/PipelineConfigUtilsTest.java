@@ -7,6 +7,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class PipelineConfigUtilsTest {
     @Rule
@@ -18,5 +19,23 @@ public class PipelineConfigUtilsTest {
 
         assertTrue(PipelineConfigUtils.isSerialPolicy(config));
         assertFalse(PipelineConfigUtils.isParallel(config));
+
+        try {
+            PipelineConfigUtils.isSerialPolicy(null);
+
+            fail("un expect exception");
+        } catch (Exception e) {
+            assertTrue(e instanceof IllegalArgumentException);
+        }
+
+
+
+        try {
+            PipelineConfigUtils.isParallel(null);
+
+            fail("un expect exception");
+        } catch (Exception e) {
+            assertTrue(e instanceof IllegalArgumentException);
+        }
     }
 }

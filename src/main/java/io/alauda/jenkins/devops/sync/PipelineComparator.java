@@ -1,53 +1,32 @@
 package io.alauda.jenkins.devops.sync;
 
-import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.Pipeline;
 
 import java.io.Serializable;
 import java.util.Comparator;
 
-public class PipelineComparator implements Comparator<Pipeline>, Serializable
-{
-    @Override
-    public int compare(Pipeline p1, Pipeline p2)
-    {
-        if (p1.getMetadata().getAnnotations() == null
-                || p1.getMetadata().getAnnotations()
-                .get(Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER) == null) {
-//            logger.warning("cannot compare pipeline "
-//                    + p1.getMetadata().getName()
-//                    + " from namespace "
-//                    + p1.getMetadata().getNamespace()
-//                    + ", has bad annotations: "
-//                    + p1.getMetadata().getAnnotations());
-            return 0;
-        }
-        if (p2.getMetadata().getAnnotations() == null
-                || p2.getMetadata().getAnnotations()
-                .get(Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER) == null) {
-//            logger.warning("cannot compare pipeline "
-//                    + p2.getMetadata().getName()
-//                    + " from namespace "
-//                    + p2.getMetadata().getNamespace()
-//                    + ", has bad annotations: "
-//                    + p2.getMetadata().getAnnotations());
-            return 0;
-        }
-        int rc = 0;
-        try {
-            rc = Long.compare(
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.isCancelled;
 
-                    Long.parseLong(p1
-                            .getMetadata()
-                            .getAnnotations()
-                            .get(Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER)),
-                    Long.parseLong(p2
-                            .getMetadata()
-                            .getAnnotations()
-                            .get(Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER)));
-        } catch (Throwable t) {
-//            logger.log(Level.FINE, "onInitialPipelines", t);
+public class PipelineComparator implements Comparator<Pipeline>, Serializable {
+    private PipelineNumComparator numComparator = new PipelineNumComparator();
+
+    @Override
+    public int compare(Pipeline p1, Pipeline p2) {
+        // Order so cancellations are first in list so we can stop
+        // processing build list when build run policy is
+        // SerialLatestOnly and job is currently building.
+        Boolean p1Cancelled = p1.getStatus() != null && p1.getStatus().getPhase() != null
+                && isCancelled(p1.getStatus());
+        Boolean p2Cancelled = p2.getStatus() != null && p2.getStatus().getPhase() != null
+                && isCancelled(p2.getStatus());
+        // Inverse comparison as boolean comparison would put false
+        // before true. Could have inverted both cancellation
+        // states but this removes that step.
+        int cancellationCompare = p2Cancelled.compareTo(p1Cancelled);
+        if (cancellationCompare != 0) {
+            return cancellationCompare;
         }
-        return rc;
+
+        return numComparator.compare(p1, p2);
     }
 }

@@ -31,11 +31,31 @@ public class JenkinsUtilsTest {
 
     @Test
     @WithoutK8s
-    public void getJob() throws IOException {
+    public void getJob() throws Exception {
         FreeStyleProject freeStyleProject = j.createFreeStyleProject();
 
         assertNotNull("can't found job", JenkinsUtils.getJob(freeStyleProject.getName()));
         assertNull(JenkinsUtils.getJob("hello"));
+
+        // deleteRun
+        final WorkflowJob wfJob = j.createProject(WorkflowJob.class);
+        wfJob.scheduleBuild();
+        j.waitUntilNoActivity();
+        JenkinsUtils.deleteRun(wfJob.getLastBuild());
+        assertNull(wfJob.getLastBuild());
+
+        // empty params
+        List<PipelineParameter> params = new ArrayList<>();
+        assertNull(JenkinsUtils.addJobParamForPipelineParameters(wfJob, params, true));
+
+        // not support param type
+        params = new ArrayList<>();
+        params.add(new PipelineParameterBuilder()
+                .withType("not-support").withName("name").withValue("value").withDescription("desc")
+                .build());
+        Map<String, ParameterDefinition> resultParams = JenkinsUtils.addJobParamForPipelineParameters(wfJob, params, true);
+        assertNotNull(resultParams);
+        assertEquals(0, resultParams.size());
     }
 
     @Test
@@ -54,15 +74,33 @@ public class JenkinsUtilsTest {
     }
 
     @Test
-    public void getBuildConfigName() throws InterruptedException {
-        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+    public void getBuildConfigName() throws InterruptedException, IOException {
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), "sleep 9999");
         assertNotNull(config);
 
-
+        final String configName = config.getMetadata().getName();
         WorkflowJob job = JobUtils.findWorkflowJob(j.jenkins,
-                config.getMetadata().getNamespace(), config.getMetadata().getName());
+                config.getMetadata().getNamespace(), configName);
         assertNotNull(JenkinsUtils.getBuildConfigName(job));
         assertNotNull(JenkinsUtils.getFullJobName(job));
+
+        // deleteRun
+        Pipeline pipeline = j.getDevOpsInit().createPipeline(j.getClient(), configName);
+        assertNotNull(pipeline);
+        Thread.sleep(1000);
+
+        assertNotNull(JenkinsUtils.getJobFromPipeline(pipeline));
+
+        JenkinsUtils.cancelPipeline(job, pipeline);
+        JenkinsUtils.cancelPipeline(job, pipeline, true);
+        JenkinsUtils.cancelQueuedBuilds(job, "fake");
+
+        JenkinsUtils.deleteRun(job, pipeline);
+        assertNull(j.getDevOpsInit().getPipeline(j.getClient(), pipeline.getMetadata().getName()));
+
+        // not synced workflowJob
+        WorkflowJob wf = j.createProject(WorkflowJob.class);
+        JenkinsUtils.maybeScheduleNext(wf);
     }
 
     @Test
@@ -181,18 +219,46 @@ public class JenkinsUtilsTest {
         triggerPro = wfJob.getProperty(PipelineTriggersJobProperty.class);
         assertNull(triggerPro);
 
-        // with correct triggers
+        // with correct cron and scm triggers
         triggers.add(new PipelineTrigger(null,
                 new PipelineTriggerCron(true, "* * * * *"), PIPELINE_TRIGGER_TYPE_CRON));
+        triggers.add(new PipelineTrigger(null,
+                new PipelineTriggerCron(false, "* * * * *"), PIPELINE_TRIGGER_TYPE_CRON));
+        triggers.add(new PipelineTrigger(new PipelineTriggerCodeChange(true, "* * * * *"),
+                null, PIPELINE_TRIGGER_TYPE_CODE_CHANGE));
+        triggers.add(new PipelineTrigger(new PipelineTriggerCodeChange(false, "* * * * *"),
+                null, PIPELINE_TRIGGER_TYPE_CODE_CHANGE));
         exs = JenkinsUtils.setJobTriggers(wfJob, triggers);
         assertEquals(0, exs.size());
         triggerPro = wfJob.getProperty(PipelineTriggersJobProperty.class);
-        assertEquals(1, triggerPro.getTriggers().size());
+        assertEquals(2, triggerPro.getTriggers().size());
 
         // with invalid cron
         triggers.add(new PipelineTrigger(null,
                 new PipelineTriggerCron(true, "abc"), PIPELINE_TRIGGER_TYPE_CRON));
+        triggers.add(new PipelineTrigger(new PipelineTriggerCodeChange(true, "abc"),
+                null, PIPELINE_TRIGGER_TYPE_CODE_CHANGE));
+        triggers.add(new PipelineTrigger(null,
+                new PipelineTriggerCron(true, "abc"), "fake"));
         exs = JenkinsUtils.setJobTriggers(wfJob, triggers);
-        assertEquals(1, exs.size());
+        assertEquals(2, exs.size());
+    }
+
+    @Test
+    @WithoutK8s
+    @WithoutJenkins
+    public void getParameterValues() {
+        List<ParameterValue> values = JenkinsUtils.getParameterValues(null);
+        assertNotNull(values);
+        assertEquals(0, values.size());
+
+        // PIPELINE_PARAMETER_TYPE_BOOLEAN
+        List<PipelineParameter> pipelineParameters = new ArrayList<>();
+        pipelineParameters.add(new PipelineParameterBuilder().withType(PIPELINE_PARAMETER_TYPE_BOOLEAN)
+                .withName("name").withValue("value").build());
+        pipelineParameters.add(new PipelineParameterBuilder().withType("fake")
+                .withName("name").withValue("value").build());
+        values = JenkinsUtils.getParameterValues(pipelineParameters);
+        assertEquals(1, values.size());
     }
 }
