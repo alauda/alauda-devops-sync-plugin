@@ -168,7 +168,7 @@ public abstract class CredentialsUtils {
      * @throws InvalidSecretException if get a not support secret
      */
     @NotNull
-    private static String upsertCredential(final Secret secret, final String namespace, final String secretName)
+    public static String upsertCredential(final Secret secret, final String namespace, final String secretName)
             throws IOException {
         final String id = secretName(namespace, secretName);
         if (secret != null) {

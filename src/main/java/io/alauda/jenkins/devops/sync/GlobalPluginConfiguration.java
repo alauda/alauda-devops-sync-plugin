@@ -191,11 +191,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     @SuppressWarnings("unused")
     public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
         Jenkins jenkins = Jenkins.getInstance();
-        if (jenkins == null) {
-            return (ListBoxModel) null;
-        } else {
-            return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, AlaudaToken.class).includeCurrentValue(credentialsId);
-        }
+        return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, AlaudaToken.class).includeCurrentValue(credentialsId);
     }
 
     @SuppressWarnings("unused")
