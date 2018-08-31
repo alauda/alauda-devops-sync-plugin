@@ -15,9 +15,9 @@
  */
 package io.alauda.jenkins.devops.sync.watcher;
 
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.kubernetes.api.model.JenkinsBinding;
 import io.alauda.kubernetes.api.model.JenkinsBindingList;
 import io.alauda.kubernetes.client.Watch;
@@ -52,8 +52,13 @@ public class JenkinsBindingWatcher implements BaseWatcher {
 
     @Override
     public void watch() {
-        JenkinsBindingList jenkinsBindingList = AlaudaUtils.getAuthenticatedAlaudaClient()
-                .jenkinsBindings().inAnyNamespace().list();
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            LOGGER.severe("alauda client is null, when watch JenkinsBinding");
+            return;
+        }
+
+        JenkinsBindingList jenkinsBindingList = client.jenkinsBindings().inAnyNamespace().list();
 
         String resourceVersion = "0";
         if(jenkinsBindingList != null) {
@@ -64,7 +69,7 @@ public class JenkinsBindingWatcher implements BaseWatcher {
             LOGGER.warning("Can not found JenkinsBindingList.");
         }
 
-        watcher = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
+        watcher = client.jenkinsBindings()
                 .inAnyNamespace()
                 .withResourceVersion(resourceVersion)
                 .watch(new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null));

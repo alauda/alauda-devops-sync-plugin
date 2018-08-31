@@ -5,22 +5,22 @@ import com.cloudbees.plugins.credentials.*;
 import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
-
-import com.iwombat.util.StringUtil;
 import hudson.model.Fingerprint;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.api.model.BuildConfig;
-import io.alauda.jenkins.devops.sync.*;
+import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
 import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
-
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.apache.commons.lang.StringUtils;
+import org.json.JSONObject;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -28,17 +28,14 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.json.*;
-
-import javax.validation.constraints.NotNull;
-
 import static hudson.Util.fixNull;
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
-public class CredentialsUtils {
-
+public abstract class CredentialsUtils {
     private final static Logger logger = Logger.getLogger(CredentialsUtils.class.getName());
+
+    private CredentialsUtils(){}
 
     public static synchronized Secret getSourceCredentials(BuildConfig buildConfig) {
         if (buildConfig.getSpec() != null
@@ -171,7 +168,7 @@ public class CredentialsUtils {
      * @throws InvalidSecretException if get a not support secret
      */
     @NotNull
-    private static String upsertCredential(final Secret secret, final String namespace, final String secretName)
+    public static String upsertCredential(final Secret secret, final String namespace, final String secretName)
             throws IOException {
         final String id = secretName(namespace, secretName);
         if (secret != null) {
@@ -229,7 +226,7 @@ public class CredentialsUtils {
                             + "which is referenced by jobs: " + sb.toString());
                 }
                 CredentialsStore s = CredentialsProvider
-                        .lookupStores(Jenkins.getActiveInstance()).iterator()
+                        .lookupStores(Jenkins.getInstance()).iterator()
                         .next();
                 s.removeCredentials(Domain.global(), existingCred);
                 logger.info("Deleted credential " + id + " from Secret " + name
@@ -271,7 +268,7 @@ public class CredentialsUtils {
     public static String getToken(String credentialId) {
         AlaudaToken token = CredentialsMatchers.firstOrNull(
                 CredentialsProvider.lookupCredentials(AlaudaToken.class,
-                        Jenkins.getActiveInstance(), ACL.SYSTEM,
+                        Jenkins.getInstance(), ACL.SYSTEM,
                         Collections.<DomainRequirement> emptyList()),
                 CredentialsMatchers.withId(credentialId));
 
@@ -436,8 +433,12 @@ public class CredentialsUtils {
      * @return true if found.
      */
     public static boolean hasCredentials() {
-        return !StringUtils.isEmpty(AlaudaUtils.getAuthenticatedAlaudaClient()
-                .getConfiguration().getOauthToken());
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            return false;
+        }
+
+        return !StringUtils.isEmpty(client.getConfiguration().getOauthToken());
     }
 
 }

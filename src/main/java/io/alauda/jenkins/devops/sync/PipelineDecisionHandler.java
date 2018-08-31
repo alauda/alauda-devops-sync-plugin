@@ -16,13 +16,7 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
-import hudson.model.Action;
-import hudson.model.ParameterValue;
-import hudson.model.Cause;
-import hudson.model.CauseAction;
-import hudson.model.ParametersAction;
-import hudson.model.Queue;
-
+import hudson.model.*;
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
@@ -33,6 +27,7 @@ import io.alauda.kubernetes.client.KubernetesClientException;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,7 +56,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             String namespace = pipelineConfigProjectProperty.getNamespace();
             String jobURL = PipelineSyncRunListener.joinPaths(AlaudaUtils.getJenkinsURL(AlaudaUtils.getAuthenticatedAlaudaClient(), namespace), workflowJob.getUrl());
 
-            LOGGER.info("Got this namespace " + namespace + " from this pipelineConfigProjectProperty: "
+            LOGGER.info(() -> "Got this namespace " + namespace + " from this pipelineConfigProjectProperty: "
                     + pipelineConfigProjectProperty);
             // TODO: Add trigger API for pipelineconfig (like above)
 
@@ -93,22 +88,22 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
             ParametersAction params = dumpParams(actions);
             if (params != null) {
-                LOGGER.fine("ParametersAction: " + params.toString());
+                LOGGER.fine(() -> "ParametersAction: " + params.toString());
                 PipelineToActionMapper.addParameterAction(pipeline.getMetadata().getName(), params);
             } else {
-                LOGGER.fine("The param is null in task : " + taskName);
+                LOGGER.log(Level.FINE, "The param is null in task : {0}", taskName);
             }
 
             CauseAction cause = dumpCause(actions);
             if (cause != null) {
-                LOGGER.fine("get CauseAction: " + cause.getDisplayName());
+                LOGGER.fine(() -> "get CauseAction: " + cause.getDisplayName());
                 for (Cause c : cause.getCauses()) {
-                    LOGGER.fine("Cause: " + c.getShortDescription());
+                    LOGGER.fine(() -> "Cause: " + c.getShortDescription());
                 }
 
                 PipelineToActionMapper.addCauseAction(pipeline.getMetadata().getName(), cause);
             } else {
-                LOGGER.fine("Get null CauseAction in task : " + taskName);
+                LOGGER.fine(() -> "Get null CauseAction in task : " + taskName);
             }
 
             // we already create k8s resource, and waiting next round
@@ -127,7 +122,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         return (StringUtils.isNotBlank(property.getNamespace()) && StringUtils.isNotBlank(property.getName()));
     }
 
-    private static boolean isAlaudaDevOpsPipelineCause(List<Action> actions) {
+    private static boolean isAlaudaDevOpsPipelineCause(@Nonnull List<Action> actions) {
         for (Action action : actions) {
             if (action instanceof CauseAction) {
                 CauseAction causeAction = (CauseAction) action;
@@ -153,7 +148,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                 CauseAction causeAction = (CauseAction) action;
                 if (LOGGER.isLoggable(Level.FINE)) {
                     for (Cause cause : causeAction.getCauses()) {
-                        LOGGER.fine("cause: " + cause.getShortDescription());
+                        LOGGER.fine(() -> "cause: " + cause.getShortDescription());
                     }
                 }
 
@@ -169,7 +164,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                 ParametersAction paramAction = (ParametersAction) action;
                 if (LOGGER.isLoggable(Level.FINE)) {
                     for (ParameterValue param : paramAction.getAllParameters()) {
-                        LOGGER.fine("param name " + param.getName() + " param value " + param.getValue());
+                        LOGGER.fine(() -> "param name " + param.getName() + " param value " + param.getValue());
                     }
                 }
                 return paramAction;

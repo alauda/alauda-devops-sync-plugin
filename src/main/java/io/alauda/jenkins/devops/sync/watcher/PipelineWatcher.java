@@ -17,33 +17,31 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.security.ACL;
-import io.alauda.jenkins.devops.sync.*;
+import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.PipelineNumComparator;
+import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.util.*;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
-
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
-import static io.alauda.jenkins.devops.sync.util.JenkinsUtils.cancelPipeline;
-import static java.util.logging.Level.WARNING;
+import static java.util.logging.Level.SEVERE;
 
 /**
  * @author suren
@@ -67,14 +65,20 @@ public class PipelineWatcher implements BaseWatcher {
 
     @Override
     public void watch() {
-        PipelineList list = AlaudaUtils.getAuthenticatedAlaudaClient()
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.severe("client is null, when watch Pipeline");
+            return;
+        }
+
+        PipelineList list = client
                 .pipelines().inAnyNamespace().list();
         String ver = "0";
         if(list != null) {
             ver = list.getMetadata().getResourceVersion();
         }
 
-        watcher = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
+        watcher = client.pipelines()
                 .inAnyNamespace()
                 .withResourceVersion(ver)
                 .watch(new WatcherCallback<Pipeline>(this, null));
@@ -149,14 +153,14 @@ public class PipelineWatcher implements BaseWatcher {
                 deleteEventToJenkinsJobRun(pipeline);
                 break;
             case ERROR:
-                logger.warning("watch for pipeline " + pipeline.getMetadata().getName() + " received error event ");
+                logger.warning("watch for pipeline " + pipelineName + " received error event ");
                 break;
             default:
-                logger.warning("watch for pipeline " + pipeline.getMetadata().getName() + " received unknown event " + action);
+                logger.warning("watch for pipeline " + pipelineName + " received unknown event " + action);
                 break;
             }
         } catch (Exception e) {
-            logger.log(WARNING, "Caught: " + e, e);
+            logger.log(SEVERE, String.format("Caught exception when %s", action), e);
         }
     }
 
@@ -168,7 +172,7 @@ public class PipelineWatcher implements BaseWatcher {
 
     public synchronized static void onInitialPipelines(PipelineList pipelineList) {
         List<Pipeline> items = pipelineList.getItems();
-        Collections.sort(items, new PipelineComparator());
+        Collections.sort(items, new PipelineNumComparator());
 
         // We need to sort the builds into their build configs so we can
         // handle build run policies correctly.
@@ -242,7 +246,7 @@ public class PipelineWatcher implements BaseWatcher {
                 continue;
             }
             List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
-            JenkinsUtils.handlePipelineList(job, pipelines, bcp);
+            JenkinsUtils.handlePipelineList(job, pipelines);
         }
     }
 
@@ -401,7 +405,7 @@ public class PipelineWatcher implements BaseWatcher {
   private static synchronized void reconcileRunsAndPipelines() {
     logger.info("Reconciling job runs and pipelines");
 
-    List<WorkflowJob> jobs = Jenkins.getActiveInstance().getAllItems(WorkflowJob.class);
+    List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
 
     for (WorkflowJob job : jobs) {
       PipelineConfigProjectProperty pcpp = job.getProperty(PipelineConfigProjectProperty.class);

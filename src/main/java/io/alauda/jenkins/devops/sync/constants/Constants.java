@@ -15,56 +15,60 @@
  */
 package io.alauda.jenkins.devops.sync.constants;
 
-public interface Constants {
-    String ALAUDA_DEVOPS_DEFAULT_NAMESPACE = "default";
+public final class Constants {
+    private Constants(){}
 
-    String ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER = "alauda.io/pipeline.number";
-    String ALAUDA_DEVOPS_ANNOTATIONS_COMMIT = "alauda.io/commit";
-    String ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG = "pipelineConfig";
-    String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI = "alauda.io/jenkins-build-uri";
-    String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL = "alauda.io/jenkins-log-url";
-    String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL = "alauda.io/jenkins-console-log-url";
-    String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL = "alauda.io/jenkins-blueocean-log-url";
-    String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON = "alauda.io/jenkins-pending-input-actions-json";
+    public static final String ROOT_URL = "http://localhost:8080/";
 
-    String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON = "alauda.io/jenkins-status-json";
-    String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON = "alauda.io/jenkins-stages-json";
-    String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE = "alauda.io/jenkins-namespace";
+    public static final String ALAUDA_DEVOPS_DEFAULT_NAMESPACE = "default";
 
-    String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
-    String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";
-    String ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY = "ssh-privatekey";
-    String ALAUDA_DEVOPS_SECRETS_TYPE_SSH = "kubernetes.io/ssh-auth";
-    String ALAUDA_DEVOPS_SECRETS_TYPE_BASICAUTH = "kubernetes.io/basic-auth";
-    String ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER = "kubernetes.io/dockerconfigjson";
-    String ALAUDA_DEVOPS_SECRETS_DATA_DOCKER = ".dockerconfigjson";
-    String ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE = "Opaque";
-    String ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN = "kubernetes.io/service-account-token";
-    String ALAUDA_DEVOPS_PIPELINE_STATUS_FIELD = "status";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER = "alauda.io/pipeline.number";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_COMMIT = "alauda.io/commit";
+    public static final String ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG = "pipelineConfig";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI = "alauda.io/jenkins-build-uri";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL = "alauda.io/jenkins-log-url";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL = "alauda.io/jenkins-console-log-url";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL = "alauda.io/jenkins-blueocean-log-url";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON = "alauda.io/jenkins-pending-input-actions-json";
 
-    String ALAUDA_PROJECT_ENV_VAR_NAME = "PROJECT_NAME";
-    String KUBERNETES_SERVICE_ACCOUNT_NAMESPACE = "/run/secrets/kubernetes.io/serviceaccount/namespace";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON = "alauda.io/jenkins-status-json";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON = "alauda.io/jenkins-stages-json";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE = "alauda.io/jenkins-namespace";
 
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY = "ssh-privatekey";
+    public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SSH = "kubernetes.io/ssh-auth";
+    public static final String ALAUDA_DEVOPS_SECRETS_TYPE_BASICAUTH = "kubernetes.io/basic-auth";
+    public static final String ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER = "kubernetes.io/dockerconfigjson";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_DOCKER = ".dockerconfigjson";
+    public static final String ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE = "Opaque";
+    public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN = "kubernetes.io/service-account-token";
+    public static final String ALAUDA_DEVOPS_PIPELINE_STATUS_FIELD = "status";
 
-    String PIPELINE_PARAMETER_TYPE_STRING = "string";
-    String PIPELINE_PARAMETER_TYPE_BOOLEAN = "boolean";
+    public static final String ALAUDA_PROJECT_ENV_VAR_NAME = "PROJECT_NAME";
+    public static final String KUBERNETES_SERVICE_ACCOUNT_NAMESPACE = "/run/secrets/kubernetes.io/serviceaccount/namespace";
 
+    public static final String PIPELINE_PARAMETER_TYPE_STRING = "string";
+    public static final String PIPELINE_PARAMETER_TYPE_BOOLEAN = "boolean";
 
-    String PIPELINE_TRIGGER_TYPE_MANUAL = "manual";
-    String PIPELINE_TRIGGER_TYPE_CRON = "cron";
-    String PIPELINE_TRIGGER_TYPE_CODE_CHANGE = "codeChange";
+    public static final String PIPELINE_TRIGGER_TYPE_MANUAL = "manual";
+    public static final String PIPELINE_TRIGGER_TYPE_CRON = "cron";
+    public static final String PIPELINE_TRIGGER_TYPE_CODE_CHANGE = "codeChange";
 
-    String PIPELINE_RUN_POLICY_SERIAL = "Serial";
-    String PIPELINE_RUN_POLICY_PARALLEL = "Parallel";
-    String PIPELINE_RUN_POLICY_DEFAULT = PIPELINE_RUN_POLICY_SERIAL;
+    public static final String PIPELINE_RUN_POLICY_SERIAL = "Serial";
+    public static final String PIPELINE_RUN_POLICY_PARALLEL = "Parallel";
+    public static final String PIPELINE_RUN_POLICY_DEFAULT = PIPELINE_RUN_POLICY_SERIAL;
 
-    String FOLDER_DESCRIPTION = "Folder for the Alauda DevOps project: ";
+    public static final String FOLDER_DESCRIPTION = "Folder for the Alauda DevOps project: ";
 
-    String JOB_STATUS_QUEUE = "QUEUED";
-    String JOB_STATUS_RUNNING = "RUNNING";
-    String JOB_STATUS_FINISHED = "FINISHED";
-    String JOB_STATUS_PAUSED = "PAUSED";
-    String JOB_STATUS_SKIPPED = "SKIPPED";
-    String JOB_STATUS_NOT_BUILT = "NOT_BUILT";
-    String JOB_STATUS_UNKNOWN = "UNKNOWN";
+    public static final String JOB_STATUS_QUEUE = "QUEUED";
+    public static final String JOB_STATUS_RUNNING = "RUNNING";
+    public static final String JOB_STATUS_FINISHED = "FINISHED";
+    public static final String JOB_STATUS_PAUSED = "PAUSED";
+    public static final String JOB_STATUS_SKIPPED = "SKIPPED";
+    public static final String JOB_STATUS_NOT_BUILT = "NOT_BUILT";
+    public static final String JOB_STATUS_UNKNOWN = "UNKNOWN";
+
+    public static final String DEFAULT_JENKINS_FILEPATH = "Jenkinsfile";
 }

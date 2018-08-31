@@ -94,9 +94,9 @@ public class WatcherCallback<T> implements Watcher<T> {
             exponentOfTwo = maxIntervalExponent;
         }
 
-        long ret = reconnectInterval * (1 << exponentOfTwo);
+        long ret = reconnectInterval * (1L << exponentOfTwo);
 
-        logger.info("Current rewatch backoff is " + ret + " milliseconds (T" + exponentOfTwo + ")");
+        logger.info("Current re-watch back off is " + ret + " milliseconds (T" + exponentOfTwo + ")");
         return ret;
     }
 

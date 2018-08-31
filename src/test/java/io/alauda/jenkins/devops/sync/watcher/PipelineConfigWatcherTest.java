@@ -6,10 +6,9 @@ import hudson.model.listeners.ItemListener;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
-import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
-import io.alauda.jenkins.devops.sync.util.DevOpsInit;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.JobUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
@@ -18,19 +17,17 @@ import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.cps.CpsScmFlowDefinition;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.jvnet.hudson.test.JenkinsRule;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_PARAMETER_TYPE_BOOLEAN;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_PARAMETER_TYPE_STRING;
 import static io.alauda.jenkins.devops.sync.util.JobUtils.findJob;
 import static io.alauda.jenkins.devops.sync.util.JobUtils.findWorkflowJob;
 import static org.hamcrest.Matchers.containsString;
@@ -39,23 +36,12 @@ import static org.junit.Assert.*;
 public class PipelineConfigWatcherTest {
 
     @Rule
-    public JenkinsRule j = new JenkinsRule();
-    private AlaudaDevOpsClient client;
-    private DevOpsInit devOpsInit;
-
-    @Before
-    public void setup() throws IOException {
-        devOpsInit = new DevOpsInit().init();
-        client = devOpsInit.getClient();
-        GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
-        config.setJenkinsService(devOpsInit.getJenkinsName());
-        config.configChange();
-    }
+    public JenkinsK8sRule j = new JenkinsK8sRule();
 
     @Test
     public void simpleJobSync() throws Exception {
-        PipelineConfig config = devOpsInit.createPipelineConfig(client);
-        final String folderName = devOpsInit.getNamespace();
+        final PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        final String folderName = j.getDevOpsInit().getNamespace();
         final String jobName = config.getMetadata().getName();
 
         Job jobItem = findJob(j.jenkins, folderName, jobName);
@@ -67,33 +53,55 @@ public class PipelineConfigWatcherTest {
         assertNotEquals(workflowJob.isConcurrentBuild(), PipelineConfigUtils.isSerialPolicy(config));
 
         // check pipeline run
-        Pipeline pipeline = devOpsInit.createPipeline(client, jobName);
+        Pipeline pipeline = j.getDevOpsInit().createPipeline(j.getClient(), jobName);
         assertNotNull(pipeline);
-        Thread.sleep(3000);
+        afterRunning(pipeline.getMetadata().getName());
         j.waitUntilNoActivity();
         Run build = jobItem.getBuildByNumber(1);
         assertNotNull(build);
 
         // check pipeline update
         String script = "echo '1'";
-        devOpsInit.updatePipelineConfig(client, jobName, script);
+        j.getDevOpsInit().updatePipelineConfig(j.getClient(), jobName, script);
         CpsFlowDefinition cpsFlowDefinition = getCpsFlowDefinition(folderName, jobName);
         assertEquals("jenkinsfile update failed", script, cpsFlowDefinition.getScript());
 
         // check pipeline run after update jenkinsfile
-        pipeline = devOpsInit.createPipeline(client, jobName);
+        pipeline = j.getDevOpsInit().createPipeline(j.getClient(), jobName);
         assertNotNull(pipeline);
-        Thread.sleep(3000);
+        afterRunning(pipeline.getMetadata().getName());
         j.waitUntilNoActivity();
         build = jobItem.getBuildByNumber(2);
         assertNotNull(build);
         assertEquals(Result.SUCCESS, build.getResult());
     }
 
+    private void afterRunning(String jobName) throws InterruptedException {
+        for(int i = 0; i < 6; i++) {
+            Pipeline pipeline = j.getDevOpsInit().getPipeline(j.getClient(), jobName);
+            if(pipeline == null) {
+                break;
+            }
+            PipelineStatus status = pipeline.getStatus();
+            if(status != null) {
+                String phase = status.getPhase();
+
+                if(PipelinePhases.RUNNING.equals(phase)
+                        || PipelinePhases.COMPLETE.equals(phase)
+                        || PipelinePhases.ERROR.equals(phase)
+                        || PipelinePhases.FAILED.equals(phase)
+                        || PipelinePhases.CANCELLED.equals(phase)){
+                    break;
+                }
+            }
+            Thread.sleep(1000);
+        }
+    }
+
     @Test
     public void scmPipeline() throws Exception {
         // lack git source info
-        PipelineConfig config = devOpsInit.createPipelineConfig(client, null, "jenkinsfile", null);
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), null, "jenkinsfile", null);
         PipelineConfig targetConfig = assertPhase(config, PipelineConfigPhase.ERROR);
         PipelineConfigStatus status = targetConfig.getStatus();
         assertNotNull(status.getMessage());
@@ -105,7 +113,7 @@ public class PipelineConfigWatcherTest {
         });
 
         // correct pipeline
-        config = devOpsInit.createPipelineConfig(client, null, "jenkinsfile", null, devOpsInit.getSecretName());
+        config = j.getDevOpsInit().createPipelineConfig(j.getClient(), null, "jenkinsfile", null, j.getDevOpsInit().getSecretName());
         targetConfig = assertPhase(config, PipelineConfigPhase.READY);
         ObjectMeta meta = targetConfig.getMetadata();
         WorkflowJob wfJob = JobUtils.findWorkflowJob(j.jenkins, meta.getNamespace(), meta.getName());
@@ -114,8 +122,8 @@ public class PipelineConfigWatcherTest {
 
     @Test
     public void deletePipelineConfig() throws Exception {
-        PipelineConfig config = devOpsInit.createPipelineConfig(client);
-        final String folderName = devOpsInit.getNamespace();
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        final String folderName = j.getDevOpsInit().getNamespace();
         String jobName = config.getMetadata().getName();
 
         final Job job = JobUtils.findJob(j.jenkins, folderName, jobName);
@@ -123,16 +131,44 @@ public class PipelineConfigWatcherTest {
 
         // delete from jenkins
         job.delete();
-        assertNull(devOpsInit.getPipelineConfig(client, jobName));
+        untilNotExists(jobName);
+        assertNull("pipeline can't be deleted", j.getDevOpsInit().getPipelineConfig(j.getClient(), jobName));
 
         // delete from k8s
-        config = devOpsInit.createPipelineConfig(client);
+        config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         jobName = config.getMetadata().getName();
         assertNotNull(JobUtils.findJob(j.jenkins, folderName, jobName));
 
-        devOpsInit.deletePipelineConfig(client, jobName);
-        Thread.sleep(3000);
+        j.getDevOpsInit().deletePipelineConfig(j.getClient(), jobName);
+        untilDeleted(folderName, jobName);
         assertNull(JobUtils.findJob(j.jenkins, folderName, jobName));
+    }
+
+    private void untilDeleted(String folderName, String jobName) throws InterruptedException {
+        for(int i = 0; i < 4; i++) {
+            Job job = JobUtils.findJob(j.jenkins, folderName, jobName);
+            if(job == null) {
+                return;
+            }
+
+            Thread.sleep(1000);
+        }
+    }
+
+    /**
+     * Return until target Pipeline is gone.
+     * @param jobName piepline name
+     * @throws InterruptedException in case of interrupted
+     */
+    private void untilNotExists(String jobName) throws InterruptedException {
+        for(int i = 0; i < 4; i++) {
+            PipelineConfig config = j.getDevOpsInit().getPipelineConfig(j.getClient(), jobName);
+            if(config == null) {
+                return;
+            }
+
+            Thread.sleep(1000);
+        }
     }
 
     @Test
@@ -140,17 +176,23 @@ public class PipelineConfigWatcherTest {
         final String paramName = "name";
         final String script = "echo env." + paramName;
         final Map<String, String> paramMap = new HashMap<>();
-        paramMap.put(paramName, "string");
+        paramMap.put(paramName, PIPELINE_PARAMETER_TYPE_STRING);
 
-        PipelineConfig config = devOpsInit.createPipelineConfigWithParams(client, paramMap, script);
-        final String folderName = devOpsInit.getNamespace();
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfigWithParams(j.getClient(), paramMap, script);
+        final String folderName = j.getDevOpsInit().getNamespace();
         final String jobName = config.getMetadata().getName();
 
         Job jobItem = findJob(j.jenkins, folderName, jobName);
+        assertNotNull(jobItem);
         final String randomName = System.currentTimeMillis() + "-alauda";
         paramMap.put(paramName, randomName);
-        devOpsInit.createPipeline(client, jobName, paramMap);
-        Thread.sleep(3000);
+        j.getDevOpsInit().createPipeline(j.getClient(), jobName, paramMap);
+        for(int i = 0; i < 4; i++) {
+            if(jobItem.isBuilding()) {
+                break;
+            }
+            Thread.sleep(1000);
+        }
         j.waitUntilNoActivity();
 
         Run build = jobItem.getBuildByNumber(1);
@@ -162,9 +204,9 @@ public class PipelineConfigWatcherTest {
 
         // change params
         String paramRelease = "isRelease";
-        paramMap.put(paramRelease, "boolean"); // the value should be type of param in here
-        paramMap.put(paramName, "string");
-        config = devOpsInit.updatePipelineConfigWithParams(client, jobName, paramMap, script);
+        paramMap.put(paramRelease, PIPELINE_PARAMETER_TYPE_BOOLEAN); // the value should be type of param in here
+        paramMap.put(paramName, PIPELINE_PARAMETER_TYPE_STRING);
+        config = j.getDevOpsInit().updatePipelineConfigWithParams(j.getClient(), jobName, paramMap, script);
         assertNotNull(config);
         Thread.sleep(2000);
 
@@ -186,7 +228,6 @@ public class PipelineConfigWatcherTest {
             List<ParameterDefinition> paramDefs = paramDefPro.getParameterDefinitions();
             paramDefs.add(new StringParameterDefinition(paramOther, paramOtherValue));
 
-
             JenkinsUtils.addJobParamForPipelineParameters(wfJob, null, true);
             wfJob.removeProperty(ParametersDefinitionProperty.class);
             wfJob.addProperty(new ParametersDefinitionProperty(paramDefs));
@@ -197,7 +238,7 @@ public class PipelineConfigWatcherTest {
             paramDefPro = wfJob.getProperty(ParametersDefinitionProperty.class);
             paramDefs = paramDefPro.getParameterDefinitions();
 
-            PipelineConfig pipelineConfig = devOpsInit.getPipelineConfig(client, jobName);
+            PipelineConfig pipelineConfig = j.getDevOpsInit().getPipelineConfig(j.getClient(), jobName);
             assertNotNull(pipelineConfig);
             List<PipelineParameter> parameters = pipelineConfig.getSpec().getParameters();
             assertNotNull(parameters);
@@ -207,8 +248,8 @@ public class PipelineConfigWatcherTest {
 
     @Test
     public void triggerSync() throws Exception {
-        PipelineConfig config = devOpsInit.createPipelineConfig(client);
-        final String folderName = devOpsInit.getNamespace();
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        final String folderName = j.getDevOpsInit().getNamespace();
         final String jobName = config.getMetadata().getName();
 
         WorkflowJob job = JobUtils.findWorkflowJob(j.jenkins, folderName, jobName);
@@ -220,15 +261,15 @@ public class PipelineConfigWatcherTest {
         ItemListener.fireOnUpdated(job);
 
         Thread.sleep(3000);
-        config = devOpsInit.getPipelineConfig(client, jobName);
+        config = j.getDevOpsInit().getPipelineConfig(j.getClient(), jobName);
         List<PipelineTrigger> k8sTriggers = config.getSpec().getTriggers();
         assertNotNull(k8sTriggers);
         assertEquals(triggers.size(), k8sTriggers.size());
 
         // add triggers from k8s
         final String cron = "* * * * 1";
-        config = devOpsInit.createPipelineConfig(client);
-        devOpsInit.addCronTrigger4PipelineConfig(client, config.getMetadata().getName(), cron);
+        config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        j.getDevOpsInit().addCronTrigger4PipelineConfig(j.getClient(), config.getMetadata().getName(), cron);
         assertPhase(config, PipelineConfigPhase.READY);
         job = JobUtils.findWorkflowJob(j.jenkins, folderName, config.getMetadata().getName());
         assertNotNull(job);
@@ -237,7 +278,7 @@ public class PipelineConfigWatcherTest {
 
         // add invalid trigger from k8s
         final String invalidCron = "bad";
-        config = devOpsInit.createPipelineConfig(client, "echo '2'", invalidCron);
+        config = j.getDevOpsInit().createPipelineConfig(j.getClient(), "echo '2'", invalidCron);
         config = assertPhase(config, PipelineConfigPhase.ERROR);
         assertNotNull(config.getStatus().getMessage());
         List<Condition> conditions = config.getStatus().getConditions();
@@ -252,20 +293,26 @@ public class PipelineConfigWatcherTest {
 
         PipelineConfig target = null;
         for(int i = 0; i < 8; i++) {
-            target = devOpsInit.getPipelineConfig(client, name);
+            target = j.getDevOpsInit().getPipelineConfig(j.getClient(), name);
             if(phase.equals(target.getStatus().getPhase())) {
                 break;
             }
             Thread.sleep(1000);
         }
-        StringBuffer buf = new StringBuffer(target.getStatus() != null && target.getStatus().getMessage() != null ? target.getStatus().getMessage(): "");
-        if(target.getStatus().getConditions() != null) {
-            target.getStatus().getConditions().forEach(condition -> {
+
+        if(target == null || target.getStatus() == null) {
+            return target;
+        }
+
+        PipelineConfigStatus status = target.getStatus();
+        StringBuffer buf = new StringBuffer(status.getMessage() != null ? status.getMessage(): "");
+        if(status.getConditions() != null) {
+            status.getConditions().forEach(condition -> {
                 buf.append("\n").append(condition.getMessage());
             });
         }
 
-        assertEquals(buf.toString(), phase, target.getStatus().getPhase());
+        assertEquals(buf.toString(), phase, status.getPhase());
 
         return target;
     }
@@ -282,10 +329,5 @@ public class PipelineConfigWatcherTest {
         assertEquals(workflowDef.getClass(), CpsFlowDefinition.class);
 
         return (CpsFlowDefinition) workflowDef;
-    }
-
-    @After
-    public void tearDown() throws IOException {
-        devOpsInit.close();
     }
 }

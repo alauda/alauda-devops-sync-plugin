@@ -1,10 +1,11 @@
 package io.alauda.jenkins.devops.sync.constants;
 
-public interface PipelineRunPolicy {
+public final class PipelineRunPolicy {
+    private PipelineRunPolicy() {}
 
-  String PARALLEL = "Parallel";
-  String SERIAL = "Serial";
+    public static final String PARALLEL = "Parallel";
+    public static final String SERIAL = "Serial";
 
-  // NOT IMPLEMENTED YET
-  String SERIAL_LATEST_ONLY = "SerialLatestOnly";
+    // NOT IMPLEMENTED YET
+    public static final String SERIAL_LATEST_ONLY = "SerialLatestOnly";
 }

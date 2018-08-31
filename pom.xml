@@ -28,7 +28,7 @@
 
   <groupId>io.alauda.jenkins.plugins</groupId>
   <artifactId>alauda-devops-sync</artifactId>
-  <version>0.2.6-SNAPSHOT</version>
+  <version>0.2.7-SNAPSHOT</version>
   <packaging>hpi</packaging>
 
   <properties>
@@ -37,7 +37,7 @@
     <!-- Java Level to use. Java 7 required when using core >= 1.612 -->
     <java.level>8</java.level>
 
-    <devops-client.version>0.2.4.3</devops-client.version>
+    <devops-client.version>0.2.4</devops-client.version>
     <log.level>INFO</log.level>
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
     <findbugs.failOnError>false</findbugs.failOnError>
@@ -201,16 +201,16 @@
       <groupId>org.csanchez.jenkins.plugins</groupId>
       <artifactId>kubernetes</artifactId>
       <version>1.5</version>
-      <exclusions>
-        <exclusion>
-          <groupId>io.fabric8</groupId>
-          <artifactId>kubernetes-client</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.apache.httpcomponent</groupId>
-          <artifactId>httpclient</artifactId>
-        </exclusion>
-      </exclusions>
+      <!--<exclusions>-->
+        <!--<exclusion>-->
+          <!--<groupId>io.fabric8</groupId>-->
+          <!--<artifactId>kubernetes-client</artifactId>-->
+        <!--</exclusion>-->
+        <!--<exclusion>-->
+          <!--<groupId>org.apache.httpcomponent</groupId>-->
+          <!--<artifactId>httpclient</artifactId>-->
+        <!--</exclusion>-->
+      <!--</exclusions>-->
     </dependency>
 
     <!--
@@ -332,6 +332,25 @@
             <Jenkinsfile>GROOVY_STYLE</Jenkinsfile>
           </mapping>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.1</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>package</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
