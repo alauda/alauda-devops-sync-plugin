@@ -9,7 +9,6 @@ import io.alauda.kubernetes.api.model.Secret;
 import io.alauda.kubernetes.api.model.SecretBuilder;
 import org.junit.Rule;
 import org.junit.Test;
-import org.jvnet.hudson.test.JenkinsRule;
 
 import java.io.IOException;
 import java.util.HashMap;
