@@ -38,7 +38,7 @@ public class GlobalPluginConfigurationTest {
         assertTrue(config.isEnabled());
 
         // Constructor
-        config = new GlobalPluginConfiguration(true, "test", "hello", null, null, null, null);
+        config = new GlobalPluginConfiguration(false, "", "hello", null, null, null, null);
         FormValidation formValidation = config.doVerifyConnect("", "");
         assertNotNull(formValidation);
         assertEquals(FormValidation.Kind.OK, formValidation.kind);
