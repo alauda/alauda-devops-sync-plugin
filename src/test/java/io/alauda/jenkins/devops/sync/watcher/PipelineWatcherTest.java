@@ -9,6 +9,7 @@ import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
@@ -23,7 +24,7 @@ public class PipelineWatcherTest {
     public JenkinsK8sRule j = new JenkinsK8sRule();
 
     @Test
-    public void triggerPipeline() throws Exception, ActivityWaitException {
+    public void triggerPipeline() throws Exception {
         PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         final String folderName = j.getDevOpsInit().getNamespace();
         final String pipCfgName = config.getMetadata().getName();

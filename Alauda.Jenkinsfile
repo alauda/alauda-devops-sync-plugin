@@ -44,6 +44,7 @@ pipeline {
       DEPLOYMENT = "alauda-devops-sync-plugin"
       DINGDING_BOT = "devops-chat-bot"
       TAG_CREDENTIALS = "alaudabot-github"
+      IN_K8S = "true"
     }
     // stages
     stages {
