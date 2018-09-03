@@ -2,6 +2,8 @@ package io.alauda.jenkins.devops.sync.action;
 
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebResponse;
+import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
+import io.alauda.jenkins.devops.sync.WithoutK8s;
 import net.sf.json.JSONObject;
 import org.junit.Rule;
 import org.junit.Test;
@@ -16,7 +18,7 @@ import static org.junit.Assert.*;
 
 public class KubernetesClientActionTest {
     @Rule
-    public JenkinsRule j = new JenkinsRule();
+    public JenkinsK8sRule j = new JenkinsK8sRule();
 
     @Test
     public void doConnectTest() throws IOException, SAXException {
@@ -54,6 +56,7 @@ public class KubernetesClientActionTest {
     }
 
     @Test
+    @WithoutK8s
     public void doBuildId() throws IOException, SAXException {
         JenkinsRule.WebClient wc = j.createWebClient();
         wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
