@@ -44,6 +44,7 @@ pipeline {
       DEPLOYMENT = "alauda-devops-sync-plugin"
       DINGDING_BOT = "devops-chat-bot"
       TAG_CREDENTIALS = "alaudabot-github"
+      IN_K8S = "true"
     }
     // stages
     stages {
@@ -66,7 +67,8 @@ pipeline {
                   RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
               }
 
-              sh 'echo "version=$GIT_COMMIT" > src/main/resources/debug.properties'
+              sh 'echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties'
+              sh 'echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties'
           }
           // installing golang coverage and report tools
           sh """
@@ -98,7 +100,7 @@ pipeline {
                       }
 
                     sh """
-                        mvn clean install -U
+                        mvn clean install -U findbugs:findbugs
 
                         if [ -d .tmp ]; then
                           rm -rf .tmp
@@ -192,6 +194,9 @@ pipeline {
               echo "damn!"
                 // deploy.notificationFailed(DEPLOYMENT, DINGDING_BOT, "流水线失败了", RELEASE_BUILD)
             }
+        }
+        always {
+            junit "**/target/surefire-reports/**/*.xml"
         }
     }
 }

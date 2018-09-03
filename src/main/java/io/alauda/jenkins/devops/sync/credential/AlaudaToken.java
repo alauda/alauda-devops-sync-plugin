@@ -11,8 +11,7 @@ public class AlaudaToken extends BaseStandardCredentials {
     private final Secret secret;
 
     @DataBoundConstructor
-    public AlaudaToken(CredentialsScope scope, String id,
-                       String description, Secret secret) {
+    public AlaudaToken(CredentialsScope scope, String id, String description, Secret secret) {
         super(scope, id, description);
         this.secret = secret;
     }
@@ -26,8 +25,7 @@ public class AlaudaToken extends BaseStandardCredentials {
     }
 
     @Extension
-    public static class DescriptorImpl extends
-            BaseStandardCredentialsDescriptor {
+    public static class DescriptorImpl extends BaseStandardCredentialsDescriptor {
         @Override
         public String getDisplayName() {
             return "Alauda Token for Alauda Sync Plugin";

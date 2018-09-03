@@ -18,19 +18,16 @@ package io.alauda.jenkins.devops.sync.util;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class BuildConfigSecretToCredentialsMap {
-    
+public abstract class BuildConfigSecretToCredentialsMap {
     private static Map<String,String> buildConfigSecretToCredentialMap = new ConcurrentHashMap<String,String>();
 
-    private BuildConfigSecretToCredentialsMap() {
-    }
+    private BuildConfigSecretToCredentialsMap() {}
     
-    static synchronized void linkBCSecretToCredential(String bc, String credential) {
+    public static synchronized void linkBCSecretToCredential(String bc, String credential) {
         buildConfigSecretToCredentialMap.put(bc, credential);
     }
-    
-    static synchronized String unlinkBCSecretToCrendential(String bc) {
+
+    public static synchronized String unlinkBCSecretToCrendential(String bc) {
         return buildConfigSecretToCredentialMap.remove(bc);
     }
-
 }

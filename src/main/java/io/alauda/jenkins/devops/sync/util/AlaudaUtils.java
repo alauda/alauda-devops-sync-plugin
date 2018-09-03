@@ -17,54 +17,46 @@ package io.alauda.jenkins.devops.sync.util;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import hudson.model.ItemGroup;
 import hudson.BulkChange;
 import hudson.model.Item;
+import hudson.model.ItemGroup;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.kubernetes.api.model.*;
-
 import io.alauda.kubernetes.client.Config;
 import io.alauda.kubernetes.client.Version;
 import jenkins.model.Jenkins;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
+import java.io.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.PENDING;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.RUNNING;
 import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.*;
 import static java.util.logging.Level.FINE;
 
-/**
- */
-public class AlaudaUtils {
-
+public abstract class AlaudaUtils {
     private final static Logger logger = Logger.getLogger(AlaudaUtils.class.getName());
+    private static final String PLUGIN_NAME = "alauda-sync";
 
     private static AlaudaDevOpsClient alaudaClient;
     private static String jenkinsPodNamespace = null;
-    private static String PLUGIN_NAME = "alauda-sync";
+
+    private AlaudaUtils(){}
     
     static {
         jenkinsPodNamespace = System.getProperty(Constants.ALAUDA_PROJECT_ENV_VAR_NAME);
@@ -176,29 +168,37 @@ public class AlaudaUtils {
      *         to a Jenkins Job
      */
     public static boolean isPipelineStrategyPipelineConfig(PipelineConfig pc) {
-      return (
-        pc.getSpec().getStrategy().getJenkins() != null
-        && (
-          StringUtils.isNotEmpty(pc.getSpec().getStrategy().getJenkins().getJenkinsfile())
-          || StringUtils.isNotEmpty(pc.getSpec().getStrategy().getJenkins().getJenkinsfilePath())
-        )
-      );
+        if(pc == null) {
+            return false;
+        }
+        PipelineStrategy strategy = pc.getSpec().getStrategy();
+        if(strategy == null) {
+            return false;
+        }
+
+        PipelineStrategyJenkins jenkins = strategy.getJenkins();
+        if(jenkins == null) {
+            return false;
+        }
+
+        return (
+                StringUtils.isNotEmpty(jenkins.getJenkinsfile())
+                        || StringUtils.isNotEmpty(jenkins.getJenkinsfilePath())
+        );
     }
 
 
-  /**
-   * Finds the Jenkins job name for the given {@link PipelineConfig}.
-   *
-   * @param pc
-   *            the PipelineConfig
-   * @return the jenkins job name for the given BuildConfig
-   */
-  public static String jenkinsJobName(PipelineConfig pc) {
-    String namespace = pc.getMetadata().getNamespace();
-    String name = pc.getMetadata().getName();
-    return jenkinsJobName(namespace, name);
-
-  }
+    /**
+     * Finds the Jenkins job name for the given {@link PipelineConfig}.
+     *
+     * @param pc the PipelineConfig
+     * @return the jenkins job name for the given BuildConfig
+     */
+    public static String jenkinsJobName(PipelineConfig pc) {
+        String namespace = pc.getMetadata().getNamespace();
+        String name = pc.getMetadata().getName();
+        return jenkinsJobName(namespace, name);
+    }
 
     /**
      * Creates the Jenkins Job name for the given pipelineConfigName
@@ -500,11 +500,16 @@ public class AlaudaUtils {
 
     public static void updatePipelinePhase(Pipeline pipeline, String phase) {
         logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}", new Object[]{phase, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()});
+        AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.severe("Can't found alauda client.");
+            return;
+        }
 
         // TODO: Change to use edit instead....
         String namespace = pipeline.getMetadata().getNamespace();
         String name = pipeline.getMetadata().getName();
-        Pipeline pipe = getAuthenticatedAlaudaClient().pipelines().inNamespace(namespace).withName(name).get();
+        Pipeline pipe = client.pipelines().inNamespace(namespace).withName(name).get();
 
         if (pipe == null) {
             logger.warning(() -> "Can't find Pipeline by namespace: " + namespace + ", name: " + name);
@@ -518,8 +523,7 @@ public class AlaudaUtils {
         stats.setPhase(phase);
         pipe.setStatus(stats);
 
-        getAuthenticatedAlaudaClient()
-                .pipelines()
+        client.pipelines()
                 .inNamespace(namespace)
                 .withName(name)
                 .patch(pipe);
@@ -542,19 +546,16 @@ public class AlaudaUtils {
         return new NamespaceName(namespace, jobName);
     }
 
-  /**
-   * Maps a Jenkins Job name to an PipelineConfig name
-   *
-   * @return the namespaced name for the PipelineConfig
-   * @param jobName
-   *            the job to associate to a PipelineConfig name
-   * @param namespace
-   *            the default namespace that Jenkins is running inside
-   */
-  public static NamespaceName pipelineConfigNameFromJenkinsJobName(
-    String jobName, String namespace) {
-    return new NamespaceName(namespace, jobName);
-  }
+    /**
+     * Maps a Jenkins Job name to an PipelineConfig name
+     *
+     * @param jobName   the job to associate to a PipelineConfig name
+     * @param namespace the default namespace that Jenkins is running inside
+     * @return the namespaced name for the PipelineConfig
+     */
+    public static NamespaceName pipelineConfigNameFromJenkinsJobName(String jobName, String namespace) {
+        return new NamespaceName(namespace, jobName);
+    }
 
     public static long parseResourceVersion(HasMetadata obj) {
         return parseResourceVersion(obj.getMetadata().getResourceVersion());
@@ -580,31 +581,6 @@ public class AlaudaUtils {
         return dateFormatter.parseMillis(timestamp);
     }
 
-//    public static boolean isResourceWithoutStateEqual(HasMetadata oldObj,
-//            HasMetadata newObj) {
-//        try {
-//            byte[] oldDigest = MessageDigest.getInstance("MD5").digest(
-//                    dumpWithoutRuntimeStateAsYaml(oldObj).getBytes(
-//                            StandardCharsets.UTF_8));
-//            byte[] newDigest = MessageDigest.getInstance("MD5").digest(
-//                    dumpWithoutRuntimeStateAsYaml(newObj).getBytes(
-//                            StandardCharsets.UTF_8));
-//            return Arrays.equals(oldDigest, newDigest);
-//        } catch (NoSuchAlgorithmException | JsonProcessingException e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
-//
-//    public static String dumpWithoutRuntimeStateAsYaml(HasMetadata obj)
-//            throws JsonProcessingException {
-//        ObjectMapper statelessMapper = new ObjectMapper(new YAMLFactory());
-//        statelessMapper.addMixInAnnotations(ObjectMeta.class,
-//                ObjectMetaMixIn.class);
-//        statelessMapper.addMixInAnnotations(ReplicationController.class,
-//                StatelessReplicationControllerMixIn.class);
-//        return statelessMapper.writeValueAsString(obj);
-//    }
-
     public static boolean isCancellable(PipelineStatus pipelineStatus) {
         String phase = pipelineStatus.getPhase();
         return phase.equals(QUEUED) || phase.equals(PENDING)
@@ -613,8 +589,6 @@ public class AlaudaUtils {
 
     public static boolean isNew(PipelineStatus pipelineStatus) {
         return pipelineStatus.getPhase().equals(PENDING);
-//      String phase = pipelineStatus.getPhase();
-//      return phase.equals(PENDING) || phase.equals(QUEUED);
     }
 
     public static boolean isCancelled(PipelineStatus status) {
@@ -701,6 +675,11 @@ public class AlaudaUtils {
 
     public static boolean isBindingToCurrentJenkins(String namespace) {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.severe("Can't found alauda client.");
+            return false;
+        }
+
         String jenkinsService = GlobalPluginConfiguration.get().getJenkinsService();
 
         JenkinsBindingList jenkinsBindings = client.jenkinsBindings().inNamespace(namespace).list();

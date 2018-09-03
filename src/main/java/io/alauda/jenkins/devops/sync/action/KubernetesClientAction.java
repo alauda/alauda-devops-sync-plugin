@@ -21,11 +21,14 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 @Extension
 @Symbol("alauda")
 @ExportedBean
 public class KubernetesClientAction implements UnprotectedRootAction {
+    private static final Logger logger = Logger.getLogger(KubernetesClientAction.class.getName());
+
     @CheckForNull
     @Override
     public String getIconFileName() {
@@ -73,7 +76,7 @@ public class KubernetesClientAction implements UnprotectedRootAction {
                 return HttpResponses.okJSON(pro);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.severe(e.getMessage());
         }
 
         return HttpResponses.errorJSON("no debug file");

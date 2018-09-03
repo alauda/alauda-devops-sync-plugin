@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipelineConfigSecretToCredentialsMap {
 
-    private static Map<String, String> pipelineConfigSecretToCredentialMap = new ConcurrentHashMap<String, String>();
+    private static Map<String, String> pipelineConfigSecretToCredentialMap = new ConcurrentHashMap<>();
 
     private PipelineConfigSecretToCredentialsMap() {
     }

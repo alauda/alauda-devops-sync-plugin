@@ -16,6 +16,7 @@
 package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
@@ -46,16 +47,19 @@ public class SecretWatcher implements BaseWatcher {
 
     @Override
     public void watch() {
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.severe("client is null, when watch Secret");
+            return;
+        }
+
         String resourceVersion = "0";
-        SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient()
-                .secrets().inAnyNamespace().list();
+        SecretList secrets = client.secrets().inAnyNamespace().list();
         if(secrets != null) {
             resourceVersion = secrets.getMetadata().getResourceVersion();
         }
 
-        watcher = AlaudaUtils.getAuthenticatedAlaudaClient()
-                .secrets()
-                .inAnyNamespace()
+        watcher = client.secrets().inAnyNamespace()
                 .withResourceVersion(resourceVersion)
                 .watch(new WatcherCallback<Secret>(SecretWatcher.this, null));
     }
@@ -70,7 +74,7 @@ public class SecretWatcher implements BaseWatcher {
     @Override
     public void init(String[] namespaces) {
         if (trackedSecrets == null) {
-            trackedSecrets = new ConcurrentHashMap<String, String>();
+            trackedSecrets = new ConcurrentHashMap<>();
         }
 
         for (String namespace : namespaces) {
@@ -166,9 +170,7 @@ public class SecretWatcher implements BaseWatcher {
         String uid = secret.getMetadata().getUid();
         String rv = secret.getMetadata().getResourceVersion();
         String savedRV = trackedSecrets.get(uid);
-        if (savedRV == null || !savedRV.equals(rv))
-            return true;
-        return false;
+        return (savedRV == null || !savedRV.equals(rv));
     }
 
     private void deleteCredential(final Secret secret) throws Exception {

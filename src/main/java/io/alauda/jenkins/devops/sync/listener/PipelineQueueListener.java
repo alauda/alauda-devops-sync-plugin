@@ -19,8 +19,8 @@ import hudson.Extension;
 import hudson.model.Cause;
 import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 
 import java.util.List;
 import java.util.logging.Logger;

@@ -1,6 +1,7 @@
 package io.alauda.jenkins.devops.sync;
 
 import com.gargoylesoftware.htmlunit.html.*;
+import hudson.util.FormValidation;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -25,6 +26,22 @@ public class GlobalPluginConfigurationTest {
         assertNotNull(page.getElementByName("_.credentialsId"));
         assertNotNull(page.getElementByName("_.jenkinsService"));
         assertNotNull(page.getElementByName("_.enabled"));
+
+        assertTrue(GlobalPluginConfiguration.isItEnabled());
+
+        GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
+        assertNotNull(config);
+        assertNotNull(config.getDisplayName());
+        assertNotNull(config.getNamespaces());
+
+        config.reWatchAllNamespace("fake-ns");
+        assertTrue(config.isEnabled());
+
+        // Constructor TODO connect test is wrong
+//        config = new GlobalPluginConfiguration(false, "fake-server", "hello", null, null, null, null);
+//        FormValidation formValidation = config.doVerifyConnect("", "");
+//        assertNotNull(formValidation);
+//        assertEquals(FormValidation.Kind.OK, formValidation.kind);
     }
 
     @Test

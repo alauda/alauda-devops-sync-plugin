@@ -39,6 +39,7 @@ import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -78,6 +79,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         try {
             this.configChange();
         } catch (KubernetesClientException e) {
+            LOGGER.log(Level.SEVERE, "trigger config change failed.", e);
         }
     }
 
@@ -86,14 +88,15 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
 
         try {
             this.configChange();
-        } catch (KubernetesClientException e) {
-        }
 
-        LOGGER.info("Alauda GlobalPluginConfiguration is started.");
+            LOGGER.info("Alauda GlobalPluginConfiguration is started.");
+        } catch (KubernetesClientException e) {
+            LOGGER.log(Level.SEVERE, "trigger config change failed.", e);
+        }
     }
 
     public static GlobalPluginConfiguration get() {
-        return (GlobalPluginConfiguration) GlobalConfiguration.all().get(GlobalPluginConfiguration.class);
+        return GlobalConfiguration.all().get(GlobalPluginConfiguration.class);
     }
 
     public static boolean isItEnabled() {
@@ -177,18 +180,18 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         this.skipBranchSuffix = skipBranchSuffix;
     }
 
+    @Nonnull
     public String[] getNamespaces() {
-        return namespaces;
+        if(namespaces == null) {
+            return new String[]{};
+        }
+        return Arrays.copyOf(namespaces, namespaces.length);
     }
 
     @SuppressWarnings("unused")
     public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
         Jenkins jenkins = Jenkins.getInstance();
-        if (jenkins == null) {
-            return (ListBoxModel) null;
-        } else {
-            return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, AlaudaToken.class).includeCurrentValue(credentialsId);
-        }
+        return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, AlaudaToken.class).includeCurrentValue(credentialsId);
     }
 
     @SuppressWarnings("unused")
@@ -220,9 +223,15 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         reloadNamespaces();
 
         // put the new guy at first
-        List<String> namespaceList = Arrays.asList(namespaces);
-        namespaceList.remove(namespace);
-        namespaceList.add(0, namespace);
+        List<String> namespaceList = new ArrayList<>();
+        namespaceList.add(namespace);
+        for(String old : namespaces) {
+            if(old.equals(namespace)) {
+                continue;
+            }
+
+            namespaceList.add(old);
+        }
         namespaces = namespaceList.toArray(new String[]{});
 
         startWatchers();
@@ -254,7 +263,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
             GlobalPluginConfiguration.LOGGER.info("Waiting for Jenkins to be started");
 
             while(true) {
-              Jenkins instance = Jenkins.getActiveInstance();
+              Jenkins instance = Jenkins.getInstance();
               InitMilestone initLevel = instance.getInitLevel();
               GlobalPluginConfiguration.LOGGER.fine("Jenkins init level: " + initLevel.toString());
               if (initLevel == InitMilestone.COMPLETED) {
@@ -264,11 +273,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
 
               GlobalPluginConfiguration.LOGGER.fine("Jenkins not ready...");
 
-              try {
                 Thread.sleep(500L);
-              } catch (InterruptedException var4) {
-                ;
-              }
             }
           }
         };

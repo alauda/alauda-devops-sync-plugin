@@ -12,10 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_MANUAL;
 
 public abstract class PipelineGenerator {
 
