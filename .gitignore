@@ -93,3 +93,6 @@ work/
 
 # sonar stuff
 .scannerwork
+
+# vim swap files
+*.swp
