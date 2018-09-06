@@ -35,14 +35,21 @@ public final class Constants {
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON = "alauda.io/jenkins-stages-json";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE = "alauda.io/jenkins-namespace";
 
+    /** secret keys */
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY = "ssh-privatekey";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_DOCKER = ".dockerconfigjson";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID = "clientID";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET = "clientSecret";
+
+    /** secret types */
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SSH = "kubernetes.io/ssh-auth";
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_BASICAUTH = "kubernetes.io/basic-auth";
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER = "kubernetes.io/dockerconfigjson";
-    public static final String ALAUDA_DEVOPS_SECRETS_DATA_DOCKER = ".dockerconfigjson";
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE = "Opaque";
+    public static final String ALAUDA_DEVOPS_SECRETS_TYPE_OAUTH2
+            = "devops.alauda.io/oauth2";
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN = "kubernetes.io/service-account-token";
     public static final String ALAUDA_DEVOPS_PIPELINE_STATUS_FIELD = "status";
 

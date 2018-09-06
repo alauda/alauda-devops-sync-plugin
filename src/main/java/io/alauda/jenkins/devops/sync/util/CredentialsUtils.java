@@ -327,6 +327,10 @@ public abstract class CredentialsUtils {
             case ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN:
                 String token = secret.getData().get("token");
                 return newTokenCredentials(secretName, token);
+            case ALAUDA_DEVOPS_SECRETS_TYPE_OAUTH2:
+                String clientId = secret.getStringData().get(ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID);
+                String clientSecret = secret.getStringData().get(ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET);
+                return newOauth2Credentials(secretName, clientId, clientSecret);
             default:
                 logger.log(Level.WARNING, "Unknown secret type: " + secret.getType());
                 return null;
@@ -382,6 +386,10 @@ public abstract class CredentialsUtils {
 
         hudson.util.Secret secret = hudson.util.Secret.fromString(token);
         return new AlaudaToken(CredentialsScope.GLOBAL, secretName, null, secret);
+    }
+
+    private static Credentials newOauth2Credentials(String secretName, String clientId, String clientSecret) {
+        return newUsernamePasswordCredentials(secretName, clientId, clientSecret);
     }
 
     private static Credentials newDockerCredentials(String secretName, String dockerData) {
