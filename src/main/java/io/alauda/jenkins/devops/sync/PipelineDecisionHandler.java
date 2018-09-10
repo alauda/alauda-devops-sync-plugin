@@ -17,6 +17,7 @@ package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
 import hudson.model.*;
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
@@ -53,27 +54,27 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                 return true;
             }
 
-            String namespace = pipelineConfigProjectProperty.getNamespace();
-            String jobURL = PipelineSyncRunListener.joinPaths(AlaudaUtils.getJenkinsURL(AlaudaUtils.getAuthenticatedAlaudaClient(), namespace), workflowJob.getUrl());
+            final String namespace = pipelineConfigProjectProperty.getNamespace();
+            final String name = pipelineConfigProjectProperty.getName();
+            final String jobURL = getJobUrl(workflowJob, namespace);
 
-            LOGGER.info(() -> "Got this namespace " + namespace + " from this pipelineConfigProjectProperty: "
-                    + pipelineConfigProjectProperty);
+            LOGGER.info(() -> "Got this namespace " + namespace + " from this pipelineConfigProjectProperty: " + name);
             // TODO: Add trigger API for pipelineconfig (like above)
 
             PipelineConfig config = null;
             try {
                 config = AlaudaUtils.getAuthenticatedAlaudaClient()
                         .pipelineConfigs().inNamespace(namespace)
-                        .withName(pipelineConfigProjectProperty.getName()).get();
+                        .withName(name).get();
             } catch (KubernetesClientException e) {
                 LOGGER.warning(() -> e.getMessage() + "; cause: " + e.getCause().getMessage());
             }
 
             if (config == null) {
-                LOGGER.warning("Config is null");
+                LOGGER.warning("PipelineConfig is null");
                 return false;
             } else if (config.getMetadata() == null) {
-                LOGGER.warning("Config metadata is null");
+                LOGGER.warning("PipelineConfig metadata is null");
                 return false;
             }
 
@@ -111,6 +112,16 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         }
 
         return true;
+    }
+
+    private String getJobUrl(WorkflowJob workflowJob, String namespace) {
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            return null;
+        }
+
+        String jenkinsUrl = AlaudaUtils.getJenkinsURL(client, namespace);
+        return PipelineSyncRunListener.joinPaths(jenkinsUrl, workflowJob.getUrl());
     }
 
     private boolean hasValidProperty(WorkflowJob workflowJob) {

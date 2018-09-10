@@ -9,14 +9,16 @@ import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.ANNOTATION_BADGE;
 import static io.alauda.jenkins.devops.sync.util.JobUtils.findWorkflowJob;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.*;
 
 public class PipelineWatcherTest {
@@ -107,6 +109,38 @@ public class PipelineWatcherTest {
         Thread.sleep(3000);
         assertFalse("cancel job failed", build.isBuilding());
         assertEquals(Result.ABORTED, build.getResult());
+    }
+
+    @Test
+    public void testBadge() throws InterruptedException {
+        final String badgeId = "id";
+        final String badgeText = "text";
+        final String jenkinsFile = "addErrorBadge id: '" + badgeId + "', text: '" + badgeText + "'";
+        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), jenkinsFile);
+        final String folderName = j.getDevOpsInit().getNamespace();
+        final String pipCfgName = config.getMetadata().getName();
+
+        WorkflowJob workflowJob = findWorkflowJob(j.jenkins, folderName, pipCfgName);
+        trigger(pipCfgName);
+        Run build = workflowJob.getBuildByNumber(1);
+        assertNotNull(build);
+        j.waitForCompletion(build);
+
+        assertEquals(Result.SUCCESS, build.getResult());
+        Thread.sleep(3000);
+        List<Pipeline> pipelineList = j.getDevOpsInit().getPipelines(j.getClient());
+        assertEquals(1, pipelineList.size());
+
+        final Pipeline pipeline = pipelineList.get(0);
+        assertEquals(PipelinePhases.FINISHED, pipeline.getStatus().getPhase());
+
+        Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
+        assertNotNull(annotations);
+
+        String annotationBadges = annotations.get(ANNOTATION_BADGE);
+        assertNotNull(annotationBadges);
+
+        assertThat(annotationBadges, containsString(badgeText));
     }
 
     private WorkflowRun ensureRunning(WorkflowJob workflowJob, int num) throws InterruptedException, IOException {

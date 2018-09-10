@@ -19,8 +19,10 @@ import com.cloudbees.workflow.rest.external.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.jenkinsci.plugins.badge.action.BadgeAction;
 import hudson.Extension;
 import hudson.PluginManager;
+import hudson.model.Action;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.model.TaskListener;
@@ -41,6 +43,8 @@ import io.jenkins.blueocean.rest.model.BlueRun;
 import io.jenkins.blueocean.rest.model.BlueRun.BlueRunResult;
 import jenkins.model.Jenkins;
 import jenkins.util.Timer;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
 import org.apache.commons.httpclient.HttpStatus;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputAction;
@@ -48,6 +52,7 @@ import org.jenkinsci.plugins.workflow.support.steps.input.InputStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import javax.annotation.Nonnull;
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -282,11 +287,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
 
     String namespace = cause.getNamespace();
-//        String namespace = AlaudaUtils.getNamespacefromPodInputs();
-//        if (namespace == null)
-//            namespace = cause.getNamespace();
-    String rootUrl = AlaudaUtils.getJenkinsURL(
-      getAuthenticatedAlaudaClient(), namespace);
+    String rootUrl = AlaudaUtils.getJenkinsURL(getAuthenticatedAlaudaClient(), namespace);
     String buildUrl = joinPaths(rootUrl, run.getUrl());
     String logsUrl = joinPaths(buildUrl, "/consoleText");
     String logsConsoleUrl = joinPaths(buildUrl, "/console");
@@ -306,24 +307,20 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         if (pluginMgr != null) {
           ClassLoader cl = pluginMgr.uberClassLoader;
           if (cl != null) {
-            Class weburlbldr = cl
-              .loadClass("org.jenkinsci.plugins.blueoceandisplayurl.BlueOceanDisplayURLImpl");
+            Class weburlbldr = cl.loadClass("org.jenkinsci.plugins.blueoceandisplayurl.BlueOceanDisplayURLImpl");
             Constructor ctor = weburlbldr.getConstructor();
             Object displayURL = ctor.newInstance();
-            Method getRunURLMethod = weburlbldr.getMethod(
-              "getRunURL", hudson.model.Run.class);
-            Object blueOceanURI = getRunURLMethod.invoke(
-              displayURL, run);
+            Method getRunURLMethod = weburlbldr.getMethod("getRunURL", hudson.model.Run.class);
+            Object blueOceanURI = getRunURLMethod.invoke(displayURL, run);
             logsBlueOceanUrl = blueOceanURI.toString();
             logsBlueOceanUrl = logsBlueOceanUrl.replaceAll(
               "http://unconfigured-jenkins-location/", "");
-            if (logsBlueOceanUrl.startsWith("http://")
-              || logsBlueOceanUrl.startsWith("https://"))
-              // still normalize string
-              logsBlueOceanUrl = joinPaths("", logsBlueOceanUrl);
-            else
-              logsBlueOceanUrl = joinPaths(rootUrl,
-                logsBlueOceanUrl);
+            if (logsBlueOceanUrl.startsWith("http://") || logsBlueOceanUrl.startsWith("https://")) {
+                // still normalize string
+                logsBlueOceanUrl = joinPaths("", logsBlueOceanUrl);
+            } else {
+                logsBlueOceanUrl = joinPaths(rootUrl, logsBlueOceanUrl);
+            }
           }
         }
       }
@@ -335,7 +332,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     Map<String, BlueRunResult> blueRunResults = new HashMap<>();
     PipelineJson pipeJson = new PipelineJson();
     Map<String, PipelineStage> stageMap = new HashMap<>();
-
 
     try {
       if (blueRun != null) {
@@ -369,8 +365,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
       }
     } catch (Exception e) {
       logger.log(WARNING, "Failed to fetch stages from blue ocean API. " + e, e);
-
     }
+
     boolean pendingInput = false;
     if (!wfRunExt.get_links().self.href.matches("^https?://.*$")) {
       wfRunExt.get_links().self.setHref(joinPaths(rootUrl,
@@ -510,75 +506,17 @@ public class PipelineSyncRunListener extends RunListener<Run> {
       annotations.put(Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL, logsBlueOceanUrl);
       pipeline.getMetadata().setAnnotations(annotations);
 
+      badgeHandle(run, annotations);
+
       // status
-      PipelineStatus stats = pipeline.getStatus();
-      if (stats == null) {
-        stats = new PipelineStatusBuilder().build();
-      }
-      stats.setPhase(phase);
-      stats.setStartedAt(startTime);
-      stats.setFinishedAt(completionTime);
-      stats.setUpdatedAt(updatedTime);
-      PipelineStatusJenkins jenksStats = stats.getJenkins();
-      if (jenksStats == null) {
-        jenksStats = new PipelineStatusJenkinsBuilder().build();
-      }
-      jenksStats.setBuild(String.valueOf(getRunNumber(run)));
-//      jenksStats.setStages(StringUtils.isNotEmpty(blueJson) ? blueJson : json);
-      if (blueJson != null) {
-        jenksStats.setStages(blueJson);
-      }
-      jenksStats.setResult(getRunResult(run));
-      jenksStats.setStatus(wfRunExt.getStatus().name());
-      stats.setJenkins(jenksStats);
-      pipeline.setStatus(stats);
+      PipelineStatus status = createPipelineStatus(pipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
+      pipeline.setStatus(status);
       Pipeline result = getAuthenticatedAlaudaClient()
         .pipelines()
         .inNamespace(namespace)
-        .withName(pipeline.getMetadata().getName())
-              .patch(pipeline);
+        .withName(pipeline.getMetadata().getName()).patch(pipeline);
 //        .replace(pipeline);
       logger.fine("updated pipeline: " + result);
-
-//          DoneablePipeline builder = getAuthenticatedAlaudaClient()
-//            .pipelines()
-//            .inNamespace(cause.getNamespace())
-//            .withName(cause.getName()).edit().editMetadata()
-//            .addToAnnotations(
-//              ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON, json)
-//            .addToAnnotations(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI,
-//              buildUrl)
-//            .addToAnnotations(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL,
-//              logsUrl)
-//            .addToAnnotations(
-//              Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL,
-//              logsConsoleUrl)
-//            .addToAnnotations(
-//              Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL,
-//              logsBlueOceanUrl).endMetadata();
-//
-//            String jenkinsNamespace = System.getenv("KUBERNETES_NAMESPACE");
-//            if (jenkinsNamespace != null && !jenkinsNamespace.isEmpty()) {
-//              builder.editMetadata().addToAnnotations(
-//                  ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE,
-//                        jenkinsNamespace).endMetadata();
-//            }
-//            if (pendingActionsJson != null && !pendingActionsJson.isEmpty()) {
-//              builder.editMetadata().addToAnnotations(
-//                  ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON,
-//                        pendingActionsJson).endMetadata();
-//            }
-//
-//              builder.editStatus().withPhase(phase)
-//              .withStartedAt(startTime)
-//              .withFinishedAt(completionTime)
-//              .withNewJenkins()
-//              .withBuild(String.valueOf(getRunNumber(run)))
-//              .withStatus(wfRunExt.getStatus().name())
-//              .withResult(getRunResult(run))
-//              .withStages(json)
-//              .endJenkins()
-//              .endStatus().done();
     } catch (KubernetesClientException e) {
       if (HTTP_NOT_FOUND == e.getCode()) {
         logger.info("Pipeline not found, deleting jenkins job: "+run);
@@ -592,8 +530,60 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
     cause.setNumFlowNodes(newNumFlowNodes);
     cause.setNumStages(newNumStages);
-    cause.setLastUpdateToAlaudaDevOps(TimeUnit.NANOSECONDS.toMillis(System
-      .nanoTime()));
+    cause.setLastUpdateToAlaudaDevOps(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
+  }
+
+    private void badgeHandle(@NotNull Run run, Map<String, String> annotations) {
+        if(annotations == null) {
+            return;
+        }
+
+        JSONArray jsonArray = new JSONArray();
+
+        List<? extends Action> actions = run.getAllActions();
+        actions.stream().filter(action -> action instanceof BadgeAction).forEach(action -> {
+            BadgeAction badgeAction = (BadgeAction) action;
+
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("text", badgeAction.getText());
+            jsonObject.put("displayName", badgeAction.getDisplayName());
+            jsonObject.put("iconPath", badgeAction.getIconPath());
+            jsonObject.put("iconFileName", badgeAction.getIconFileName());
+            jsonObject.put("link", badgeAction.getLink());
+            jsonObject.put("isTextOnly", badgeAction.isTextOnly());
+
+            jsonArray.add(jsonObject);
+        });
+        annotations.put(ANNOTATION_BADGE, jsonArray.toString());
+    }
+
+    private PipelineStatus createPipelineStatus(Pipeline pipeline, String phase, String startTime,
+                                              String completionTime, String updatedTime, String blueJson,
+                                              Run run, RunExt wfRunExt) {
+      PipelineStatus status = pipeline.getStatus();
+      if (status == null) {
+          status = new PipelineStatusBuilder().build();
+      }
+      status.setPhase(phase);
+      status.setStartedAt(startTime);
+      status.setFinishedAt(completionTime);
+      status.setUpdatedAt(updatedTime);
+
+      PipelineStatusJenkins statusJenkins = status.getJenkins();
+      if (statusJenkins == null) {
+          statusJenkins = new PipelineStatusJenkinsBuilder().build();
+      }
+      status.setJenkins(statusJenkins);
+
+      statusJenkins.setBuild(String.valueOf(getRunNumber(run)));
+      if (blueJson != null) {
+          statusJenkins.setStages(blueJson);
+      }
+
+      statusJenkins.setResult(getRunResult(run));
+      statusJenkins.setStatus(wfRunExt.getStatus().name());
+
+      return status;
   }
 
   // annotate the Build with pending input JSON so consoles can do the

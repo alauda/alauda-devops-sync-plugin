@@ -78,4 +78,6 @@ public final class Constants {
     public static final String JOB_STATUS_UNKNOWN = "UNKNOWN";
 
     public static final String DEFAULT_JENKINS_FILEPATH = "Jenkinsfile";
+
+    public static final String ANNOTATION_BADGE = "alauda.io/jenkins-badges";
 }
