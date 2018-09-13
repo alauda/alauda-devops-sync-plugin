@@ -8,7 +8,6 @@ import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 import hudson.model.Fingerprint;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
-import io.alauda.devops.api.model.BuildConfig;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
@@ -37,22 +36,22 @@ public abstract class CredentialsUtils {
 
     private CredentialsUtils(){}
 
-    public static synchronized Secret getSourceCredentials(BuildConfig buildConfig) {
-        if (buildConfig.getSpec() != null
-                && buildConfig.getSpec().getSource() != null
-                && buildConfig.getSpec().getSource().getSourceSecret() != null
-                && !buildConfig.getSpec().getSource().getSourceSecret()
-                        .getName().isEmpty()) {
-            Secret sourceSecret = AlaudaUtils.getAuthenticatedAlaudaClient()
-                    .secrets()
-                    .inNamespace(buildConfig.getMetadata().getNamespace())
-                    .withName(
-                            buildConfig.getSpec().getSource().getSourceSecret()
-                                    .getName()).get();
-            return sourceSecret;
-        }
-        return null;
-    }
+//    public static synchronized Secret getSourceCredentials(BuildConfig buildConfig) {
+//        if (buildConfig.getSpec() != null
+//                && buildConfig.getSpec().getSource() != null
+//                && buildConfig.getSpec().getSource().getSourceSecret() != null
+//                && !buildConfig.getSpec().getSource().getSourceSecret()
+//                        .getName().isEmpty()) {
+//            Secret sourceSecret = AlaudaUtils.getAuthenticatedAlaudaClient()
+//                    .secrets()
+//                    .inNamespace(buildConfig.getMetadata().getNamespace())
+//                    .withName(
+//                            buildConfig.getSpec().getSource().getSourceSecret()
+//                                    .getName()).get();
+//            return sourceSecret;
+//        }
+//        return null;
+//    }
 
   private static synchronized Secret getSourceCredentials(final PipelineConfig pipelineConfig) {
       PipelineConfigSpec spec = pipelineConfig.getSpec();
@@ -65,40 +64,43 @@ public abstract class CredentialsUtils {
           return null;
       }
 
-      LocalObjectReference secret = source.getSecret();
+      SecretKeySetRef secret = source.getSecret();
       if(secret != null && StringUtils.isNotBlank(secret.getName())) {
+          final String namespace = StringUtils.isBlank(secret.getNamespace())
+                  ? pipelineConfig.getMetadata().getNamespace() : secret.getNamespace();
+
           return AlaudaUtils.getAuthenticatedAlaudaClient()
                   .secrets()
-                  .inNamespace(pipelineConfig.getMetadata().getNamespace())
+                  .inNamespace(namespace)
                   .withName(secret.getName()).get();
       }
 
       return null;
   }
 
-    public static synchronized String updateSourceCredentials(BuildConfig buildConfig) throws IOException {
-        Secret sourceSecret = getSourceCredentials(buildConfig);
-        String credID = null;
-        if (sourceSecret != null) {
-            credID = upsertCredential(sourceSecret, sourceSecret
-                    .getMetadata().getNamespace(), sourceSecret.getMetadata()
-                    .getName());
-            if (credID != null)
-                BuildConfigSecretToCredentialsMap.linkBCSecretToCredential(
-                    NamespaceName.create(buildConfig).toString(), credID);
-
-        } else {
-            // call delete and remove any credential that fits the
-            // project/bcname pattern
-            credID = BuildConfigSecretToCredentialsMap
-                    .unlinkBCSecretToCrendential(NamespaceName.create(
-                            buildConfig).toString());
-            if (credID != null)
-                deleteCredential(credID, NamespaceName.create(buildConfig),
-                        buildConfig.getMetadata().getResourceVersion());
-        }
-        return credID;
-    }
+//    public static synchronized String updateSourceCredentials(BuildConfig buildConfig) throws IOException {
+//        Secret sourceSecret = getSourceCredentials(buildConfig);
+//        String credID = null;
+//        if (sourceSecret != null) {
+//            credID = upsertCredential(sourceSecret, sourceSecret
+//                    .getMetadata().getNamespace(), sourceSecret.getMetadata()
+//                    .getName());
+//            if (credID != null)
+//                BuildConfigSecretToCredentialsMap.linkBCSecretToCredential(
+//                    NamespaceName.create(buildConfig).toString(), credID);
+//
+//        } else {
+//            // call delete and remove any credential that fits the
+//            // project/bcname pattern
+//            credID = BuildConfigSecretToCredentialsMap
+//                    .unlinkBCSecretToCrendential(NamespaceName.create(
+//                            buildConfig).toString());
+//            if (credID != null)
+//                deleteCredential(credID, NamespaceName.create(buildConfig),
+//                        buildConfig.getMetadata().getResourceVersion());
+//        }
+//        return credID;
+//    }
 
     /**
      * @param pipelineConfig

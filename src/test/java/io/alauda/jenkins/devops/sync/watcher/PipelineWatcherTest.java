@@ -132,7 +132,7 @@ public class PipelineWatcherTest {
         assertEquals(1, pipelineList.size());
 
         final Pipeline pipeline = pipelineList.get(0);
-        assertEquals(PipelinePhases.FINISHED, pipeline.getStatus().getPhase());
+        assertEquals(PipelinePhases.COMPLETE, pipeline.getStatus().getPhase());
 
         Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
         assertNotNull(annotations);
