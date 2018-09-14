@@ -1,8 +1,6 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import hudson.remoting.Base64;
-import io.alauda.devops.api.model.BuildConfig;
-import io.alauda.devops.api.model.BuildConfigBuilder;
 import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.WithoutK8s;
 import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
@@ -86,31 +84,31 @@ public class CredentialsUtilsTest {
         CredentialsUtils.upsertCredential(secret);
     }
 
-    @Test
-    public void updateSourceCredentials() throws IOException {
-        BuildConfig config = new BuildConfigBuilder().withNewMetadata()
-                .withName("name").withNamespace("ns")
-                .endMetadata().build();
-        String credID = CredentialsUtils.updateSourceCredentials(config);
-        assertNull(credID);
-
-        assertNull(CredentialsUtils.getSourceCredentials(config));
-
-        // exists secret
-        final String secretName = j.getDevOpsInit().getSecretName();
-        final String namespace = j.getDevOpsInit().getNamespace();
-        config = new BuildConfigBuilder().withNewMetadata()
-                .withName("name").withNamespace(namespace)
-                .endMetadata()
-                .withNewSpec()
-                .withNewSource().withNewSourceSecret(secretName).endSource()
-                .endSpec()
-                .build();
-        assertNotNull(CredentialsUtils.getSourceCredentials(config));
-
-        credID = CredentialsUtils.updateSourceCredentials(config);
-        assertNotNull(credID);
-    }
+//    @Test
+//    public void updateSourceCredentials() throws IOException {
+//        BuildConfig config = new BuildConfigBuilder().withNewMetadata()
+//                .withName("name").withNamespace("ns")
+//                .endMetadata().build();
+//        String credID = CredentialsUtils.updateSourceCredentials(config);
+//        assertNull(credID);
+//
+//        assertNull(CredentialsUtils.getSourceCredentials(config));
+//
+//        // exists secret
+//        final String secretName = j.getDevOpsInit().getSecretName();
+//        final String namespace = j.getDevOpsInit().getNamespace();
+//        config = new BuildConfigBuilder().withNewMetadata()
+//                .withName("name").withNamespace(namespace)
+//                .endMetadata()
+//                .withNewSpec()
+//                .withNewSource().withNewSourceSecret(secretName).endSource()
+//                .endSpec()
+//                .build();
+//        assertNotNull(CredentialsUtils.getSourceCredentials(config));
+//
+//        credID = CredentialsUtils.updateSourceCredentials(config);
+//        assertNotNull(credID);
+//    }
 
     @Test
     @WithoutK8s

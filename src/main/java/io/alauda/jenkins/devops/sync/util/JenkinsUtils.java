@@ -26,7 +26,6 @@ import hudson.triggers.SCMTrigger;
 import hudson.triggers.SafeTimerTask;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
-import io.alauda.devops.api.model.JenkinsPipelineBuildStrategy;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
@@ -110,47 +109,47 @@ public abstract class JenkinsUtils {
 	    return true;
 	}
 
-	public static Map<String, ParameterDefinition> addJobParamForBuildEnvs(@Nonnull WorkflowJob job,
-            @Nonnull JenkinsPipelineBuildStrategy strat,
-			boolean replaceExisting) throws IOException {
-		List<EnvVar> envs = strat.getEnv();
-        Map<String, ParameterDefinition> paramMap = null;
-		if (envs != null && envs.size() > 0) {
-			// build list of current env var names for possible deletion of env
-			// vars currently stored
-			// as job params
-			List<String> envKeys = new ArrayList<>();
-			for (EnvVar env : envs) {
-				envKeys.add(env.getName());
-			}
-
-			// get existing property defs, including any manually added from the
-			// jenkins console independent of BC
-			ParametersDefinitionProperty params = job.removeProperty(ParametersDefinitionProperty.class);
-			paramMap = new HashMap<>();
-			// store any existing parameters in map for easy key lookup
-			if (params != null) {
-				List<ParameterDefinition> existingParamList = params.getParameterDefinitions();
-				for (ParameterDefinition param : existingParamList) {
-                    paramMap.put(param.getName(), param);
-				}
-			}
-
-			for (EnvVar env : envs) {
-				if (replaceExisting || !paramMap.containsKey(env.getName())) {
-					StringParameterDefinition envVar = new StringParameterDefinition(env.getName(), env.getValue(),
-							PARAM_FROM_ENV_DESCRIPTION);
-					paramMap.put(env.getName(), envVar);
-				}
-			}
-
-			List<ParameterDefinition> newParamList = new ArrayList<>(paramMap.values());
-			job.addProperty(new ParametersDefinitionProperty(newParamList));
-		}
-		// force save here ... seen some timing issues with concurrent job updates and run initiations
-		job.save();
-		return paramMap;
-	}
+//	public static Map<String, ParameterDefinition> addJobParamForBuildEnvs(@Nonnull WorkflowJob job,
+//            @Nonnull JenkinsPipelineBuildStrategy strat,
+//			boolean replaceExisting) throws IOException {
+//		List<EnvVar> envs = strat.getEnv();
+//        Map<String, ParameterDefinition> paramMap = null;
+//		if (envs != null && envs.size() > 0) {
+//			// build list of current env var names for possible deletion of env
+//			// vars currently stored
+//			// as job params
+//			List<String> envKeys = new ArrayList<>();
+//			for (EnvVar env : envs) {
+//				envKeys.add(env.getName());
+//			}
+//
+//			// get existing property defs, including any manually added from the
+//			// jenkins console independent of BC
+//			ParametersDefinitionProperty params = job.removeProperty(ParametersDefinitionProperty.class);
+//			paramMap = new HashMap<>();
+//			// store any existing parameters in map for easy key lookup
+//			if (params != null) {
+//				List<ParameterDefinition> existingParamList = params.getParameterDefinitions();
+//				for (ParameterDefinition param : existingParamList) {
+//                    paramMap.put(param.getName(), param);
+//				}
+//			}
+//
+//			for (EnvVar env : envs) {
+//				if (replaceExisting || !paramMap.containsKey(env.getName())) {
+//					StringParameterDefinition envVar = new StringParameterDefinition(env.getName(), env.getValue(),
+//							PARAM_FROM_ENV_DESCRIPTION);
+//					paramMap.put(env.getName(), envVar);
+//				}
+//			}
+//
+//			List<ParameterDefinition> newParamList = new ArrayList<>(paramMap.values());
+//			job.addProperty(new ParametersDefinitionProperty(newParamList));
+//		}
+//		// force save here ... seen some timing issues with concurrent job updates and run initiations
+//		job.save();
+//		return paramMap;
+//	}
 
     public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(WorkflowJob job,
         List<PipelineParameter> params, boolean replaceExisting) throws IOException {
