@@ -28,7 +28,7 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
@@ -680,7 +680,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   protected boolean shouldPollRun(Run run) {
     return run instanceof WorkflowRun
       && run.getCause(JenkinsPipelineCause.class) != null
-      && GlobalPluginConfiguration.isItEnabled();
+      && AlaudaSyncGlobalConfiguration.get().isEnabled();
   }
 
   private static class BlueJsonStage {

@@ -27,7 +27,7 @@ import hudson.triggers.SafeTimerTask;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
 import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.PipelineComparator;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
@@ -685,7 +685,7 @@ public abstract class JenkinsUtils {
 	@Nonnull
 	public static String getBuildConfigName(@Nonnull WorkflowJob job) {
 		String name = getFullJobName(job);
-		GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
+		AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
 		String[] paths = name.split("/");
 		if (paths.length > 1) {
 			String orgName = paths[0];

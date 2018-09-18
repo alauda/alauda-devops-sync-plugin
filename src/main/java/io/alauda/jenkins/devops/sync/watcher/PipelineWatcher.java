@@ -322,8 +322,8 @@ public class PipelineWatcher implements BaseWatcher {
         clearNoPCList();
         for (Pipeline pipeline : clone) {
             WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-          logger.info("Pipeline flush: "+pipeline.getMetadata().getName()+" - job: "+job);
-            if (job != null)
+            logger.info("Pipeline flush: "+pipeline.getMetadata().getName()+" - job: "+job);
+            if (job != null) {
                 try {
                     logger.info("triggering job run for previously skipped pipeline "
                             + pipeline.getMetadata().getName());
@@ -331,8 +331,9 @@ public class PipelineWatcher implements BaseWatcher {
                 } catch (IOException e) {
                     logger.log(Level.WARNING, "flushCachedPipelines", e);
                 }
-            else
+            } else {
                 addPipelineToNoPCList(pipeline);
+            }
         }
 
     }

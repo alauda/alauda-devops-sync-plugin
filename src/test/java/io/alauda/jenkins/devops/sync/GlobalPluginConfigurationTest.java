@@ -1,7 +1,6 @@
 package io.alauda.jenkins.devops.sync;
 
 import com.gargoylesoftware.htmlunit.html.*;
-import hudson.util.FormValidation;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -27,9 +26,9 @@ public class GlobalPluginConfigurationTest {
         assertNotNull(page.getElementByName("_.jenkinsService"));
         assertNotNull(page.getElementByName("_.enabled"));
 
-        assertTrue(GlobalPluginConfiguration.isItEnabled());
+        assertTrue(AlaudaSyncGlobalConfiguration.get().isEnabled());
 
-        GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
+        AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
         assertNotNull(config);
         assertNotNull(config.getDisplayName());
         assertNotNull(config.getNamespaces());
@@ -59,8 +58,8 @@ public class GlobalPluginConfigurationTest {
             HtmlForm form = page.getFormByName("config");
             HtmlFormUtil.submit(form);
 
-            assertTrue(GlobalPluginConfiguration.get().isEnabled());
-            assertEquals(GlobalPluginConfiguration.get().getJenkinsService(), jenkinsService);
+            assertTrue(AlaudaSyncGlobalConfiguration.get().isEnabled());
+            assertEquals(AlaudaSyncGlobalConfiguration.get().getJenkinsService(), jenkinsService);
         }
 
         {
@@ -71,7 +70,7 @@ public class GlobalPluginConfigurationTest {
             HtmlForm form = page.getFormByName("config");
             HtmlFormUtil.submit(form);
 
-            assertFalse(GlobalPluginConfiguration.get().isEnabled());
+            assertFalse(AlaudaSyncGlobalConfiguration.get().isEnabled());
         }
     }
 }

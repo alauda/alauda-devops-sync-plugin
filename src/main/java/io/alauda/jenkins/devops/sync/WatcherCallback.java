@@ -81,8 +81,8 @@ public class WatcherCallback<T> implements Watcher<T> {
                 return false;
             }
 
-            GlobalPluginConfiguration.get().reloadNamespaces();
-            watcher.init(GlobalPluginConfiguration.get().getNamespaces());
+            AlaudaSyncGlobalConfiguration.get().reloadNamespaces();
+            watcher.init(AlaudaSyncGlobalConfiguration.get().getNamespaces());
 
             return true;
         }, nextInterval(), TimeUnit.MILLISECONDS);

@@ -23,7 +23,7 @@ import hudson.model.ItemGroup;
 import hudson.model.listeners.ItemListener;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.dsl.PipelineConfigResource;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
@@ -81,7 +81,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onCreated(Item item) {
-        if (!GlobalPluginConfiguration.isItEnabled()) {
+        if (!AlaudaSyncGlobalConfiguration.get().isEnabled()) {
             return;
         }
 
@@ -92,7 +92,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onUpdated(Item item) {
-        if (!GlobalPluginConfiguration.isItEnabled()) {
+        if (!AlaudaSyncGlobalConfiguration.get().isEnabled()) {
             return;
         }
 
@@ -107,7 +107,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
     @Override
     public void onDeleted(Item item) {
         logger.info("onDelete: Item: " + item);
-        if (!GlobalPluginConfiguration.isItEnabled()) {
+        if (!AlaudaSyncGlobalConfiguration.get().isEnabled()) {
             logger.info("no configuration... onDelete ignored...");
             return;
         }
@@ -352,7 +352,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
      * configuration from GlobalPluginConfiguration?
      */
     private void reconfigure() {
-        GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
+        AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
         if (config != null) {
             this.jobNamePattern = config.getJobNamePattern();
             this.jenkinsService = config.getJenkinsService();
