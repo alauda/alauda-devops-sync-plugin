@@ -505,11 +505,9 @@ public abstract class AlaudaUtils {
             return;
         }
 
-        // TODO: Change to use edit instead....
         String namespace = pipeline.getMetadata().getNamespace();
         String name = pipeline.getMetadata().getName();
         Pipeline pipe = client.pipelines().inNamespace(namespace).withName(name).get();
-
         if (pipe == null) {
             logger.warning(() -> "Can't find Pipeline by namespace: " + namespace + ", name: " + name);
             return;

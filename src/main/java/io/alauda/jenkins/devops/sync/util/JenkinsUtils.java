@@ -20,6 +20,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.*;
 import hudson.model.Job;
 import hudson.model.Queue;
+import hudson.model.queue.QueueTaskFuture;
 import hudson.plugins.git.RevisionParameterAction;
 import hudson.security.ACL;
 import hudson.triggers.SCMTrigger;
@@ -53,6 +54,7 @@ import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.FAILED;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
@@ -350,7 +352,7 @@ public abstract class JenkinsUtils {
 	    LOGGER.info(() -> "will trigger pipeline: " + pipelineName);
 
         if (isAlreadyTriggered(job, pipeline)) {
-          LOGGER.info(() -> "pipeline already triggered: "+pipelineName);
+            LOGGER.info(() -> "pipeline already triggered: "+pipelineName);
             return false;
         }
 
@@ -362,7 +364,7 @@ public abstract class JenkinsUtils {
             return false;
         }
 
-        ObjectMeta meta = pipeline.getMetadata();
+        final ObjectMeta meta = pipeline.getMetadata();
         String namespace = meta.getNamespace();
         PipelineConfig pipelineConfig = getAuthenticatedAlaudaClient()
                 .pipelineConfigs().inNamespace(namespace)
@@ -383,8 +385,7 @@ public abstract class JenkinsUtils {
             // plugins may rely on them.
             List<Cause> newCauses = new ArrayList<>();
             newCauses.add(new JenkinsPipelineCause(pipeline, pcProp.getUid()));
-            CauseAction originalCauseAction = PipelineToActionMapper
-                    .removeCauseAction(pipelineName);
+            CauseAction originalCauseAction = PipelineToActionMapper.removeCauseAction(pipelineName);
             if (originalCauseAction != null) {
                 if (LOGGER.isLoggable(Level.FINE)) {
                     LOGGER.fine("Adding existing causes...");
@@ -406,17 +407,16 @@ public abstract class JenkinsUtils {
 
             PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
             String commit = null;
-            if (pipeline.getMetadata().getAnnotations() != null &&
-              pipeline.getMetadata().getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
-              commit = pipeline.getMetadata().getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
+            if (meta.getAnnotations() != null && meta.getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
+              commit = meta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
             }
+
           if (sourceGit != null && commit != null) {
             try {
               URIish repoURL = new URIish(sourceGit.getUri());
               pipelineActions.add(new RevisionParameterAction(commit, repoURL));
             } catch (URISyntaxException e) {
-              LOGGER.log(SEVERE, "Failed to parse git repo URL"
-                + sourceGit.getUri(), e);
+              LOGGER.log(SEVERE, "Failed to parse git repo URL" + sourceGit.getUri(), e);
             }
           }
 
@@ -436,8 +436,9 @@ public abstract class JenkinsUtils {
             } else {
                 actionArray = pipelineActions.toArray(new Action[pipelineActions.size()]);
             }
-            if (job.scheduleBuild2(0, actionArray) != null) {
 
+            QueueTaskFuture<WorkflowRun> queueTaskFuture = job.scheduleBuild2(0, actionArray);
+            if (queueTaskFuture != null) {
                 updatePipelinePhase(pipeline, QUEUED);
                 // If builds are queued too quickly, Jenkins can add the cause
                 // to the previous queued pipeline so let's add a tiny
@@ -449,9 +450,10 @@ public abstract class JenkinsUtils {
                     Thread.currentThread().interrupt();
                 }
                 return true;
-            } else {
-                LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipelineName);
             }
+
+            updatePipelinePhase(pipeline, FAILED);
+            LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipelineName);
 
             return false;
         }

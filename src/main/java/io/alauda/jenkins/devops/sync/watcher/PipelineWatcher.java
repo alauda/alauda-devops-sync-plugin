@@ -47,20 +47,8 @@ import static java.util.logging.Level.SEVERE;
  * @author suren
  */
 public class PipelineWatcher implements BaseWatcher {
-    private static final Logger logger = Logger.getLogger(PipelineWatcher.class
-            .getName());
-
-    // the fabric8 classes like Build have equal/hashcode annotations that
-    // should allow
-    // us to index via the objects themselves;
-    // now that listing interval is 5 minutes (used to be 10 seconds), we have
-    // seen
-    // timing windows where if the build watch events come before build config
-    // watch events
-    // when both are created in a simultaneous fashion, there is an up to 5
-    // minute delay
-    // before the job run gets kicked off
-    private static final HashSet<Pipeline> pipelinesWithNoPCList = new HashSet<Pipeline>();
+    private static final Logger logger = Logger.getLogger(PipelineWatcher.class.getName());
+    private static final HashSet<Pipeline> pipelinesWithNoPCList = new HashSet<>();
     private Watch watcher;
 
     @Override

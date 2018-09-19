@@ -23,24 +23,16 @@ import org.apache.commons.lang.StringUtils;
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_COMMIT;
 
 public class JenkinsPipelineCause extends Cause {
-
     private String uid;
-
     private String namespace;
-
     private String name;
-
     private String gitUri;
-
     private String commit;
-
     private String pipelineConfigUid;
-
     private int numStages = -1;
-
     private int numFlowNodes = -1;
-
     private long lastUpdateToAlaudaDevOps = -1;
+    private boolean synced = true;
 
     public JenkinsPipelineCause(String uid, String namespace, String name, String gitUri,
                                 String commit, String pipelineConfigUid) {
@@ -148,4 +140,11 @@ public class JenkinsPipelineCause extends Cause {
         this.lastUpdateToAlaudaDevOps = lastUpdateToAlaudaDevOps;
     }
 
+    public boolean isSynced() {
+        return synced;
+    }
+
+    public void setSynced(boolean synced) {
+        this.synced = synced;
+    }
 }
