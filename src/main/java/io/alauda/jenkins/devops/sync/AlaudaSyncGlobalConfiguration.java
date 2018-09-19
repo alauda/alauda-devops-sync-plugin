@@ -29,11 +29,14 @@ import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.watcher.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import jenkins.model.GlobalConfiguration;
+import jenkins.model.GlobalConfigurationCategory;
 import jenkins.model.Jenkins;
 import jenkins.util.Timer;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -49,9 +52,10 @@ import java.util.logging.Logger;
 /**
  * @author suren
  */
-@Extension
-public class GlobalPluginConfiguration extends GlobalConfiguration {
-    private static final Logger LOGGER = Logger.getLogger(GlobalPluginConfiguration.class.getName());
+@Extension(ordinal = 100)
+@Symbol("alaudaSync")
+public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
+    private static final Logger LOGGER = Logger.getLogger(AlaudaSyncGlobalConfiguration.class.getName());
     private boolean enabled = true;
     private String server;
     private String credentialsId = "";
@@ -59,49 +63,19 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     private String jobNamePattern;
     private String skipOrganizationPrefix;
     private String skipBranchSuffix;
+
     private String[] namespaces;
     private transient PipelineWatcher pipelineWatcher;
     private transient PipelineConfigWatcher pipelineConfigWatcher;
     private transient SecretWatcher secretWatcher;
     private transient JenkinsBindingWatcher jenkinsBindingWatcher;
 
-    @DataBoundConstructor
-    public GlobalPluginConfiguration(boolean enable, String server, String jenkinsService, String credentialsId,
-                                     String jobNamePattern, String skipOrganizationPrefix, String skipBranchSuffix) {
-        this.enabled = enable;
-        this.server = server;
-        this.jenkinsService = StringUtils.isBlank(jenkinsService) ? "" : jenkinsService;
-        this.credentialsId = Util.fixEmptyAndTrim(credentialsId);
-        this.jobNamePattern = jobNamePattern;
-        this.skipOrganizationPrefix = skipOrganizationPrefix;
-        this.skipBranchSuffix = skipBranchSuffix;
-
-        try {
-            this.configChange();
-        } catch (KubernetesClientException e) {
-            LOGGER.log(Level.SEVERE, "trigger config change failed.", e);
-        }
-    }
-
-    public GlobalPluginConfiguration() {
+    public AlaudaSyncGlobalConfiguration() {
         this.load();
-
-        try {
-            this.configChange();
-
-            LOGGER.info("Alauda GlobalPluginConfiguration is started.");
-        } catch (KubernetesClientException e) {
-            LOGGER.log(Level.SEVERE, "trigger config change failed.", e);
-        }
     }
 
-    public static GlobalPluginConfiguration get() {
-        return GlobalConfiguration.all().get(GlobalPluginConfiguration.class);
-    }
-
-    public static boolean isItEnabled() {
-        GlobalPluginConfiguration config = get();
-        return config != null && config.isEnabled();
+    public static AlaudaSyncGlobalConfiguration get() {
+        return GlobalConfiguration.all().get(AlaudaSyncGlobalConfiguration.class);
     }
 
     @Override
@@ -111,39 +85,35 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
     }
 
     @Override
-    public boolean configure(StaplerRequest req, JSONObject json) throws FormException {
+    public boolean configure(StaplerRequest req, JSONObject json) {
         req.bindJSON(this, json);
-
-        try {
-            this.configChange();
-
-            this.save();
-            return true;
-        } catch (KubernetesClientException e) {
-            return false;
-        }
+        this.save();
+        return true;
     }
 
     public boolean isEnabled() {
         return this.enabled;
     }
 
+    @DataBoundSetter
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    @DataBoundSetter
+    public void setServer(String server) {
+        this.server = server;
     }
 
     public String getServer() {
         return this.server;
     }
 
-    public void setServer(String server) {
-        this.server = server;
-    }
-
     public String getCredentialsId() {
         return this.credentialsId == null ? "" : this.credentialsId;
     }
 
+    @DataBoundSetter
     public void setCredentialsId(String credentialsId) {
         this.credentialsId = Util.fixEmptyAndTrim(credentialsId);
     }
@@ -152,6 +122,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         return this.jenkinsService;
     }
 
+    @DataBoundSetter
     public void setJenkinsService(String jenkinsService) {
         this.jenkinsService = jenkinsService;
     }
@@ -160,6 +131,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         return this.jobNamePattern;
     }
 
+    @DataBoundSetter
     public void setJobNamePattern(String jobNamePattern) {
         this.jobNamePattern = jobNamePattern;
     }
@@ -168,6 +140,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         return this.skipOrganizationPrefix;
     }
 
+    @DataBoundSetter
     public void setSkipOrganizationPrefix(String skipOrganizationPrefix) {
         this.skipOrganizationPrefix = skipOrganizationPrefix;
     }
@@ -176,6 +149,7 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         return this.skipBranchSuffix;
     }
 
+    @DataBoundSetter
     public void setSkipBranchSuffix(String skipBranchSuffix) {
         this.skipBranchSuffix = skipBranchSuffix;
     }
@@ -237,58 +211,58 @@ public class GlobalPluginConfiguration extends GlobalConfiguration {
         startWatchers();
     }
 
-  /**
-   * Only call when the plugin configuration is really changed.
-   */
-  public void configChange() throws KubernetesClientException {
-      ResourcesCache.getInstance().setJenkinsService(jenkinsService);
-
-    if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
-      this.stopWatchersAndClient();
-      LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
-    } else {
+    /**
+    * Only call when the plugin configuration is really changed.
+    */
+    public void configChange() throws KubernetesClientException {
         ResourcesCache.getInstance().setJenkinsService(jenkinsService);
 
-      try {
-        stopWatchersAndClient();
-
-        if(AlaudaUtils.getAlaudaClient() == null) {
-          AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
-        }
-
-        reloadNamespaces();
-
-        Runnable task = new SafeTimerTask() {
-          protected void doRun() throws Exception {
-            GlobalPluginConfiguration.LOGGER.info("Waiting for Jenkins to be started");
-
-            while(true) {
-              Jenkins instance = Jenkins.getInstance();
-              InitMilestone initLevel = instance.getInitLevel();
-              GlobalPluginConfiguration.LOGGER.fine("Jenkins init level: " + initLevel.toString());
-              if (initLevel == InitMilestone.COMPLETED) {
-                startWatchers();
-                return;
-              }
-
-              GlobalPluginConfiguration.LOGGER.fine("Jenkins not ready...");
-
-                Thread.sleep(500L);
-            }
-          }
-        };
-        Timer.get().schedule(task, 1L, TimeUnit.SECONDS);
-      } catch (KubernetesClientException e) {
-        if (e.getCause() != null) {
-          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e.getCause());
+        if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
+            this.stopWatchersAndClient();
+            LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
         } else {
-          LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e);
-        }
+            ResourcesCache.getInstance().setJenkinsService(jenkinsService);
 
-        throw e;
-      }
+            try {
+                stopWatchersAndClient();
+
+                if(AlaudaUtils.getAlaudaClient() == null) {
+                    AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
+                }
+
+                reloadNamespaces();
+
+                Runnable task = new SafeTimerTask() {
+                    protected void doRun() throws Exception {
+                    LOGGER.info("Waiting for Jenkins to be started");
+
+                    while(true) {
+                        Jenkins instance = Jenkins.getInstance();
+                        InitMilestone initLevel = instance.getInitLevel();
+                        LOGGER.fine("Jenkins init level: " + initLevel.toString());
+                        if (initLevel == InitMilestone.COMPLETED) {
+                            startWatchers();
+                            return;
+                        }
+
+                        LOGGER.fine("Jenkins not ready...");
+
+                        Thread.sleep(500L);
+                    }
+                    }
+                };
+                Timer.get().schedule(task, 1L, TimeUnit.SECONDS);
+            } catch (KubernetesClientException e) {
+                if (e.getCause() != null) {
+                    LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e.getCause());
+                } else {
+                    LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e);
+                }
+
+                throw e;
+            }
+        }
     }
-  }
 
     public void startWatchers() {
         this.jenkinsBindingWatcher = new JenkinsBindingWatcher();

@@ -24,7 +24,7 @@ import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.*;
@@ -302,8 +302,7 @@ public abstract class AlaudaUtils {
      *            the name of the {@link PipelineConfig} in in the namespace
      * @return the jenkins job display name for the given namespace and name
      */
-    public static String jenkinsJobDisplayName(String namespace,
-            String pipelineConfigName) {
+    public static String jenkinsJobDisplayName(String namespace, String pipelineConfigName) {
         return namespace + "/" + pipelineConfigName;
     }
 
@@ -506,11 +505,9 @@ public abstract class AlaudaUtils {
             return;
         }
 
-        // TODO: Change to use edit instead....
         String namespace = pipeline.getMetadata().getNamespace();
         String name = pipeline.getMetadata().getName();
         Pipeline pipe = client.pipelines().inNamespace(namespace).withName(name).get();
-
         if (pipe == null) {
             logger.warning(() -> "Can't find Pipeline by namespace: " + namespace + ", name: " + name);
             return;
@@ -665,7 +662,7 @@ public abstract class AlaudaUtils {
     }
 
     public static boolean isBindingToCurrentJenkins(JenkinsBinding jenkinsBinding) {
-        GlobalPluginConfiguration pluginConfig = GlobalPluginConfiguration.get();
+        AlaudaSyncGlobalConfiguration pluginConfig = AlaudaSyncGlobalConfiguration.get();
 
         String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
         String jenkinsService = pluginConfig.getJenkinsService();
@@ -680,7 +677,7 @@ public abstract class AlaudaUtils {
             return false;
         }
 
-        String jenkinsService = GlobalPluginConfiguration.get().getJenkinsService();
+        String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
 
         JenkinsBindingList jenkinsBindings = client.jenkinsBindings().inNamespace(namespace).list();
         if(jenkinsBindings != null) {

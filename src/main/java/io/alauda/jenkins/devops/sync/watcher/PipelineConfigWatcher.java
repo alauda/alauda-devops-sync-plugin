@@ -26,7 +26,7 @@ import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
@@ -66,28 +66,28 @@ import static java.util.logging.Level.SEVERE;
  * configuration
  */
 public class PipelineConfigWatcher implements BaseWatcher {
-  private final Logger logger = Logger.getLogger(getClass().getName());
+    private final Logger logger = Logger.getLogger(getClass().getName());
 
-  // for coordinating between ItemListener.onUpdate and onDeleted both
-  // getting called when we delete a job; ID should be combo of namespace
-  // and name for BC to properly differentiate; we don't use UUID since
-  // when we filter on the ItemListener side the UUID may not be
-  // available
-  private static final HashSet<String> deletesInProgress = new HashSet<String>();
+    // for coordinating between ItemListener.onUpdate and onDeleted both
+    // getting called when we delete a job; ID should be combo of namespace
+    // and name for BC to properly differentiate; we don't use UUID since
+    // when we filter on the ItemListener side the UUID may not be
+    // available
+    private static final HashSet<String> deletesInProgress = new HashSet<String>();
 
-  public static synchronized void deleteInProgress(String pcName) {
-    deletesInProgress.add(pcName);
-  }
+    public static synchronized void deleteInProgress(String pcName) {
+        deletesInProgress.add(pcName);
+    }
 
-  public static synchronized boolean isDeleteInProgress(String pcID) {
-    return deletesInProgress.contains(pcID);
-  }
+    public static synchronized boolean isDeleteInProgress(String pcID) {
+        return deletesInProgress.contains(pcID);
+    }
 
-  public static synchronized void deleteCompleted(String pcID) {
-    deletesInProgress.remove(pcID);
-  }
+    public static synchronized void deleteCompleted(String pcID) {
+        deletesInProgress.remove(pcID);
+    }
 
-  private Watch watcher;
+    private Watch watcher;
 
     @Override
     public void watch() {
@@ -248,7 +248,7 @@ public class PipelineConfigWatcher implements BaseWatcher {
       .inNamespace(namespace).withName(bindingName).get();
     if(jenkinsBinding != null) {
       String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
-      String pluginJenkinsService = GlobalPluginConfiguration.get().getJenkinsService();
+      String pluginJenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
 
       if(!jenkinsName.equals(pluginJenkinsService)) {
         logger.info("PipelineConfig is in Jenkins " + jenkinsName + ", but current Jenkins is " + pluginJenkinsService);
@@ -324,7 +324,28 @@ public class PipelineConfigWatcher implements BaseWatcher {
               parent = AlaudaUtils.getFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
               job = new WorkflowJob(parent, jobName);
             }
+
             BulkChange bk = new BulkChange(job);
+
+              PipelineConfigProjectProperty pipelineConfigProjectProperty = job.getProperty(PipelineConfigProjectProperty.class);
+              if (pipelineConfigProjectProperty != null) {
+                  long updatedBCResourceVersion = AlaudaUtils.parseResourceVersion(pipelineConfig);
+                  long oldBCResourceVersion = parseResourceVersion(pipelineConfigProjectProperty.getResourceVersion());
+                  PipelineConfigProjectProperty newProperty = new PipelineConfigProjectProperty(pipelineConfig);
+                  if (updatedBCResourceVersion <= oldBCResourceVersion
+                          && newProperty.getUid().equals(pipelineConfigProjectProperty.getUid())
+                          && newProperty.getNamespace().equals(pipelineConfigProjectProperty.getNamespace())
+                          && newProperty.getName().equals(pipelineConfigProjectProperty.getName())) {
+                      return null;
+                  }
+
+                  pipelineConfigProjectProperty.setUid(newProperty.getUid());
+                  pipelineConfigProjectProperty.setNamespace(newProperty.getNamespace());
+                  pipelineConfigProjectProperty.setName(newProperty.getName());
+                  pipelineConfigProjectProperty.setResourceVersion(newProperty.getResourceVersion());
+              } else {
+                  job.addProperty(new PipelineConfigProjectProperty(pipelineConfig));
+              }
 
             job.setDisplayName(AlaudaUtils.jenkinsJobDisplayName(pipelineConfig));
 
@@ -335,26 +356,6 @@ public class PipelineConfigWatcher implements BaseWatcher {
             }
 
             job.setDefinition(flowFromPipelineConfig);
-
-            PipelineConfigProjectProperty pipelineConfigProjectProperty = job.getProperty(PipelineConfigProjectProperty.class);
-            if (pipelineConfigProjectProperty != null) {
-              long updatedBCResourceVersion = AlaudaUtils.parseResourceVersion(pipelineConfig);
-              long oldBCResourceVersion = parseResourceVersion(pipelineConfigProjectProperty.getResourceVersion());
-              PipelineConfigProjectProperty newProperty = new PipelineConfigProjectProperty(pipelineConfig);
-              if (updatedBCResourceVersion <= oldBCResourceVersion
-                      && newProperty.getUid().equals(pipelineConfigProjectProperty.getUid())
-                      && newProperty.getNamespace().equals(pipelineConfigProjectProperty.getNamespace())
-                      && newProperty.getName().equals(pipelineConfigProjectProperty.getName())) {
-                return null;
-              }
-
-              pipelineConfigProjectProperty.setUid(newProperty.getUid());
-              pipelineConfigProjectProperty.setNamespace(newProperty.getNamespace());
-              pipelineConfigProjectProperty.setName(newProperty.getName());
-              pipelineConfigProjectProperty.setResourceVersion(newProperty.getResourceVersion());
-            } else {
-              job.addProperty(new PipelineConfigProjectProperty(pipelineConfig));
-            }
 
             // (re)populate job param list with any parameters
             // from the PipelineConfig

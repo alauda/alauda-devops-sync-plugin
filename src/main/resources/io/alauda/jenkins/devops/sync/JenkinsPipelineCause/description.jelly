@@ -1,0 +1,6 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+  <b>${%Namespace}</b>: ${it.namespace}<br/>
+  <b>${%Name}</b>: ${it.name}<br/>
+  <b>${%Synced}</b>: ${it.synced}
+</j:jelly>

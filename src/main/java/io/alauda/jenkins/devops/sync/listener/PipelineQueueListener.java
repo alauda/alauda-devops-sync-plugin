@@ -27,7 +27,7 @@ import java.util.logging.Logger;
 
 @Extension
 public class PipelineQueueListener extends QueueListener {
-  private static final Logger logger = Logger.getLogger(PipelineQueueListener.class.getName());
+    private static final Logger logger = Logger.getLogger(PipelineQueueListener.class.getName());
 
   @Override
   public void onLeft(Queue.LeftItem leftItem) {

@@ -9,7 +9,7 @@ import hudson.model.Fingerprint;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
 import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
 import io.alauda.kubernetes.api.model.*;
@@ -253,12 +253,12 @@ public abstract class CredentialsUtils {
     // the user. A return value of empty string
     // implies no token is configured.
     public static String getCurrentToken() {
-        if (GlobalPluginConfiguration.get() == null) {
+        if (AlaudaSyncGlobalConfiguration.get() == null) {
           logger.info("global plugin configuration is null");
           return "";
         }
 
-        String credentialsId = GlobalPluginConfiguration.get().getCredentialsId();
+        String credentialsId = AlaudaSyncGlobalConfiguration.get().getCredentialsId();
         if (credentialsId.equals("")) {
             return "";
         }

@@ -1,7 +1,7 @@
 package io.alauda.jenkins.devops.sync.listener;
 
 import hudson.model.listeners.ItemListener;
-import io.alauda.jenkins.devops.sync.GlobalPluginConfiguration;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.junit.Rule;
 import org.junit.Test;
@@ -22,7 +22,7 @@ public class JenkinsPipelineJobListenerTest {
         assertNotNull(listener);
 
         // not enable
-        GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
+        AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
         config.setEnabled(false);
         config.configChange();
 

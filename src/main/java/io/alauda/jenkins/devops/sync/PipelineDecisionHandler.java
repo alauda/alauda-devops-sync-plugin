@@ -29,6 +29,8 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
 import javax.annotation.Nonnull;
+import javax.validation.constraints.NotNull;
+import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -45,7 +47,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
     @Override
     public boolean shouldSchedule(Queue.Task p, List<Action> actions) {
-        if (p instanceof WorkflowJob && !isAlaudaDevOpsPipelineCause(actions)) {
+        if (p instanceof WorkflowJob && triggerFromJenkins(actions)) {
             // in case of triggered by users
             WorkflowJob workflowJob = (WorkflowJob) p;
             String taskName = p.getName();
@@ -71,14 +73,18 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             }
 
             if (config == null) {
-                LOGGER.warning("PipelineConfig is null");
+                disableJob(workflowJob, "PipelineConfig doesn't exists anymore.");
+
                 return false;
             } else if (config.getMetadata() == null) {
                 LOGGER.warning("PipelineConfig metadata is null");
+
+                disableJob(workflowJob, "PipelineConfig metadata is null.");
+
                 return false;
             }
 
-            Pipeline pipeline = null;
+            Pipeline pipeline;
             try {
                 // create k8s resource(Pipeline)
                 pipeline = PipelineGenerator.buildPipeline(config, jobURL, actions);
@@ -114,6 +120,15 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         return true;
     }
 
+    private void disableJob(@NotNull WorkflowJob job, String reason) {
+        try {
+            job.makeDisabled(true);
+            job.setDescription(reason);
+        } catch (IOException e) {
+            LOGGER.warning(() -> "Can't setting description for workflowJob: " + job.getName());
+        }
+    }
+
     private String getJobUrl(WorkflowJob workflowJob, String namespace) {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
@@ -133,7 +148,11 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         return (StringUtils.isNotBlank(property.getNamespace()) && StringUtils.isNotBlank(property.getName()));
     }
 
-    private static boolean isAlaudaDevOpsPipelineCause(@Nonnull List<Action> actions) {
+    private static boolean triggerFromJenkins(@Nonnull List<Action> actions) {
+        return !triggerFromPlatform(actions);
+    }
+
+    private static boolean triggerFromPlatform(@Nonnull List<Action> actions) {
         for (Action action : actions) {
             if (action instanceof CauseAction) {
                 CauseAction causeAction = (CauseAction) action;

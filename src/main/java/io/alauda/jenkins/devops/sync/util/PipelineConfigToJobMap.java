@@ -15,91 +15,85 @@ import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 public class PipelineConfigToJobMap {
 
-  private static Map<String, WorkflowJob> pipelineConfigToJobMap;
+    private static Map<String, WorkflowJob> pipelineConfigToJobMap;
 
-  private PipelineConfigToJobMap() {
-  }
+    private PipelineConfigToJobMap() {
+    }
 
-  public static synchronized void initializePipelineConfigToJobMap() {
-    if (pipelineConfigToJobMap == null) {
-      List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(
-        WorkflowJob.class);
-      pipelineConfigToJobMap = new ConcurrentHashMap<>(jobs.size());
-      for (WorkflowJob job : jobs) {
-        PipelineConfigProjectProperty pipelineConfigProjectProperty = job
-          .getProperty(PipelineConfigProjectProperty.class);
-        if (pipelineConfigProjectProperty == null) {
-          continue;
+    public static synchronized void initializePipelineConfigToJobMap() {
+        List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
+        if (pipelineConfigToJobMap == null) {
+            pipelineConfigToJobMap = new ConcurrentHashMap<>(jobs.size());
         }
-        String pcUid = pipelineConfigProjectProperty.getUid();
-        if (isNotBlank(pcUid)) {
-          pipelineConfigToJobMap.put(pcUid, job);
+
+        for (WorkflowJob job : jobs) {
+            PipelineConfigProjectProperty pipelineConfigProjectProperty = job.getProperty(PipelineConfigProjectProperty.class);
+            if (pipelineConfigProjectProperty == null) {
+                continue;
+            }
+
+            String pcUid = pipelineConfigProjectProperty.getUid();
+            if (isNotBlank(pcUid)) {
+                pipelineConfigToJobMap.put(pcUid, job);
+            }
         }
-      }
-    }
-  }
-
-  public static synchronized WorkflowJob getJobFromPipelineConfig(PipelineConfig pipelineConfig) {
-    ObjectMeta meta = pipelineConfig.getMetadata();
-    if (meta == null) {
-      return null;
     }
 
-    return getJobFromPipelineConfigUid(meta.getUid());
-  }
+    public static synchronized WorkflowJob getJobFromPipelineConfig(PipelineConfig pipelineConfig) {
+        ObjectMeta meta = pipelineConfig.getMetadata();
+        if (meta == null) {
+            return null;
+        }
 
-  public static synchronized WorkflowJob getJobFromPipelineConfigUid(String uid) {
-    if (isBlank(uid)) {
-      return null;
-    }
-
-    return pipelineConfigToJobMap.get(uid);
-  }
-
-  public static synchronized void putJobWithPipelineConfig(WorkflowJob job,
-                                                    PipelineConfig pipelineConfig) {
-    if (pipelineConfig == null) {
-      throw new IllegalArgumentException("PipelineConfig cannot be null");
-    }
-    if (job == null) {
-      throw new IllegalArgumentException("Job cannot be null");
-    }
-    ObjectMeta meta = pipelineConfig.getMetadata();
-    if (meta == null) {
-      throw new IllegalArgumentException(
-        "PipelineConfig must contain valid metadata");
+        return getJobFromPipelineConfigUid(meta.getUid());
     }
 
-    putJobWithPipelineConfigUid(job, meta.getUid());
-  }
+    public static synchronized WorkflowJob getJobFromPipelineConfigUid(String uid) {
+        if (isBlank(uid)) {
+            return null;
+        }
 
-  static synchronized void putJobWithPipelineConfigUid(WorkflowJob job,
-                                                       String uid) {
-    if (isBlank(uid)) {
-      throw new IllegalArgumentException(
-        "PipelineConfig uid must not be blank");
+        return pipelineConfigToJobMap.get(uid);
     }
-    pipelineConfigToJobMap.put(uid, job);
-  }
 
-  public static synchronized void removeJobWithPipelineConfig(PipelineConfig pipelineConfig) {
-    if (pipelineConfig == null) {
-      throw new IllegalArgumentException("PipelineConfig cannot be null");
-    }
-    ObjectMeta meta = pipelineConfig.getMetadata();
-    if (meta == null) {
-      throw new IllegalArgumentException(
-        "PipelineConfig must contain valid metadata");
-    }
-    removeJobWithPipelineConfigUid(meta.getUid());
-  }
+    public static synchronized void putJobWithPipelineConfig(WorkflowJob job, PipelineConfig pipelineConfig) {
+        if (pipelineConfig == null) {
+            throw new IllegalArgumentException("PipelineConfig cannot be null");
+        }
+        if (job == null) {
+            throw new IllegalArgumentException("Job cannot be null");
+        }
+        ObjectMeta meta = pipelineConfig.getMetadata();
+        if (meta == null) {
+            throw new IllegalArgumentException("PipelineConfig must contain valid metadata");
+        }
 
-  static synchronized void removeJobWithPipelineConfigUid(String uid) {
-    if (isBlank(uid)) {
-      throw new IllegalArgumentException(
-        "PipelineConfig uid must not be blank");
+        putJobWithPipelineConfigUid(job, meta.getUid());
     }
-    pipelineConfigToJobMap.remove(uid);
-  }
+
+    static synchronized void putJobWithPipelineConfigUid(WorkflowJob job, String uid) {
+        if (isBlank(uid)) {
+            throw new IllegalArgumentException("PipelineConfig uid must not be blank");
+        }
+        pipelineConfigToJobMap.put(uid, job);
+    }
+
+    public static synchronized void removeJobWithPipelineConfig(PipelineConfig pipelineConfig) {
+        if (pipelineConfig == null) {
+            throw new IllegalArgumentException("PipelineConfig cannot be null");
+        }
+        ObjectMeta meta = pipelineConfig.getMetadata();
+        if (meta == null) {
+            throw new IllegalArgumentException("PipelineConfig must contain valid metadata");
+        }
+        removeJobWithPipelineConfigUid(meta.getUid());
+    }
+
+    static synchronized void removeJobWithPipelineConfigUid(String uid) {
+        if (isBlank(uid)) {
+            throw new IllegalArgumentException("PipelineConfig uid must not be blank");
+        }
+        pipelineConfigToJobMap.remove(uid);
+    }
 
 }

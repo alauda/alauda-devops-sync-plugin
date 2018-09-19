@@ -3,7 +3,6 @@ package io.alauda.jenkins.devops.sync;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.util.DevOpsInit;
 import org.junit.runner.Description;
-import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.JenkinsRule;
 
@@ -24,7 +23,7 @@ public class JenkinsK8sRule extends JenkinsRule {
         if(withK8s) {
             devOpsInit = new DevOpsInit().init();
             client = devOpsInit.getClient();
-            GlobalPluginConfiguration config = GlobalPluginConfiguration.get();
+            AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
             config.setJenkinsService(devOpsInit.getJenkinsName());
             config.configChange();
         }
