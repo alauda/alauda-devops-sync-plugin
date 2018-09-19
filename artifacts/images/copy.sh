@@ -9,6 +9,11 @@ if [ ! -d $JENKINS_HOME/plugins ]; then
 fi;
 
 echo "copying plugins..."
-cp /plugin/*.hpi $JENKINS_HOME/plugins/
-
+for i in $(ls /plugin | grep -E '.*\..pi'); do
+  name="${i/.jpi/}"
+  name="${name/.hpi/}"
+  echo "installing $i..."
+  rm -rf "$JENKINS_HOME/plugins/$name" "$JENKINS_HOME/plugins/$i" || true
+  cp /plugin/$i $JENKINS_HOME/plugins/
+done
 ls -ahl $JENKINS_HOME/plugins/
