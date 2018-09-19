@@ -70,28 +70,8 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private transient SecretWatcher secretWatcher;
     private transient JenkinsBindingWatcher jenkinsBindingWatcher;
 
-//    @DataBoundConstructor
-//    public AlaudaSyncGlobalConfiguration(boolean enable, String jenkinsService) {
-//        this.enabled = enable;
-//        this.jenkinsService = StringUtils.isBlank(jenkinsService) ? "" : jenkinsService;
-//
-//        try {
-////            this.configChange();
-//        } catch (KubernetesClientException e) {
-//            LOGGER.log(Level.SEVERE, "trigger config change failed.", e);
-//        }
-//    }
-
     public AlaudaSyncGlobalConfiguration() {
         this.load();
-
-        try {
-//            this.configChange();
-
-            LOGGER.info("Alauda GlobalPluginConfiguration is started.");
-        } catch (KubernetesClientException e) {
-            LOGGER.log(Level.SEVERE, "trigger config change failed.", e);
-        }
     }
 
     public static AlaudaSyncGlobalConfiguration get() {
@@ -109,13 +89,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         req.bindJSON(this, json);
         this.save();
         return true;
-
-//        try {
-//            this.configChange();
-//            return true;
-//        } catch (KubernetesClientException e) {
-//            return false;
-//        }
     }
 
     public boolean isEnabled() {
@@ -334,10 +307,5 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         stopWatchers();
 
         AlaudaUtils.shutdownAlaudaClient();
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return super.equals(obj);
     }
 }
