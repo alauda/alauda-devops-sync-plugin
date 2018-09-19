@@ -4,5 +4,5 @@ COPY copy.sh /
 RUN chmod +x copy.sh
 CMD ["/copy.sh"]
 
-COPY alauda-devops-sync.hpi /plugin/
-COPY badge-1.5.hpi /plugin/
+COPY *.hpi /plugin/
+COPY *.jpi /plugin/
