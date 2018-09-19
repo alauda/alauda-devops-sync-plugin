@@ -190,6 +190,10 @@
           <artifactId>workflow-support</artifactId>
           <!-- according to https://jenkins.io/security/advisory/2018-02-05/ -->
         </exclusion>
+        <exclusion>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
+          <artifactId>workflow-cps</artifactId>
+        </exclusion>
       </exclusions>
     </dependency>
 
@@ -220,6 +224,10 @@
           <groupId>org.jenkins-ci.plugins</groupId>
           <artifactId>pipeline-input-step</artifactId>
           <!-- according to https://jenkins.io/security/advisory/2017-08-07/ -->
+        </exclusion>
+        <exclusion>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
+          <artifactId>workflow-cps</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -280,10 +288,6 @@
         </exclusion>
         <exclusion>
           <groupId>org.jenkins-ci.plugins.workflow</groupId>
-          <artifactId>workflow-cps</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-scm-step</artifactId>
         </exclusion>
         <exclusion>
@@ -299,6 +303,11 @@
           <artifactId>workflow-basic-steps</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>script-security</artifactId>
+      <version>1.42</version>
     </dependency>
 
     <!--
