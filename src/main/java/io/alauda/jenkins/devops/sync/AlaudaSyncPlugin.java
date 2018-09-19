@@ -7,6 +7,9 @@ import hudson.Plugin;
 public class AlaudaSyncPlugin extends Plugin {
     @Override
     public void postInitialize() throws Exception {
-        AlaudaSyncGlobalConfiguration.get().configChange();
+        AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
+        if(config != null) {
+            config.configChange();
+        }
     }
 }
