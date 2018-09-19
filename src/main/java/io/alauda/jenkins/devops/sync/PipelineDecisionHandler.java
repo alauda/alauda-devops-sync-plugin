@@ -121,8 +121,8 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
     }
 
     private void disableJob(@NotNull WorkflowJob job, String reason) {
-        job.setDisabled(true);
         try {
+            job.makeDisabled(true);
             job.setDescription(reason);
         } catch (IOException e) {
             LOGGER.warning(() -> "Can't setting description for workflowJob: " + job.getName());
