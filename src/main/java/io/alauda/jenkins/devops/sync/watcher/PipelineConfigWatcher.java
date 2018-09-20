@@ -109,9 +109,9 @@ public class PipelineConfigWatcher implements BaseWatcher {
 
     @Override
     public void stop() {
-      if(watcher != null) {
-          watcher.close();
-      }
+        if (watcher != null) {
+            watcher.close();
+        }
     }
 
     @Override
