@@ -16,6 +16,8 @@ import java.io.IOException;
 @Symbol("alaudaSyncSetting")
 public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
     public static final String ID = "AlaudaSyncSetting";
+    private String syncServiceName;
+    private boolean syncEnable;
 
     static AlaudaSyncSettingMonitor get(Jenkins j) {
         return (AlaudaSyncSettingMonitor) j.getAdministrativeMonitor(ID);
@@ -33,12 +35,14 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
     @Override
     public boolean isActivated() {
         AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
-        if(config == null || !config.isEnabled()) {
+        if(config == null) {
             return true;
         }
 
-        String service = config.getJenkinsService();
-        return service == null || "".equals(service.trim());
+        syncEnable = config.isEnabled();
+        syncServiceName = config.getJenkinsService();
+
+        return syncServiceName == null || "".equals(syncServiceName.trim()) || !syncEnable;
     }
 
     @RequirePOST
@@ -49,5 +53,13 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
         } else {
             return HttpResponses.redirectViaContextPath("/configure");
         }
+    }
+
+    public String getSyncServiceName() {
+        return syncServiceName;
+    }
+
+    public boolean isSyncEnable() {
+        return syncEnable;
     }
 }

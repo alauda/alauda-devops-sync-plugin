@@ -29,6 +29,6 @@ THE SOFTWARE.
       <f:submit name="yes" value="${%Go to Configure}"/>
       <f:submit name="no" value="${%Dismiss}"/>
     </form>
-    ${%AlaudaSync is disabled or has not a JenkinsService.}
+    ${%AlaudaSync setting is invalid.} >> ${%ServiceName:} ${it.syncServiceName} >> ${%Sync Enable:} ${it.syncEnable}
   </div>
 </j:jelly>
