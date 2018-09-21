@@ -34,7 +34,7 @@ public class PipelineWatcherTest {
         WorkflowJob workflowJob = findWorkflowJob(j.jenkins, folderName, pipCfgName);
 
         // check pipeline trigger
-        for(int i = 1; i < 4; i++) {
+        for(int i = 1; i < j.getRetryCount(); i++) {
             trigger(pipCfgName);
             Run build = workflowJob.getBuildByNumber(i);
             assertNotNull(build);
@@ -72,7 +72,7 @@ public class PipelineWatcherTest {
 
         WorkflowJob workflowJob = findWorkflowJob(j.jenkins, folderName, pipCfgName);
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < j.getRetryCount(); i++) {
             trigger(pipCfgName);
             WorkflowRun lastBuild = workflowJob.getLastBuild();
             assertNotNull(lastBuild);
@@ -145,7 +145,7 @@ public class PipelineWatcherTest {
 
     private WorkflowRun ensureRunning(WorkflowJob workflowJob, int num) throws InterruptedException, IOException {
         WorkflowRun build = null;
-        for(int i = 0; i < 3; i++) {
+        for(int i = 0; i < j.getRetryCount(); i++) {
             build = workflowJob.getLastBuild();
             if(build != null && build.getNumber() == num && build.isBuilding()) {
                 break;

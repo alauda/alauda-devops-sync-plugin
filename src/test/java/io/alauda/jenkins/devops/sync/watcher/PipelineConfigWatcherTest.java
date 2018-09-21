@@ -145,7 +145,7 @@ public class PipelineConfigWatcherTest {
     }
 
     private void untilDeleted(String folderName, String jobName) throws InterruptedException {
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < j.getRetryCount(); i++) {
             Job job = JobUtils.findJob(j.jenkins, folderName, jobName);
             if(job == null) {
                 return;
@@ -161,7 +161,7 @@ public class PipelineConfigWatcherTest {
      * @throws InterruptedException in case of interrupted
      */
     private void untilNotExists(String jobName) throws InterruptedException {
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < j.getRetryCount(); i++) {
             PipelineConfig config = j.getDevOpsInit().getPipelineConfig(j.getClient(), jobName);
             if(config == null) {
                 return;
@@ -187,7 +187,7 @@ public class PipelineConfigWatcherTest {
         final String randomName = System.currentTimeMillis() + "-alauda";
         paramMap.put(paramName, randomName);
         j.getDevOpsInit().createPipeline(j.getClient(), jobName, paramMap);
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < j.getRetryCount(); i++) {
             if(jobItem.isBuilding()) {
                 break;
             }
@@ -292,7 +292,7 @@ public class PipelineConfigWatcherTest {
         String name = config.getMetadata().getName();
 
         PipelineConfig target = null;
-        for(int i = 0; i < 8; i++) {
+        for(int i = 0; i < j.getRetryCount(); i++) {
             target = j.getDevOpsInit().getPipelineConfig(j.getClient(), name);
             if(phase.equals(target.getStatus().getPhase())) {
                 break;
