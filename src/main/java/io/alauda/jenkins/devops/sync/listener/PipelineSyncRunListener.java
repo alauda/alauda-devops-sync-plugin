@@ -160,8 +160,9 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     @Override
     public void onCompleted(Run run, @Nonnull TaskListener listener) {
         if (shouldPollRun(run)) {
-            runsToPoll.remove(run);
             pollRun(run);
+
+            runsToPoll.remove(run);
             logger.info("onCompleted " + run.getUrl());
             JenkinsUtils.maybeScheduleNext(((WorkflowRun) run).getParent());
         }
@@ -169,14 +170,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
     @Override
     public synchronized void onDeleted(Run run) {
-        if (shouldPollRun(run)) {
-            runsToPoll.remove(run);
-
-            logger.info("onDeleted " + run.getUrl());
+        if (!shouldPollRun(run)) {
+            return;
         }
 
         JenkinsPipelineCause cause = (JenkinsPipelineCause) run.getCause(JenkinsPipelineCause.class);
-        if (cause != null && run instanceof WorkflowRun) {
+        if (cause != null) {
             String namespace = cause.getNamespace();
             String pipelineName = cause.getName();
 
@@ -187,25 +186,22 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 logger.warning(e.getMessage());
             }
 
-            if(result) {
-                cause.setSynced(true);
-            } else {
-                cause.setSynced(false);
-            }
-
             int buildNum = run.getNumber();
             logger.info("Delete `Pipeline` result is: " + result + "; name is: " + pipelineName + "; buildNum is: " + buildNum);
         }
+
+        runsToPoll.remove(run);
+
+        logger.info("onDeleted " + run.getUrl());
     }
 
     @Override
     public synchronized void onFinalized(Run run) {
         if (shouldPollRun(run)) {
-            runsToPoll.remove(run);
             pollRun(run);
+            runsToPoll.remove(run);
             logger.info("onFinalized " + run.getUrl());
         }
-        super.onFinalized(run);
     }
 
     private void pollLoop() {
