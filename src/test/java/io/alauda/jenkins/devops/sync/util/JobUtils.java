@@ -34,7 +34,7 @@ public abstract class JobUtils {
     }
 
     public static WorkflowJob findWorkflowJob(Jenkins jenkins, String folderName, String jobName) throws InterruptedException {
-        Job jobItem = JobUtils.findJob(jenkins, folderName, jobName);
+        Job jobItem = findJob(jenkins, folderName, jobName);
         assertNotNull(jobItem);
         assertEquals(jobItem.getClass(), WorkflowJob.class);
         return (WorkflowJob) jobItem;
