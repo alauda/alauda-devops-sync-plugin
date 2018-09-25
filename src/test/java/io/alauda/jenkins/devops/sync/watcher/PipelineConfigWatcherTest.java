@@ -10,7 +10,7 @@ import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
-import io.alauda.jenkins.devops.sync.util.JobUtils;
+import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.alauda.kubernetes.api.model.*;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -116,7 +116,7 @@ public class PipelineConfigWatcherTest {
         config = j.getDevOpsInit().createPipelineConfig(j.getClient(), null, "jenkinsfile", null, j.getDevOpsInit().getSecretName());
         targetConfig = assertPhase(config, PipelineConfigPhase.READY);
         ObjectMeta meta = targetConfig.getMetadata();
-        WorkflowJob wfJob = JobUtils.findWorkflowJob(j.jenkins, meta.getNamespace(), meta.getName());
+        WorkflowJob wfJob = findWorkflowJob(j.jenkins, meta.getNamespace(), meta.getName());
         assertEquals(CpsScmFlowDefinition.class, wfJob.getDefinition().getClass());
     }
 
@@ -126,7 +126,7 @@ public class PipelineConfigWatcherTest {
         final String folderName = j.getDevOpsInit().getNamespace();
         String jobName = config.getMetadata().getName();
 
-        final Job job = JobUtils.findJob(j.jenkins, folderName, jobName);
+        final Job job = findJob(j.jenkins, folderName, jobName);
         assertNotNull(job);
 
         // delete from jenkins
@@ -137,16 +137,16 @@ public class PipelineConfigWatcherTest {
         // delete from k8s
         config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         jobName = config.getMetadata().getName();
-        assertNotNull(JobUtils.findJob(j.jenkins, folderName, jobName));
+        assertNotNull(findJob(j.jenkins, folderName, jobName));
 
         j.getDevOpsInit().deletePipelineConfig(j.getClient(), jobName);
         untilDeleted(folderName, jobName);
-        assertNull(JobUtils.findJob(j.jenkins, folderName, jobName));
+        assertNull(findJob(j.jenkins, folderName, jobName));
     }
 
     private void untilDeleted(String folderName, String jobName) throws InterruptedException {
-        for(int i = 0; i < 4; i++) {
-            Job job = JobUtils.findJob(j.jenkins, folderName, jobName);
+        for(int i = 0; i < j.getRetryCount(); i++) {
+            Job job = findJob(j.jenkins, folderName, jobName);
             if(job == null) {
                 return;
             }
@@ -161,7 +161,7 @@ public class PipelineConfigWatcherTest {
      * @throws InterruptedException in case of interrupted
      */
     private void untilNotExists(String jobName) throws InterruptedException {
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < j.getRetryCount(); i++) {
             PipelineConfig config = j.getDevOpsInit().getPipelineConfig(j.getClient(), jobName);
             if(config == null) {
                 return;
@@ -187,7 +187,7 @@ public class PipelineConfigWatcherTest {
         final String randomName = System.currentTimeMillis() + "-alauda";
         paramMap.put(paramName, randomName);
         j.getDevOpsInit().createPipeline(j.getClient(), jobName, paramMap);
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < j.getRetryCount(); i++) {
             if(jobItem.isBuilding()) {
                 break;
             }
@@ -252,7 +252,7 @@ public class PipelineConfigWatcherTest {
         final String folderName = j.getDevOpsInit().getNamespace();
         final String jobName = config.getMetadata().getName();
 
-        WorkflowJob job = JobUtils.findWorkflowJob(j.jenkins, folderName, jobName);
+        WorkflowJob job = findWorkflowJob(j.jenkins, folderName, jobName);
 
         List<Trigger<?>> triggers = new ArrayList<>();
         triggers.add(new SCMTrigger("* * * * *"));
@@ -271,7 +271,7 @@ public class PipelineConfigWatcherTest {
         config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         j.getDevOpsInit().addCronTrigger4PipelineConfig(j.getClient(), config.getMetadata().getName(), cron);
         assertPhase(config, PipelineConfigPhase.READY);
-        job = JobUtils.findWorkflowJob(j.jenkins, folderName, config.getMetadata().getName());
+        job = findWorkflowJob(j.jenkins, folderName, config.getMetadata().getName());
         assertNotNull(job);
         assertEquals(1, job.getTriggers().size());
         assertEquals(cron, job.getTriggers().values().toArray(new Trigger[]{})[0].getSpec());
@@ -292,7 +292,7 @@ public class PipelineConfigWatcherTest {
         String name = config.getMetadata().getName();
 
         PipelineConfig target = null;
-        for(int i = 0; i < 8; i++) {
+        for(int i = 0; i < j.getRetryCount(); i++) {
             target = j.getDevOpsInit().getPipelineConfig(j.getClient(), name);
             if(phase.equals(target.getStatus().getPhase())) {
                 break;

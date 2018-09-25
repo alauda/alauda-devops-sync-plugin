@@ -11,9 +11,18 @@ public class JenkinsK8sRule extends JenkinsRule {
     private final boolean inK8s;
     private DevOpsInit devOpsInit;
     private AlaudaDevOpsClient client;
+    private int retryCount;
 
     public JenkinsK8sRule() {
         inK8s = "true".equals(System.getenv("IN_K8S"));
+        String count = System.getenv("K8S_RETRY_COUNT");
+        try {
+            retryCount = Integer.parseInt(count);
+        } catch (NumberFormatException e) {
+            e.getMessage();
+        }
+        retryCount = Math.max(retryCount, 5);
+        retryCount = Math.min(retryCount, 15);
     }
 
     @Override
@@ -62,5 +71,9 @@ public class JenkinsK8sRule extends JenkinsRule {
 
     public AlaudaDevOpsClient getClient() {
         return client;
+    }
+
+    public int getRetryCount() {
+        return retryCount;
     }
 }

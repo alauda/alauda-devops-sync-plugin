@@ -32,6 +32,7 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.PipelineComparator;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
@@ -60,7 +61,6 @@ import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.getJobFromPipelineConfig;
 import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.putJobWithPipelineConfig;
-import static io.alauda.jenkins.devops.sync.watcher.PipelineWatcher.addEventToJenkinsJobRun;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
@@ -348,7 +348,9 @@ public abstract class JenkinsUtils {
 
     public static boolean triggerJob(@Nonnull WorkflowJob job, @Nonnull Pipeline pipeline)
             throws IOException {
-        final String pipelineName = pipeline.getMetadata().getName();
+        final ObjectMeta pipMeta = pipeline.getMetadata();
+        final String namespace = pipMeta.getNamespace();
+        final String pipelineName = pipMeta.getName();
 	    LOGGER.info(() -> "will trigger pipeline: " + pipelineName);
 
         if (isAlreadyTriggered(job, pipeline)) {
@@ -356,7 +358,6 @@ public abstract class JenkinsUtils {
             return false;
         }
 
-        final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
         PipelineConfigProjectProperty pcProp = job.getProperty(PipelineConfigProjectProperty.class);
         if (pcProp == null) {
             LOGGER.warning(() -> "aborting trigger of pipeline " + pipeline
@@ -364,8 +365,7 @@ public abstract class JenkinsUtils {
             return false;
         }
 
-        final ObjectMeta meta = pipeline.getMetadata();
-        String namespace = meta.getNamespace();
+        final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
         PipelineConfig pipelineConfig = getAuthenticatedAlaudaClient()
                 .pipelineConfigs().inNamespace(namespace)
                 .withName(pipelineConfigName).get();
@@ -407,8 +407,8 @@ public abstract class JenkinsUtils {
 
             PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
             String commit = null;
-            if (meta.getAnnotations() != null && meta.getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
-              commit = meta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
+            if (pipMeta.getAnnotations() != null && pipMeta.getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
+              commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
             }
 
           if (sourceGit != null && commit != null) {
@@ -666,7 +666,7 @@ public abstract class JenkinsUtils {
 
 			boolean buildAdded = false;
 			try {
-				buildAdded = addEventToJenkinsJobRun(p);
+				buildAdded = PipelineWatcher.addEventToJenkinsJobRun(p);
 			} catch (IOException e) {
 				ObjectMeta meta = p.getMetadata();
 				LOGGER.log(WARNING, "Failed to add new build " + meta.getNamespace() + "/" + meta.getName(), e);

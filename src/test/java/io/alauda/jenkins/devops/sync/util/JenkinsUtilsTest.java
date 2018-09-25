@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.util.JenkinsUtils.PARAM_FROM_ENV_DESCRIPTION;
 import static org.junit.Assert.*;
 
 public class JenkinsUtilsTest {
