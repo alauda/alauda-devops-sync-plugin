@@ -17,6 +17,7 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
@@ -26,8 +27,7 @@ import io.alauda.kubernetes.api.model.SecretList;
 import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -42,6 +42,7 @@ import static java.util.logging.Level.SEVERE;
 public class SecretWatcher implements BaseWatcher {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
+    private Set<String> namespaceSet;
     private Map<String, String> trackedSecrets;
     private Watch watcher;
 
@@ -77,40 +78,42 @@ public class SecretWatcher implements BaseWatcher {
             trackedSecrets = new ConcurrentHashMap<>();
         }
 
-        for (String namespace : namespaces) {
-            try {
-                logger.fine("listing Secrets resources");
-                SecretList secrets = AlaudaUtils.getAuthenticatedAlaudaClient().secrets()
-                        .inNamespace(namespace).list();
-                onInitialSecrets(secrets);
-                logger.fine("handled Secrets resources");
-            } catch (Exception e) {
-                logger.log(SEVERE, "Failed to load Secrets: " + e, e);
-            }
-        }
-    }
-
-    private synchronized void onInitialSecrets(SecretList secrets) {
-        if (secrets == null)
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
             return;
-        List<Secret> items = secrets.getItems();
-        if (items != null) {
-            for (Secret secret : items) {
-                try {
-                    if (validSecret(secret) && shouldProcessSecret(secret)) {
-                        upsertCredential(secret);
-                        trackedSecrets.put(secret.getMetadata().getUid(),
-                                secret.getMetadata().getResourceVersion());
-                    }
-                } catch (Exception e) {
-                    logger.log(SEVERE, "Failed to update job", e);
-                }
-            }
         }
+
+        SecretList secrets = client.secrets().inAnyNamespace().list();
+        if(secrets == null || secrets.getItems() == null) {
+            return;
+        }
+
+        namespaceSet = new HashSet(Arrays.asList(namespaces));
+        namespaceSet.add(AlaudaSyncGlobalConfiguration.get().getSharedNamespace());
+
+        secrets.getItems().stream().filter((item)->{
+            String ns = item.getMetadata().getNamespace();
+            return (namespaceSet.contains(ns));
+        }).forEach(secret -> {
+            try {
+                if (validSecret(secret) && shouldProcessSecret(secret)) {
+                    upsertCredential(secret);
+                    trackedSecrets.put(secret.getMetadata().getUid(),
+                            secret.getMetadata().getResourceVersion());
+                }
+            } catch (Exception e) {
+                logger.log(SEVERE, "Failed to update job", e);
+            }
+        });
     }
 
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
     public synchronized void eventReceived(Watcher.Action action, Secret secret) {
+        String ns = secret.getMetadata().getNamespace();
+        if(!namespaceSet.contains(ns)) {
+            return;
+        }
+
         try {
             switch (action) {
             case ADDED:
@@ -133,6 +136,7 @@ public class SecretWatcher implements BaseWatcher {
             logger.log(Level.WARNING, "Caught: " + e, e);
         }
     }
+
     @Override
     public <T> void eventReceived(Watcher.Action action, T resource) {
         Secret secret = (Secret)resource;

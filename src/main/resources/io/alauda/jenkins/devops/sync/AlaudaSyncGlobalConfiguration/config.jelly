@@ -33,6 +33,13 @@
              description="The name of the Jenkins service installed in Alauda DevOps platform. If left blank an attempt to find its matching Jenkins using the host address will be made.">
       <f:textbox/>
     </f:entry>
+
+    <f:advanced>
+      <f:entry title="Shared Namespace" field="sharedNamespace">
+        <f:textbox default="global-credentials"/>
+      </f:entry>
+    </f:advanced>
+
     <f:validateButton title="Test Connection" method="verifyConnect"
                       with="server,credentialsId" progress="Testing..."></f:validateButton>
     <f:invisibleEntry title="Sync Job Name Pattern" field="jobNamePattern"

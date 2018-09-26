@@ -63,6 +63,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private String jobNamePattern;
     private String skipOrganizationPrefix;
     private String skipBranchSuffix;
+    private String sharedNamespace;
 
     private String[] namespaces;
     private transient PipelineWatcher pipelineWatcher;
@@ -152,6 +153,15 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     @DataBoundSetter
     public void setSkipBranchSuffix(String skipBranchSuffix) {
         this.skipBranchSuffix = skipBranchSuffix;
+    }
+
+    public String getSharedNamespace() {
+        return sharedNamespace;
+    }
+
+    @DataBoundSetter
+    public void setSharedNamespace(String sharedNamespace) {
+        this.sharedNamespace = sharedNamespace;
     }
 
     @Nonnull
