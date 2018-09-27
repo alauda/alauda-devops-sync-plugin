@@ -238,7 +238,7 @@ public class PipelineWatcher implements BaseWatcher {
         }
     }
 
-    private static synchronized void modifyEventToJenkinsJobRun(Pipeline pipeline) {
+    private static void modifyEventToJenkinsJobRun(Pipeline pipeline) {
         PipelineStatus status = pipeline.getStatus();
         logger.info("Modified pipeline "+pipeline.getMetadata().getName());
         if (status != null && AlaudaUtils.isCancellable(status) && AlaudaUtils.isCancelled(status)) {
@@ -288,7 +288,7 @@ public class PipelineWatcher implements BaseWatcher {
         return false;
     }
 
-    public static synchronized void addPipelineToNoPCList(Pipeline pipeline) {
+    public static void addPipelineToNoPCList(Pipeline pipeline) {
         // should have been caught upstack, but just in case since public method
         if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline))
             return;
@@ -305,7 +305,7 @@ public class PipelineWatcher implements BaseWatcher {
 
     // trigger any builds whose watch events arrived before the
     // corresponding build config watch events
-    public static synchronized void flushPipelinesWithNoPCList() {
+    public static void flushPipelinesWithNoPCList() {
         HashSet<Pipeline> clone = (HashSet<Pipeline>) pipelinesWithNoPCList.clone();
         clearNoPCList();
         for (Pipeline pipeline : clone) {
