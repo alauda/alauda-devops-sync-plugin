@@ -273,6 +273,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         for (Run run : runsToPoll) {
             try {
                 pollRun(run);
+
+                runsToPoll.remove(run);
             } catch (KubernetesClientException e) {
                 e.printStackTrace();
             } catch (TimeoutException e) {
@@ -511,6 +513,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         logger.log(INFO, "Patching pipeline {0}/{1}: setting phase to {2}", new Object[]{cause.getNamespace(), cause.getName(), phase});
         Pipeline pipeline = client.pipelines().inNamespace(cause.getNamespace()).withName(cause.getName()).get();
         if (pipeline == null) {
+            cause.setSynced(false);
             logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
             return;
         }
@@ -629,6 +632,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         return run.getDuration();
     }
 
+    /**
+     * @see PipelineUtils#runToPipelinePhase(Run)
+     * @param run
+     * @return
+     */
+    @Deprecated
     private String runToPipelinePhase(Run run) {
         if (run != null && !run.hasntStartedYet()) {
             if (run.isBuilding()) {

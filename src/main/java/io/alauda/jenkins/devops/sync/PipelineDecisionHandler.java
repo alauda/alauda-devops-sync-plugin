@@ -22,6 +22,7 @@ import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.alauda.jenkins.devops.sync.util.PipelineToActionMapper;
+import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.client.KubernetesClientException;
@@ -73,14 +74,9 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             }
 
             if (config == null) {
-                disableJob(workflowJob, "PipelineConfig doesn't exists anymore.");
-
                 return false;
             } else if (config.getMetadata() == null) {
                 LOGGER.warning("PipelineConfig metadata is null");
-
-                disableJob(workflowJob, "PipelineConfig metadata is null.");
-
                 return false;
             }
 
@@ -90,6 +86,11 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                 pipeline = PipelineGenerator.buildPipeline(config, jobURL, actions);
             } catch (KubernetesClientException e) {
                 LOGGER.warning(config.getMetadata().getName() + " got error : " + e.getMessage());
+
+                if(e.getCode() == 409) {
+                    PipelineUtils.pipelinesCheck(config);
+                }
+
                 return false;
             }
 
@@ -118,15 +119,6 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         }
 
         return true;
-    }
-
-    private void disableJob(@NotNull WorkflowJob job, String reason) {
-        try {
-            job.makeDisabled(true);
-            job.setDescription(reason);
-        } catch (IOException e) {
-            LOGGER.warning(() -> "Can't setting description for workflowJob: " + job.getName());
-        }
     }
 
     private String getJobUrl(WorkflowJob workflowJob, String namespace) {
