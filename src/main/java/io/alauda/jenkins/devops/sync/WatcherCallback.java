@@ -75,14 +75,14 @@ public class WatcherCallback<T> implements Watcher<T> {
                 watcher.watch();
 
                 retryAttempt.set(0);
+
+                AlaudaSyncGlobalConfiguration.get().reloadNamespaces();
+                watcher.init(AlaudaSyncGlobalConfiguration.get().getNamespaces());
             } catch (KubernetesClientException e) {
                 service.schedule(() -> reWatch(), nextInterval(), TimeUnit.MILLISECONDS);
 
                 return false;
             }
-
-            AlaudaSyncGlobalConfiguration.get().reloadNamespaces();
-            watcher.init(AlaudaSyncGlobalConfiguration.get().getNamespaces());
 
             return true;
         }, nextInterval(), TimeUnit.MILLISECONDS);
