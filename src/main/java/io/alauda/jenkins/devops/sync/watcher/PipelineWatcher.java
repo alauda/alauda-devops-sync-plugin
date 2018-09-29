@@ -46,15 +46,15 @@ import static java.util.logging.Level.SEVERE;
 /**
  * @author suren
  */
-public class PipelineWatcher implements BaseWatcher {
+public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     private static final Logger logger = Logger.getLogger(PipelineWatcher.class.getName());
     private static final HashSet<Pipeline> pipelinesWithNoPCList = new HashSet<>();
-    private Watch watcher;
 
     @Override
     public void watch() {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
+            stop();
             logger.severe("client is null, when watch Pipeline");
             return;
         }
@@ -66,17 +66,10 @@ public class PipelineWatcher implements BaseWatcher {
             ver = list.getMetadata().getResourceVersion();
         }
 
-        watcher = client.pipelines()
+        setWatcher(client.pipelines()
                 .inAnyNamespace()
                 .withResourceVersion(ver)
-                .watch(new WatcherCallback<Pipeline>(this, null));
-    }
-
-    @Override
-    public void stop() {
-        if(watcher != null) {
-            watcher.close();
-        }
+                .watch(new WatcherCallback<Pipeline>(this, null)));
     }
 
     @Override
