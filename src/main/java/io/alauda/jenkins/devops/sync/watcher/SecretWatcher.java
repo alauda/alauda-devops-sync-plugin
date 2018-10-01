@@ -39,17 +39,17 @@ import static java.util.logging.Level.SEVERE;
  * Jenkins
  * @author suren
  */
-public class SecretWatcher implements BaseWatcher {
+public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
     private Set<String> namespaceSet;
     private Map<String, String> trackedSecrets;
-    private Watch watcher;
 
     @Override
     public void watch() {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
+            stop();;
             logger.severe("client is null, when watch Secret");
             return;
         }
@@ -60,16 +60,9 @@ public class SecretWatcher implements BaseWatcher {
             resourceVersion = secrets.getMetadata().getResourceVersion();
         }
 
-        watcher = client.secrets().inAnyNamespace()
+        setWatcher(client.secrets().inAnyNamespace()
                 .withResourceVersion(resourceVersion)
-                .watch(new WatcherCallback<Secret>(SecretWatcher.this, null));
-    }
-
-    @Override
-    public void stop() {
-        if(watcher != null) {
-            watcher.close();
-        }
+                .watch(new WatcherCallback<Secret>(SecretWatcher.this, null)));
     }
 
     @Override

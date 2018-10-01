@@ -15,6 +15,7 @@
  */
 package io.alauda.jenkins.devops.sync;
 
+import io.alauda.jenkins.devops.sync.watcher.AbstractWatcher;
 import io.alauda.jenkins.devops.sync.watcher.BaseWatcher;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import io.alauda.kubernetes.client.Watcher;
@@ -28,7 +29,7 @@ import java.util.logging.Logger;
 
 public class WatcherCallback<T> implements Watcher<T> {
     private final Logger logger = Logger.getLogger(getClass().getName());
-    private final BaseWatcher watcher;
+    private final AbstractWatcher watcher;
     private final String namespace;
 
     private final ScheduledExecutorService service;
@@ -39,7 +40,7 @@ public class WatcherCallback<T> implements Watcher<T> {
 
     private ScheduledFuture<Boolean> future;
 
-    public WatcherCallback(BaseWatcher w, String n) {
+    public WatcherCallback(AbstractWatcher w, String n) {
         watcher = w;
         namespace = n;
         service = Executors.newScheduledThreadPool(1);
@@ -73,12 +74,16 @@ public class WatcherCallback<T> implements Watcher<T> {
 
             try {
                 watcher.watch();
+                if(watcher.getWatcher() == null) {
+                    service.schedule(() -> reWatch(), nextInterval(), TimeUnit.MILLISECONDS);
+                    return false;
+                }
 
                 retryAttempt.set(0);
 
                 AlaudaSyncGlobalConfiguration.get().reloadNamespaces();
                 watcher.init(AlaudaSyncGlobalConfiguration.get().getNamespaces());
-            } catch (KubernetesClientException e) {
+            } catch (Exception e) {
                 service.schedule(() -> reWatch(), nextInterval(), TimeUnit.MILLISECONDS);
 
                 return false;

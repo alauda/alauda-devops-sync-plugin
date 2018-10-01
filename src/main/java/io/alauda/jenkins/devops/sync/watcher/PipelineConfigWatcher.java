@@ -65,7 +65,7 @@ import static java.util.logging.Level.SEVERE;
  * ensure there is a suitable Jenkins Job object defined with the correct
  * configuration
  */
-public class PipelineConfigWatcher implements BaseWatcher {
+public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatcher {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
     // for coordinating between ItemListener.onUpdate and onDeleted both
@@ -87,12 +87,11 @@ public class PipelineConfigWatcher implements BaseWatcher {
         deletesInProgress.remove(pcID);
     }
 
-    private Watch watcher;
-
     @Override
     public void watch() {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if (client == null) {
+            stop();
             logger.severe("client is null, when watch Secret");
             return;
         }
@@ -103,15 +102,8 @@ public class PipelineConfigWatcher implements BaseWatcher {
             ver = list.getMetadata().getResourceVersion();
         }
 
-        watcher = client.pipelineConfigs().inAnyNamespace()
-                .withResourceVersion(ver).watch(new WatcherCallback<>(this, null));
-    }
-
-    @Override
-    public void stop() {
-        if (watcher != null) {
-            watcher.close();
-        }
+        setWatcher(client.pipelineConfigs().inAnyNamespace()
+                .withResourceVersion(ver).watch(new WatcherCallback<>(this, null)));
     }
 
     @Override
