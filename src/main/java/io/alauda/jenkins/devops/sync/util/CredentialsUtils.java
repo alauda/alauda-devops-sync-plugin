@@ -330,8 +330,8 @@ public abstract class CredentialsUtils {
                 String token = secret.getData().get("token");
                 return newTokenCredentials(secretName, token);
             case ALAUDA_DEVOPS_SECRETS_TYPE_OAUTH2:
-                String clientId = secret.getStringData().get(ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID);
-                String clientSecret = secret.getStringData().get(ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET);
+                String clientId = secret.getData().get(ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID);
+                String clientSecret = secret.getData().get(ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET);
                 return newOauth2Credentials(secretName, clientId, clientSecret);
             default:
                 logger.log(Level.WARNING, "Unknown secret type: " + secret.getType());
