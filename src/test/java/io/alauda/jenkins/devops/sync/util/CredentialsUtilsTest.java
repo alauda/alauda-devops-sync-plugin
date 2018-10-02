@@ -69,7 +69,7 @@ public class CredentialsUtilsTest {
 
     private void oauth2Secret() throws IOException {
         Map<String, String> clientMap = new HashMap<>();
-        clientMap.put(ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID, "clientid");
+        clientMap.put(ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKENKEY, "clientid");
         clientMap.put(ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET, "clientsecret");
 
         Secret secret = new SecretBuilder()
