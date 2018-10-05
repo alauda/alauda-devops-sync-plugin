@@ -102,8 +102,7 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
 
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
     public synchronized void eventReceived(Watcher.Action action, Secret secret) {
-        String ns = secret.getMetadata().getNamespace();
-        if(!namespaceSet.contains(ns)) {
+        if(!ResourcesCache.getInstance().isBinding(secret)) {
             return;
         }
 
