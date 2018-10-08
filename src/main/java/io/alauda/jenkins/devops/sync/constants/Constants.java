@@ -42,6 +42,7 @@ public final class Constants {
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_DOCKER = ".dockerconfigjson";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID = "clientID";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET = "clientSecret";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKEN = "accessToken";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKENKEY = "accessTokenKey";
 
     /** secret types */
