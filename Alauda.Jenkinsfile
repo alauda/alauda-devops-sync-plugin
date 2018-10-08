@@ -97,9 +97,9 @@ pipeline {
 							}
 
 							sh """
-                        mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
+                        # mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
 						# tests needs refactoring, still using the same host address for multiple jenkins instances
-						# mvn clean install -U findbugs:findbugs 
+						mvn clean install -U findbugs:findbugs
 
                         if [ -d .tmp ]; then
                           rm -rf .tmp

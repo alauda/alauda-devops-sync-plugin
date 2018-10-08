@@ -266,7 +266,7 @@ public class DevOpsInit {
 
     public Jenkins createJenkins(AlaudaDevOpsClient client) {
         JenkinsSpec jenkinsSpec = new JenkinsSpecBuilder()
-                .withNewHttp("http://abc.com")
+                .withNewHttp("http://abc-"+System.nanoTime()+".com")
                 .build();
 
         return client.jenkins().createNew().withNewMetadata()

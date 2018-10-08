@@ -230,20 +230,22 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
             this.stopWatchersAndClient();
             LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
-        } else {
-            ResourcesCache.getInstance().setJenkinsService(jenkinsService);
+            return;
+        }
 
-            try {
-                stopWatchersAndClient();
+        ResourcesCache.getInstance().setJenkinsService(jenkinsService);
 
-                if(AlaudaUtils.getAlaudaClient() == null) {
-                    AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
-                }
+        try {
+            stopWatchersAndClient();
 
-                reloadNamespaces();
+            if(AlaudaUtils.getAlaudaClient() == null) {
+                AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
+            }
 
-                Runnable task = new SafeTimerTask() {
-                    protected void doRun() throws Exception {
+            reloadNamespaces();
+
+            Runnable task = new SafeTimerTask() {
+                protected void doRun() throws Exception {
                     LOGGER.info("Waiting for Jenkins to be started");
 
                     while(true) {
@@ -259,18 +261,17 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
                         Thread.sleep(500L);
                     }
-                    }
-                };
-                Timer.get().schedule(task, 1L, TimeUnit.SECONDS);
-            } catch (KubernetesClientException e) {
-                if (e.getCause() != null) {
-                    LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e.getCause());
-                } else {
-                    LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e);
                 }
-
-                throw e;
+            };
+            Timer.get().schedule(task, 1L, TimeUnit.SECONDS);
+        } catch (KubernetesClientException e) {
+            if (e.getCause() != null) {
+                LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e.getCause());
+            } else {
+                LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e);
             }
+
+            throw e;
         }
     }
 

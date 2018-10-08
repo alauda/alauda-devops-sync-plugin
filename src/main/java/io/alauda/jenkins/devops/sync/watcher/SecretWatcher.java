@@ -33,6 +33,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static java.util.logging.Level.SEVERE;
+import static java.util.logging.Level.FINE;
+import static java.util.logging.Level.WARNING;
 
 /**
  * Watches {@link Secret} objects in Kubernetes and syncs then to Credentials in
@@ -49,7 +51,7 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
     public void watch() {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
-            stop();;
+            stop();
             logger.severe("client is null, when watch Secret");
             return;
         }
@@ -102,7 +104,14 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
 
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
     public synchronized void eventReceived(Watcher.Action action, Secret secret) {
+        logger.log(FINE, "Got secret event", action);
+        logger.log(FINE, "Got secret object", secret);
+        if (!validSecret(secret)) {
+            logger.log(WARNING, "Got invalid secret object", secret);
+            return;
+        }
         if(!ResourcesCache.getInstance().isBinding(secret)) {
+            logger.log(WARNING, "Secret is not in namespace list", secret);
             return;
         }
 
@@ -152,6 +161,9 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
     }
 
     private boolean validSecret(Secret secret) {
+        if (secret == null) {
+            return false;
+        }
         ObjectMeta metadata = secret.getMetadata();
         if (metadata != null) {
             String name = metadata.getName();

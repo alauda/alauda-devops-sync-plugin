@@ -10,6 +10,8 @@ public abstract class AbstractWatcher implements BaseWatcher {
     }
 
     public void setWatcher(Watch watcher) {
+        // stopping current watcher if existing
+        stop();
         this.watcher = watcher;
     }
 
