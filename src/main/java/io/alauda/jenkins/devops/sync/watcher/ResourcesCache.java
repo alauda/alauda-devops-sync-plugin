@@ -9,11 +9,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.logging.Logger;
+
+import static java.util.logging.Level.FINE;
 
 /**
  * @author suren
  */
 public class ResourcesCache {
+
+    private final Logger logger = Logger.getLogger(getClass().getName());
+
     private String jenkinsService;
 
     private Set<String> namespaces = new CopyOnWriteArraySet<>();
@@ -38,6 +44,7 @@ public class ResourcesCache {
 
     public void addNamespace(String namespace) {
         namespaces.add(namespace);
+        printNamespaces();
     }
 
     public void addNamespace(JenkinsBinding jenkinsBinding) {
@@ -53,6 +60,7 @@ public class ResourcesCache {
 
     public void removeNamespace(String namespace) {
         namespaces.remove(namespace);
+        printNamespaces();
     }
 
     public void removeNamespace(JenkinsBinding jenkinsBinding) {
@@ -90,13 +98,13 @@ public class ResourcesCache {
     public boolean isBinding(Pipeline pipeline) {
         String bindingName = pipeline.getSpec().getJenkinsBinding().getName();
         String namespace = pipeline.getMetadata().getNamespace();
-
         return isBinding(bindingName, namespace);
     }
 
     private boolean isBinding(String bindingName, String namespace) {
         // TODO should be put some debug info
         String bindingService = bindingMap.get(bindingName);
+        printNamespaces();
         return (bindingService != null
                 && bindingService.equals(jenkinsService)
                 && namespaces.contains(namespace)
@@ -106,6 +114,11 @@ public class ResourcesCache {
     public boolean isBinding(Secret secret) {
         String namespace = secret.getMetadata().getNamespace();
 
+        printNamespaces();
         return namespaces.contains(namespace);
+    }
+
+    public void printNamespaces() {
+        logger.log(FINE, "Syncing namespaces", namespaces.toArray());
     }
 }
