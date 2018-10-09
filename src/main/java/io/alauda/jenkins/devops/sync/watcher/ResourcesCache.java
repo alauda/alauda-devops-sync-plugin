@@ -1,5 +1,6 @@
 package io.alauda.jenkins.devops.sync.watcher;
 
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.kubernetes.api.model.JenkinsBinding;
 import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;
@@ -115,7 +116,8 @@ public class ResourcesCache {
         String namespace = secret.getMetadata().getNamespace();
 
         printNamespaces();
-        return namespaces.contains(namespace);
+        return namespaces.contains(namespace) ||
+                namespace.equals(AlaudaSyncGlobalConfiguration.get().getSharedNamespace());
     }
 
     public void printNamespaces() {
