@@ -74,6 +74,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
     // when we filter on the ItemListener side the UUID may not be
     // available
     private static final HashSet<String> deletesInProgress = new HashSet<String>();
+    private WatcherCallback watcherCallback;
 
     public static synchronized void deleteInProgress(String pcName) {
         deletesInProgress.add(pcName);
@@ -102,8 +103,14 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             ver = list.getMetadata().getResourceVersion();
         }
 
+        watcherCallback = new WatcherCallback<>(this, null);
         setWatcher(client.pipelineConfigs().inAnyNamespace()
-                .withResourceVersion(ver).watch(new WatcherCallback<>(this, null)));
+                .withResourceVersion(ver).watch(watcherCallback));
+    }
+
+    @Override
+    public WatcherCallback getWatcherCallback() {
+        return watcherCallback;
     }
 
     @Override

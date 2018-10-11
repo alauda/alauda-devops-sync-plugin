@@ -314,7 +314,7 @@ public class DevOpsInit {
         return client.pods().createNew()
                 .withNewMetadata().withNamespace(namespace).withGenerateName("pod-test-").endMetadata()
                 .withNewSpec().withServiceAccountName(accountName)
-                .addNewContainer().withName("as").withImage("sdf").endContainer()
+                .addNewContainer().withName("as").withImage("WatcherAliveCheck").endContainer()
                 .endSpec()
                 .done();
     }

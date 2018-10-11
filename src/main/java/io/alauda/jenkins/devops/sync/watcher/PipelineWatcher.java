@@ -49,6 +49,7 @@ import static java.util.logging.Level.SEVERE;
 public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     private static final Logger logger = Logger.getLogger(PipelineWatcher.class.getName());
     private static final HashSet<Pipeline> pipelinesWithNoPCList = new HashSet<>();
+    private WatcherCallback<Pipeline> watcherCallback;
 
     @Override
     public void watch() {
@@ -66,10 +67,16 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
             ver = list.getMetadata().getResourceVersion();
         }
 
+        watcherCallback = new WatcherCallback<Pipeline>(this, null);
         setWatcher(client.pipelines()
                 .inAnyNamespace()
                 .withResourceVersion(ver)
-                .watch(new WatcherCallback<Pipeline>(this, null)));
+                .watch(watcherCallback));
+    }
+
+    @Override
+    public WatcherCallback getWatcherCallback() {
+        return watcherCallback;
     }
 
     @Override

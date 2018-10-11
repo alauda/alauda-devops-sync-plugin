@@ -46,6 +46,7 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
 
     private Set<String> namespaceSet;
     private Map<String, String> trackedSecrets;
+    private WatcherCallback<Secret> watcherCallback;
 
     @Override
     public void watch() {
@@ -62,9 +63,15 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
             resourceVersion = secrets.getMetadata().getResourceVersion();
         }
 
+        watcherCallback = new WatcherCallback<Secret>(SecretWatcher.this, null);
         setWatcher(client.secrets().inAnyNamespace()
                 .withResourceVersion(resourceVersion)
-                .watch(new WatcherCallback<Secret>(SecretWatcher.this, null)));
+                .watch(watcherCallback));
+    }
+
+    @Override
+    public WatcherCallback getWatcherCallback() {
+        return watcherCallback;
     }
 
     @Override

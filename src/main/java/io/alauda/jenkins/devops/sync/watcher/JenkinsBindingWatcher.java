@@ -20,7 +20,6 @@ import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.JenkinsBinding;
 import io.alauda.kubernetes.api.model.JenkinsBindingList;
-import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 
 import java.util.List;
@@ -31,6 +30,7 @@ import java.util.logging.Logger;
  */
 public class JenkinsBindingWatcher extends AbstractWatcher implements BaseWatcher {
     private final Logger LOGGER = Logger.getLogger(JenkinsBindingWatcher.class.getName());
+    private WatcherCallback watcherCallback;
 
     @Override
     public <T> void eventReceived(Watcher.Action action, T resource) {
@@ -69,12 +69,18 @@ public class JenkinsBindingWatcher extends AbstractWatcher implements BaseWatche
             LOGGER.warning("Can not found JenkinsBindingList.");
         }
 
+        watcherCallback = new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null);
         setWatcher(client.jenkinsBindings()
                 .inAnyNamespace()
                 .withResourceVersion(resourceVersion)
-                .watch(new WatcherCallback<JenkinsBinding>(JenkinsBindingWatcher.this, null)));
+                .watch(watcherCallback));
 
         LOGGER.info("JenkinsBindingWatcher already added.");
+    }
+
+    @Override
+    public WatcherCallback getWatcherCallback() {
+        return watcherCallback;
     }
 
     private void cacheBindings(JenkinsBindingList jenkinsBindingList) {

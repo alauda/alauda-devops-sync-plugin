@@ -127,7 +127,7 @@ public class JenkinsUtilsTest {
         assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions));
 
         // supported type
-        pipelineParameters.add(new PipelineParameter("", "sdf", PIPELINE_PARAMETER_TYPE_STRING, "sdf"));
+        pipelineParameters.add(new PipelineParameter("", "WatcherAliveCheck", PIPELINE_PARAMETER_TYPE_STRING, "WatcherAliveCheck"));
         buildActions = JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions);
         assertNotNull(buildActions);
         assertEquals(1, buildActions.size());
