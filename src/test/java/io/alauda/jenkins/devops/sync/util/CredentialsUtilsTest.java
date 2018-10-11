@@ -114,7 +114,7 @@ public class CredentialsUtilsTest {
     @WithoutK8s
     public void deleteCredential() throws IOException {
         Secret secret = new SecretBuilder()
-                .withNewMetadata().withNamespace("sdf").withName("name").endMetadata().build();
+                .withNewMetadata().withNamespace("WatcherAliveCheck").withName("name").endMetadata().build();
         CredentialsUtils.deleteCredential(secret);
     }
 }

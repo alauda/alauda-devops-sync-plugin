@@ -64,6 +64,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private String skipOrganizationPrefix;
     private String skipBranchSuffix;
     private String sharedNamespace;
+    private int watcherAliveCheck = 5;
 
     private String[] namespaces;
     private transient PipelineWatcher pipelineWatcher;
@@ -162,6 +163,15 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     @DataBoundSetter
     public void setSharedNamespace(String sharedNamespace) {
         this.sharedNamespace = sharedNamespace;
+    }
+
+    public int getWatcherAliveCheck() {
+        return watcherAliveCheck;
+    }
+
+    @DataBoundSetter
+    public void setWatcherAliveCheck(int watcherAliveCheck) {
+        this.watcherAliveCheck = watcherAliveCheck;
     }
 
     @Nonnull
@@ -312,6 +322,22 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
             jenkinsBindingWatcher.stop();
             jenkinsBindingWatcher = null;
         }
+    }
+
+    public PipelineWatcher getPipelineWatcher() {
+        return pipelineWatcher;
+    }
+
+    public PipelineConfigWatcher getPipelineConfigWatcher() {
+        return pipelineConfigWatcher;
+    }
+
+    public SecretWatcher getSecretWatcher() {
+        return secretWatcher;
+    }
+
+    public JenkinsBindingWatcher getJenkinsBindingWatcher() {
+        return jenkinsBindingWatcher;
     }
 
     public void stopWatchersAndClient() {

@@ -37,6 +37,7 @@ public class WatcherCallback<T> implements Watcher<T> {
     private final static int maxIntervalExponent = 5;
     private final int reconnectLimit = -1;
     private final int reconnectInterval = 1000;
+    private long lastEvent;
 
     private ScheduledFuture<Boolean> future;
 
@@ -49,6 +50,7 @@ public class WatcherCallback<T> implements Watcher<T> {
     @Override
     public void eventReceived(Action action, T resource) {
         watcher.eventReceived(action, resource);
+        this.lastEvent = System.currentTimeMillis();
     }
 
     @Override
@@ -62,6 +64,10 @@ public class WatcherCallback<T> implements Watcher<T> {
             future.cancel(true);
             future = null;
         }
+    }
+
+    public long getLastEvent() {
+        return lastEvent;
     }
 
     private void reWatch() {
