@@ -16,22 +16,29 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
     public WatcherAliveCheck() {
         super("Watcher alive check work");
     }
+    private static final int MINMAM = 1;
 
     @Override
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
         AlaudaSyncGlobalConfiguration sync = AlaudaSyncGlobalConfiguration.get();
-        boolean disable = !sync.isEnabled();
+        boolean invalid = !sync.isValid();
         PrintStream log = listener.getLogger();
-        if(disable) {
-            log.println("Sync is disabled.");
+        if(invalid) {
+            log.println("Sync is invalid.");
             return;
         }
 
         List<AbstractWatcher> watcherList = new ArrayList<>();
         watcherList.add(sync.getPipelineConfigWatcher());
         watcherList.add(sync.getPipelineWatcher());
-        watcherList.add(sync.getJenkinsBindingWatcher());
         watcherList.add(sync.getSecretWatcher());
+        watcherList.add(sync.getJenkinsBindingWatcher());
+
+        if(watcherList.contains(null)){
+            log.println("Get broken watcher, need to restart sync.");
+            sync.configChange();
+            return;
+        }
 
         long timeout = getRecurrencePeriod();//TimeUnit.MINUTES.toMillis(5);
 
@@ -52,6 +59,6 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
     @Override
     public long getRecurrencePeriod() {
         AlaudaSyncGlobalConfiguration sync = AlaudaSyncGlobalConfiguration.get();
-        return TimeUnit.MINUTES.toMillis(sync.getWatcherAliveCheck() >= 5 ? sync.getWatcherAliveCheck() : 5);
+        return TimeUnit.MINUTES.toMillis(sync.getWatcherAliveCheck() >= MINMAM ? sync.getWatcherAliveCheck() : MINMAM);
     }
 }
