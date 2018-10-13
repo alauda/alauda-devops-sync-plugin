@@ -97,6 +97,10 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         return this.enabled;
     }
 
+    public boolean isValid() {
+        return isEnabled() && !"".equals(getJenkinsService());
+    }
+
     @DataBoundSetter
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
@@ -126,7 +130,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
     @DataBoundSetter
     public void setJenkinsService(String jenkinsService) {
-        this.jenkinsService = jenkinsService;
+        this.jenkinsService = jenkinsService != null ? jenkinsService.trim() : null;
     }
 
     public String getJobNamePattern() {
@@ -338,6 +342,22 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
     public JenkinsBindingWatcher getJenkinsBindingWatcher() {
         return jenkinsBindingWatcher;
+    }
+
+    public void setPipelineWatcher(PipelineWatcher pipelineWatcher) {
+        this.pipelineWatcher = pipelineWatcher;
+    }
+
+    public void setPipelineConfigWatcher(PipelineConfigWatcher pipelineConfigWatcher) {
+        this.pipelineConfigWatcher = pipelineConfigWatcher;
+    }
+
+    public void setSecretWatcher(SecretWatcher secretWatcher) {
+        this.secretWatcher = secretWatcher;
+    }
+
+    public void setJenkinsBindingWatcher(JenkinsBindingWatcher jenkinsBindingWatcher) {
+        this.jenkinsBindingWatcher = jenkinsBindingWatcher;
     }
 
     public void stopWatchersAndClient() {
