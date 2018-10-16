@@ -16,6 +16,7 @@
 package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import hudson.Extension;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
@@ -41,6 +42,7 @@ import static java.util.logging.Level.WARNING;
  * Jenkins
  * @author suren
  */
+@Extension
 public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
@@ -191,5 +193,10 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
     private void deleteCredential(final Secret secret) throws Exception {
         trackedSecrets.remove(secret.getMetadata().getUid());
         CredentialsUtils.deleteCredential(secret);
+    }
+
+    @Override
+    public final String getName() {
+        return "SecretWatcher";
     }
 }

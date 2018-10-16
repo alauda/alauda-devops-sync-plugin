@@ -16,6 +16,7 @@
 package io.alauda.jenkins.devops.sync.watcher;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import hudson.Extension;
 import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
@@ -46,6 +47,7 @@ import static java.util.logging.Level.SEVERE;
 /**
  * @author suren
  */
+@Extension
 public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     private static final Logger logger = Logger.getLogger(PipelineWatcher.class.getName());
     private static final HashSet<Pipeline> pipelinesWithNoPCList = new HashSet<>();
@@ -422,4 +424,9 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
       }
     }
   }
+
+    @Override
+    public final String getName() {
+        return "PipelineWatcher";
+    }
 }

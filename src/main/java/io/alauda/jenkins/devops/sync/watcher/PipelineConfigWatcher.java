@@ -19,6 +19,7 @@ import antlr.ANTLRException;
 import com.cloudbees.hudson.plugins.folder.Folder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
+import hudson.Extension;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.ParameterDefinition;
@@ -65,6 +66,7 @@ import static java.util.logging.Level.SEVERE;
  * ensure there is a suitable Jenkins Job object defined with the correct
  * configuration
  */
+@Extension
 public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatcher {
     private final Logger logger = Logger.getLogger(getClass().getName());
 
@@ -519,4 +521,9 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
     // uid should not be null / empty, but just in case, still clean up
     innerDeleteEventToJenkinsJob(pipelineConfig);
   }
+
+    @Override
+    public final String getName() {
+        return "PipelineConfigWatcher";
+    }
 }

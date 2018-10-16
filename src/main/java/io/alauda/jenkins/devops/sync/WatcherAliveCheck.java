@@ -1,18 +1,23 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
+import hudson.ExtensionList;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import io.alauda.jenkins.devops.sync.watcher.AbstractWatcher;
+import jenkins.model.Jenkins;
 
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 @Extension
 public class WatcherAliveCheck extends AsyncPeriodicWork {
+    private static final Logger LOGGER = Logger.getLogger(WatcherAliveCheck.class.getName());
+
     public WatcherAliveCheck() {
         super("Watcher alive check work");
     }
@@ -24,7 +29,7 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
         boolean invalid = !sync.isValid();
         PrintStream log = listener.getLogger();
         if(invalid) {
-            log.println("Sync is invalid.");
+            LOGGER.warning("Sync is invalid.");
             return;
         }
 
@@ -35,25 +40,28 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
         watcherList.add(sync.getJenkinsBindingWatcher());
 
         if(watcherList.contains(null)){
-            log.println("Get broken watcher, need to restart sync.");
+            LOGGER.warning("Get broken watcher, need to restart sync.");
             sync.configChange();
             return;
         }
 
-        long timeout = getRecurrencePeriod();//TimeUnit.MINUTES.toMillis(5);
-
-        watcherList.forEach(watcher -> {
-            if(watcher == null) {
-                return;
-            }
-
+        long timeout = getRecurrencePeriod();
+        boolean needRestart = watcherList.stream().anyMatch((watcher) -> {
             long lastEvent = watcher.getWatcherCallback().getLastEvent();
-            if(System.currentTimeMillis() - lastEvent > timeout) {
-                watcher.stop();
-
-                watcher.watch();
+            boolean result = (System.currentTimeMillis() - lastEvent > timeout);
+            if(result) {
+                LOGGER.warning(watcher.getName() + " did't receive event in " + timeout + "ms!");
             }
+            return result;
         });
+
+        if(needRestart) {
+            LOGGER.info("Will restart all watchers!");
+
+            sync.configChange();
+        } else {
+            LOGGER.info("No need to restart watchers.");
+        }
     }
 
     @Override
