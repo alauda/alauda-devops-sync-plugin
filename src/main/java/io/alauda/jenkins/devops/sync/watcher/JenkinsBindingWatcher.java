@@ -15,6 +15,7 @@
  */
 package io.alauda.jenkins.devops.sync.watcher;
 
+import hudson.Extension;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
@@ -28,6 +29,7 @@ import java.util.logging.Logger;
 /**
  * @author suren
  */
+@Extension
 public class JenkinsBindingWatcher extends AbstractWatcher implements BaseWatcher {
     private final Logger LOGGER = Logger.getLogger(JenkinsBindingWatcher.class.getName());
     private WatcherCallback watcherCallback;
@@ -100,5 +102,10 @@ public class JenkinsBindingWatcher extends AbstractWatcher implements BaseWatche
     @Override
     public void init(String[] namespaces){
         //don't need init anything here
+    }
+
+    @Override
+    public final String getName() {
+        return "JenkinsBindingWatcher";
     }
 }
