@@ -10,7 +10,6 @@ import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
-import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.alauda.kubernetes.api.model.*;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
