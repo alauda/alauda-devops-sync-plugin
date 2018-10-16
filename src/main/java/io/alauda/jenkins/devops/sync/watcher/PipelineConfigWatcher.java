@@ -20,11 +20,13 @@ import com.cloudbees.hudson.plugins.folder.Folder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.Extension;
+import hudson.Plugin;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.ParameterDefinition;
 import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
+import hudson.util.VersionNumber;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
@@ -37,7 +39,6 @@ import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.constants.PipelineRunPolicy;
 import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
-import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
@@ -46,6 +47,7 @@ import org.apache.tools.ant.filters.StringInputStream;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
+import javax.annotation.Nonnull;
 import javax.xml.transform.Source;
 import javax.xml.transform.stream.StreamSource;
 import java.io.IOException;
@@ -300,6 +302,9 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       List<Condition> conditions = new ArrayList<>();
       pipelineConfig.getStatus().setConditions(conditions);
 
+      // check plugin dependency
+      dependencyCheck(pipelineConfig, conditions);
+
     if (AlaudaUtils.isPipelineStrategyPipelineConfig(pipelineConfig)) {
       // sync on intern of name should guarantee sync on same actual obj
       synchronized (pipelineConfig.getMetadata().getUid().intern()) {
@@ -425,6 +430,65 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       }
     }
   }
+
+    /**
+     * Check PipelineConfig dependency
+     * @param pipelineConfig PipelineConfig
+     * @param conditions condition list
+     */
+    private void dependencyCheck(@Nonnull PipelineConfig pipelineConfig, @Nonnull List<Condition> conditions) {
+        boolean fromTpl = createFromTpl(pipelineConfig);
+        if(!fromTpl) {
+            // just care about template case
+            return;
+        }
+
+        PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
+        PipelineDependency dependencies = template.getSpec().getDependencies();
+        if(dependencies == null || CollectionUtils.isEmpty(dependencies.getPlugins())) {
+            logger.info("PipelineConfig " + pipelineConfig.getMetadata().getName() + " no any dependencies.");
+            return;
+        }
+
+        final Jenkins jenkins = Jenkins.getInstance();
+        dependencies.getPlugins().forEach(plugin -> {
+            String name = plugin.getName();
+            String version = plugin.getVersion();
+            VersionNumber verNumber = new VersionNumber(version);
+            VersionNumber currentNumber;
+
+            Condition condition = new Condition();
+            condition.setReason(ErrorMessages.PLUGIN_ERROR);
+
+            Plugin existsPlugin = jenkins.getPlugin(name);
+            if (existsPlugin == null) {
+
+                condition.setMessage(String.format("Lack plugin: %s, version: %s", name, version));
+            } else {
+                currentNumber = existsPlugin.getWrapper().getVersionNumber();
+
+                if (currentNumber.isOlderThan(verNumber)) {
+                    condition.setMessage(
+                            String.format("Require plugin: %s, version: %s, found %s", name, version, currentNumber));
+                }
+            }
+
+            if(condition.getMessage() != null) {
+                conditions.add(condition);
+            }
+        });
+    }
+
+    /**
+     * Whether PipelineConfig is create from a template
+     * @param pipelineConfig PipelineConfig
+     * @return whether PipelineConfig is create from a template
+     */
+    private boolean createFromTpl(@Nonnull PipelineConfig pipelineConfig) {
+        PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
+
+        return template != null && template.getSpec() != null;
+    }
 
     private void updatePipelineConfigPhase(final PipelineConfig pipelineConfig) {
         PipelineConfigStatusBuilder statusBuilder = new PipelineConfigStatusBuilder();
