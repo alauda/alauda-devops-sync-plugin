@@ -8,6 +8,7 @@ import net.sf.json.JSONObject;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.WithoutJenkins;
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
@@ -72,5 +73,25 @@ public class KubernetesClientActionTest {
         assertThat(json.get("status").toString(), anyOf(equalTo("error"),
                 equalTo("ok")));
 
+    }
+
+    @Test
+    @WithoutK8s
+    public void doCronTabCheck() throws IOException, SAXException {
+        JenkinsRule.WebClient wc = j.createWebClient();
+        wc.getOptions().setThrowExceptionOnFailingStatusCode(false);
+        String correctCron = "* * * * *";
+
+        Page page = wc.goTo("alauda/cronTabCheck?cronText=" + correctCron,
+                "application/json");
+        WebResponse response = page.getWebResponse();
+        assertEquals(200, response.getStatusCode());
+
+        String text = response.getContentAsString();
+        JSONObject json = JSONObject.fromObject(text);
+
+        assertNotNull(json.getJSONObject("data").get("next"));
+        assertNotNull(json.getJSONObject("data").get("previous"));
+        assertNotNull(json.getJSONObject("data").get("sanity"));
     }
 }
