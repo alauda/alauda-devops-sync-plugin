@@ -14,12 +14,15 @@ import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.CronUtils;
 import io.alauda.kubernetes.client.Config;
 import io.alauda.kubernetes.client.KubernetesClientException;
+import org.apache.http.Header;
+import org.apache.http.HttpRequest;
 import org.apache.tools.ant.taskdefs.condition.Http;
 import org.jenkinsci.Symbol;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
@@ -29,7 +32,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Calendar;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Vector;
@@ -100,8 +105,9 @@ public class KubernetesClientAction implements UnprotectedRootAction {
      * @param cronText cron text
      * @return syntax check result, previous and next time
      */
-    public HttpResponse doCronTabCheck(@QueryParameter String cronText) {
+    public HttpResponse doCronTabCheck(HttpRequest request, @QueryParameter String cronText) {
         Map<String, String> result = new HashMap<>();
+        final Locale defaultLocale = Locale.getDefault();
 
         try {
             CronUtils cron = CronUtils.create(cronText, null);
@@ -116,10 +122,16 @@ public class KubernetesClientAction implements UnprotectedRootAction {
                 result.put("previous", String.valueOf(previous.getTimeInMillis()));
             }
 
-            result.put("sanity", cron.checkSanity());
+            Locale.setDefault(Locale.SIMPLIFIED_CHINESE);
+            result.put("sanity_" + Locale.SIMPLIFIED_CHINESE, cron.checkSanity());
+
+            Locale.setDefault(Locale.ENGLISH);
+            result.put("sanity_" + Locale.ENGLISH, cron.checkSanity());
         } catch (ANTLRException e) {
             logger.warning(String.format("cron text syntax check error: %s.", e.getMessage()));
             result.put("error", e.getMessage());
+        } finally {
+            Locale.setDefault(defaultLocale);
         }
 
         return HttpResponses.okJSON(result);

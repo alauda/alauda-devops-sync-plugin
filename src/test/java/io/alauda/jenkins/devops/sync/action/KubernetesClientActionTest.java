@@ -12,6 +12,7 @@ import org.jvnet.hudson.test.WithoutJenkins;
 import org.xml.sax.SAXException;
 
 import java.io.IOException;
+import java.util.Locale;
 
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.equalTo;
@@ -92,6 +93,7 @@ public class KubernetesClientActionTest {
 
         assertNotNull(json.getJSONObject("data").get("next"));
         assertNotNull(json.getJSONObject("data").get("previous"));
-        assertNotNull(json.getJSONObject("data").get("sanity"));
+        assertNotNull(json.getJSONObject("data").get("sanity_" + Locale.SIMPLIFIED_CHINESE));
+        assertNotNull(json.getJSONObject("data").get("sanity_" + Locale.ENGLISH));
     }
 }
