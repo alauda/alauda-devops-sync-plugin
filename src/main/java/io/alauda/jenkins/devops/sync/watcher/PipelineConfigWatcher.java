@@ -303,7 +303,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       pipelineConfig.getStatus().setConditions(conditions);
 
       // check plugin dependency
-      dependencyCheck(pipelineConfig, conditions);
+//      dependencyCheck(pipelineConfig, conditions);
 
     if (AlaudaUtils.isPipelineStrategyPipelineConfig(pipelineConfig)) {
       // sync on intern of name should guarantee sync on same actual obj
@@ -431,53 +431,53 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
     }
   }
 
-    /**
-     * Check PipelineConfig dependency
-     * @param pipelineConfig PipelineConfig
-     * @param conditions condition list
-     */
-    private void dependencyCheck(@Nonnull PipelineConfig pipelineConfig, @Nonnull List<Condition> conditions) {
-        boolean fromTpl = createFromTpl(pipelineConfig);
-        if(!fromTpl) {
-            // just care about template case
-            return;
-        }
-
-        PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
-        PipelineDependency dependencies = template.getSpec().getDependencies();
-        if(dependencies == null || CollectionUtils.isEmpty(dependencies.getPlugins())) {
-            logger.info("PipelineConfig " + pipelineConfig.getMetadata().getName() + " no any dependencies.");
-            return;
-        }
-
-        final Jenkins jenkins = Jenkins.getInstance();
-        dependencies.getPlugins().forEach(plugin -> {
-            String name = plugin.getName();
-            String version = plugin.getVersion();
-            VersionNumber verNumber = new VersionNumber(version);
-            VersionNumber currentNumber;
-
-            Condition condition = new Condition();
-            condition.setReason(ErrorMessages.PLUGIN_ERROR);
-
-            Plugin existsPlugin = jenkins.getPlugin(name);
-            if (existsPlugin == null) {
-
-                condition.setMessage(String.format("Lack plugin: %s, version: %s", name, version));
-            } else {
-                currentNumber = existsPlugin.getWrapper().getVersionNumber();
-
-                if (currentNumber.isOlderThan(verNumber)) {
-                    condition.setMessage(
-                            String.format("Require plugin: %s, version: %s, found %s", name, version, currentNumber));
-                }
-            }
-
-            if(condition.getMessage() != null) {
-                conditions.add(condition);
-            }
-        });
-    }
+//    /**
+//     * Check PipelineConfig dependency
+//     * @param pipelineConfig PipelineConfig
+//     * @param conditions condition list
+//     */
+//    private void dependencyCheck(@Nonnull PipelineConfig pipelineConfig, @Nonnull List<Condition> conditions) {
+//        boolean fromTpl = createFromTpl(pipelineConfig);
+//        if(!fromTpl) {
+//            // just care about template case
+//            return;
+//        }
+//
+//        PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
+//        PipelineDependency dependencies = template.getSpec().getDependencies();
+//        if(dependencies == null || CollectionUtils.isEmpty(dependencies.getPlugins())) {
+//            logger.info("PipelineConfig " + pipelineConfig.getMetadata().getName() + " no any dependencies.");
+//            return;
+//        }
+//
+//        final Jenkins jenkins = Jenkins.getInstance();
+//        dependencies.getPlugins().forEach(plugin -> {
+//            String name = plugin.getName();
+//            String version = plugin.getVersion();
+//            VersionNumber verNumber = new VersionNumber(version);
+//            VersionNumber currentNumber;
+//
+//            Condition condition = new Condition();
+//            condition.setReason(ErrorMessages.PLUGIN_ERROR);
+//
+//            Plugin existsPlugin = jenkins.getPlugin(name);
+//            if (existsPlugin == null) {
+//
+//                condition.setMessage(String.format("Lack plugin: %s, version: %s", name, version));
+//            } else {
+//                currentNumber = existsPlugin.getWrapper().getVersionNumber();
+//
+//                if (currentNumber.isOlderThan(verNumber)) {
+//                    condition.setMessage(
+//                            String.format("Require plugin: %s, version: %s, found %s", name, version, currentNumber));
+//                }
+//            }
+//
+//            if(condition.getMessage() != null) {
+//                conditions.add(condition);
+//            }
+//        });
+//    }
 
     /**
      * Whether PipelineConfig is create from a template
