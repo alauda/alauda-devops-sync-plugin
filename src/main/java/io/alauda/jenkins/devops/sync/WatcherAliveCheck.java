@@ -27,7 +27,6 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
         AlaudaSyncGlobalConfiguration sync = AlaudaSyncGlobalConfiguration.get();
         boolean invalid = !sync.isValid();
-        PrintStream log = listener.getLogger();
         if(invalid) {
             LOGGER.warning("Sync is invalid.");
             return;

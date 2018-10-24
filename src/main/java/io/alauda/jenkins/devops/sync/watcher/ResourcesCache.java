@@ -1,7 +1,11 @@
 package io.alauda.jenkins.devops.sync.watcher;
 
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.JenkinsBinding;
+import io.alauda.kubernetes.api.model.JenkinsBindingList;
+import io.alauda.kubernetes.api.model.Namespace;
 import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.api.model.Secret;
