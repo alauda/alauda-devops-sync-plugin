@@ -1,12 +1,9 @@
 package io.alauda.jenkins.devops.sync.watcher;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
-import hudson.model.TopLevelItem;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.kubernetes.api.model.JenkinsBinding;
-import io.alauda.kubernetes.api.model.JenkinsBindingList;
 import io.alauda.kubernetes.api.model.Namespace;
 import io.alauda.kubernetes.api.model.NamespaceList;
 import io.alauda.kubernetes.client.Watcher;
@@ -43,37 +40,18 @@ public class NamespaceWatcher extends AbstractWatcher implements BaseWatcher {
             return;
         }
 
+        int itemCount = folder.getItems().size();
+        if(itemCount > 0) {
+            logger.warning(String.format("Do not delete folder that still has items, count %s.", itemCount));
+            return;
+        }
+
         try {
             folder.delete();
         } catch (InterruptedException | IOException e) {
             e.printStackTrace();
         }
     }
-
-    // TODO 这里有个缺陷，当删除命名空间后，相关的资源将会全部删除，也就无法查询了
-//    private boolean isBinding(Namespace ns) {
-//        String jenkinsService = ResourcesCache.getInstance().getJenkinsService();
-//        String nsName = ns.getMetadata().getName();
-//        logger.info(String.format("jenkins service: %s.", jenkinsService));
-//
-//        JenkinsBindingList list = AlaudaUtils.getAlaudaClient().jenkinsBindings()
-//                .inNamespace(nsName).list();
-//        if(list != null && list.getItems() != null && list.getItems().size() > 0) {
-//            for(JenkinsBinding binding : list.getItems()) {
-//                String bindingJenkins = binding.getSpec().getJenkins().getName();
-//
-//                logger.info(String.format("binding jenkins %s", bindingJenkins));
-//
-//                if(jenkinsService.equals(bindingJenkins)) {
-//                    return true;
-//                }
-//            }
-//        } else {
-//            logger.warning(String.format("can't find jenkinsBinding in namespace [%s].", nsName));
-//        }
-//
-//        return false;
-//    }
 
     @Override
     public void watch() {
