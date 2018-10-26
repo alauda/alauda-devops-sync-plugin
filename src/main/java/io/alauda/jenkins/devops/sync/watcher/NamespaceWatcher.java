@@ -1,7 +1,9 @@
 package io.alauda.jenkins.devops.sync.watcher;
 
+import com.cloudbees.hudson.plugins.folder.AbstractFolderProperty;
 import com.cloudbees.hudson.plugins.folder.Folder;
 import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.Namespace;
@@ -43,6 +45,14 @@ public class NamespaceWatcher extends AbstractWatcher implements BaseWatcher {
         int itemCount = folder.getItems().size();
         if(itemCount > 0) {
             logger.warning(String.format("Do not delete folder that still has items, count %s.", itemCount));
+
+            AbstractFolderProperty alaudaFolderProperty = new AlaudaFolderProperty(true);
+            try {
+                folder.addProperty(alaudaFolderProperty);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
             return;
         }
 

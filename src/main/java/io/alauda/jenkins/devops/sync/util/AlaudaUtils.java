@@ -24,6 +24,7 @@ import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
