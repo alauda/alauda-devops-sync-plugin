@@ -248,33 +248,33 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       logger.log(Level.WARNING, "Caught: " + e, e);
     }
   }
-
-  /**
-   * Check whether the PipelineConfig is bound with current Jenkins.
-   * @param pipelineConfig PipelineConfig
-   * @return check result
-   */
-  private boolean isBoundPipelineConfig(PipelineConfig pipelineConfig) {
-    String bindingName = pipelineConfig.getSpec().getJenkinsBinding().getName();
-    String namespace = pipelineConfig.getMetadata().getNamespace();
-
-    JenkinsBinding jenkinsBinding = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
-      .inNamespace(namespace).withName(bindingName).get();
-    if(jenkinsBinding != null) {
-      String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
-      String pluginJenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
-
-      if(!jenkinsName.equals(pluginJenkinsService)) {
-        logger.info("PipelineConfig is in Jenkins " + jenkinsName + ", but current Jenkins is " + pluginJenkinsService);
-        return false;
-      }
-    } else {
-      logger.warning("Can't found the JenkinsBinding by namespace : " + namespace + "; name : " + bindingName);
-      return false;
-    }
-
-    return true;
-  }
+//
+//  /**
+//   * Check whether the PipelineConfig is bound with current Jenkins.
+//   * @param pipelineConfig PipelineConfig
+//   * @return check result
+//   */
+//  private boolean isBoundPipelineConfig(PipelineConfig pipelineConfig) {
+//    String bindingName = pipelineConfig.getSpec().getJenkinsBinding().getName();
+//    String namespace = pipelineConfig.getMetadata().getNamespace();
+//
+//    JenkinsBinding jenkinsBinding = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
+//      .inNamespace(namespace).withName(bindingName).get();
+//    if(jenkinsBinding != null) {
+//      String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
+//      String pluginJenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+//
+//      if(!jenkinsName.equals(pluginJenkinsService)) {
+//        logger.info("PipelineConfig is in Jenkins " + jenkinsName + ", but current Jenkins is " + pluginJenkinsService);
+//        return false;
+//      }
+//    } else {
+//      logger.warning("Can't found the JenkinsBinding by namespace : " + namespace + "; name : " + bindingName);
+//      return false;
+//    }
+//
+//    return true;
+//  }
 
   public <T> void eventReceived(Watcher.Action action, T resource) {
     PipelineConfig pc = (PipelineConfig)resource;
@@ -314,7 +314,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       pipelineConfig.getStatus().setConditions(conditions);
 
       // check plugin dependency
-//      dependencyCheck(pipelineConfig, conditions);
+      PipelineConfigUtils.dependencyCheck(pipelineConfig, conditions);
 
     if (AlaudaUtils.isPipelineStrategyPipelineConfig(pipelineConfig)) {
       // sync on intern of name should guarantee sync on same actual obj
