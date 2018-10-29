@@ -133,7 +133,7 @@ pipeline {
 							// more final solution
 							IMAGE.start().push().push(IMAGE_TAG)
 
-							addShortText id: 'AlaudaDockerImage', text: IMAGE_TAG, link: 'http://' + imageRepo
+							addShortText id: 'AlaudaDockerImage', text: RELEASE_BUILD, link: 'http://' + imageRepo
 						}
 					}
 				}
