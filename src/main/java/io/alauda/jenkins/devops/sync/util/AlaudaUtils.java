@@ -28,6 +28,7 @@ import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.icons.AlaudaFolderIcon;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Config;
 import io.alauda.kubernetes.client.Version;
@@ -244,15 +245,35 @@ public abstract class AlaudaUtils {
         if (idx > 0) {
             String parentFullName = fullName.substring(0, idx);
             Item parent = activeJenkins.getItemByFullName(parentFullName);
-            if (parent instanceof ItemGroup) {
-                return (ItemGroup) parent;
+            if (parent instanceof Folder) {
+                Folder folder = ((Folder) parent);
+                AlaudaFolderProperty alaPro = folder.getProperties().get(AlaudaFolderProperty.class);
+                if(alaPro == null) {
+                    try {
+                        folder.addProperty(new AlaudaFolderProperty());
+                        folder.setIcon(new AlaudaFolderIcon());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    alaPro.setDirty(false);
+                }
+
+                try {
+                    folder.save();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                return folder;
             } else if (parentFullName.equals(namespace)) {
 
                 // lets lazily create a new folder for this namespace parent
                 Folder folder = new Folder(activeJenkins, namespace);
                 try {
-                    folder.setDescription(FOLDER_DESCRIPTION
-                            + namespace);
+                    folder.setDescription(FOLDER_DESCRIPTION + namespace);
+                    folder.addProperty(new AlaudaFolderProperty());
+                    folder.setIcon(new AlaudaFolderIcon());
                 } catch (IOException e) {
                     // ignore
                 }

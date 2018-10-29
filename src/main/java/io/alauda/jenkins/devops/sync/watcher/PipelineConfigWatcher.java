@@ -386,8 +386,6 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                 if (parent instanceof Folder) {
                   Folder folder = (Folder) parent;
                   folder.createProjectFromXML(jobName, jobStream).save();
-
-                  folder.getProperties().removeIf(pro -> pro instanceof AlaudaFolderProperty);
                 } else {
                   activeInstance.createProjectFromXML(jobName, jobStream).save();
                 }

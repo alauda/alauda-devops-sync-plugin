@@ -2,6 +2,7 @@ package io.alauda.jenkins.devops.sync.watcher;
 
 import com.cloudbees.hudson.plugins.folder.AbstractFolderProperty;
 import com.cloudbees.hudson.plugins.folder.Folder;
+import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
@@ -10,6 +11,7 @@ import io.alauda.kubernetes.api.model.Namespace;
 import io.alauda.kubernetes.api.model.NamespaceList;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
+import jenkins.security.NotReallyRoleSensitiveCallable;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -31,34 +33,52 @@ public class NamespaceWatcher extends AbstractWatcher implements BaseWatcher {
             return;
         }
 
-
         Namespace ns = ((Namespace) resource);
         String folderName = ns.getMetadata().getName();
 
         logger.info(String.format("namespace [%s] watcher receive delete event.", folderName));
-        Folder folder = Jenkins.getInstance().getItemByFullName(folderName, Folder.class);
-        if(folder == null) {
-            logger.warning(String.format("Folder [%s] can't found.", folderName));
-            return;
-        }
-
-        int itemCount = folder.getItems().size();
-        if(itemCount > 0) {
-            logger.warning(String.format("Do not delete folder that still has items, count %s.", itemCount));
-
-            AbstractFolderProperty alaudaFolderProperty = new AlaudaFolderProperty(true);
-            try {
-                folder.addProperty(alaudaFolderProperty);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return;
-        }
-
         try {
-            folder.delete();
-        } catch (InterruptedException | IOException e) {
+            // TODO should be fix later
+            ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, Exception>() {
+
+                @Override
+                public Void call() throws Exception {
+                    Folder folder = Jenkins.getInstance().getItemByFullName(folderName, Folder.class);
+                    if(folder == null) {
+                        logger.warning(String.format("Folder [%s] can't found.", folderName));
+                        return null;
+                    }
+
+                    AlaudaFolderProperty alaudaFolderProperty =
+                            folder.getProperties().get(AlaudaFolderProperty.class);
+                    if(alaudaFolderProperty == null) {
+                        logger.warning(String.format("Folder [%s] don't have AbstractFolderProperty, will skip it.", folderName));
+                        return null;
+                    }
+
+                    int itemCount = folder.getItems().size();
+                    if(itemCount > 0) {
+                        logger.warning(String.format("Do not delete folder that still has items, count %s.", itemCount));
+
+                        alaudaFolderProperty.setDirty(true);
+                        try {
+                            folder.save();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        return null;
+                    }
+
+                    try {
+                        folder.delete();
+                    } catch (InterruptedException | IOException e) {
+                        e.printStackTrace();
+                    }
+                    return null;
+                }
+            });
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
