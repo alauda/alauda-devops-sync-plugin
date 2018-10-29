@@ -117,11 +117,13 @@ pipeline {
 							}
 							sh "ls -la .tmp"
 
+							def imageRepo = 'index.alauda.cn/alaudak8s/jenkins-plugin-injector'
+
 							// currently is building code inside the container
 							IMAGE = deploy.dockerBuild(
 								".tmp/Dockerfile", //Dockerfile
 								".tmp", // build context
-								"index.alauda.cn/alaudak8s/jenkins-plugin-injector", // repo address
+								imageRepo,
 								"${RELEASE_BUILD}", // tag
 								"alaudak8s", // credentials for pushing
 								)
@@ -130,6 +132,8 @@ pipeline {
 							// TODO: change to commit when we have a
 							// more final solution
 							IMAGE.start().push().push(IMAGE_TAG)
+
+							addShortText id: 'AlaudaDockerImage', text: IMAGE_TAG, link: 'http://' + imageRepo
 						}
 					}
 				}
