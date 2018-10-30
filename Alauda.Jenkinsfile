@@ -133,6 +133,8 @@ pipeline {
 							// more final solution
 							IMAGE.start().push().push(IMAGE_TAG)
 
+                            archiveArtifacts 'target/*.hpi'
+
 							addShortText id: 'AlaudaDockerImage', text: RELEASE_BUILD, link: 'http://' + imageRepo
 						}
 					}
