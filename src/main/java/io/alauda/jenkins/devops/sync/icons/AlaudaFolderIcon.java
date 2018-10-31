@@ -4,9 +4,13 @@ import com.cloudbees.hudson.plugins.folder.FolderIcon;
 import com.cloudbees.hudson.plugins.folder.FolderIconDescriptor;
 import hudson.Extension;
 import hudson.model.Hudson;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Stapler;
 
 public class AlaudaFolderIcon extends FolderIcon {
+    @DataBoundConstructor
+    public AlaudaFolderIcon(){}
+
     @Override
     public String getImageOf(String size) {
         String image = iconClassNameImageOf(size);

@@ -251,7 +251,6 @@ public abstract class AlaudaUtils {
                 if(alaPro == null) {
                     try {
                         folder.addProperty(new AlaudaFolderProperty());
-                        folder.setIcon(new AlaudaFolderIcon());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -260,6 +259,7 @@ public abstract class AlaudaUtils {
                 }
 
                 try {
+                    folder.setIcon(new AlaudaFolderIcon());
                     folder.save();
                 } catch (IOException e) {
                     e.printStackTrace();

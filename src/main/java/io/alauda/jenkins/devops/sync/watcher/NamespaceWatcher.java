@@ -1,6 +1,5 @@
 package io.alauda.jenkins.devops.sync.watcher;
 
-import com.cloudbees.hudson.plugins.folder.AbstractFolderProperty;
 import com.cloudbees.hudson.plugins.folder.Folder;
 import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;

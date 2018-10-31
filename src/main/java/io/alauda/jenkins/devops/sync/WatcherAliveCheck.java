@@ -37,6 +37,7 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
         watcherList.add(sync.getPipelineWatcher());
         watcherList.add(sync.getSecretWatcher());
         watcherList.add(sync.getJenkinsBindingWatcher());
+        watcherList.add(sync.getNamespaceWatcher());
 
         if(watcherList.contains(null)){
             LOGGER.warning("Get broken watcher, need to restart sync.");
