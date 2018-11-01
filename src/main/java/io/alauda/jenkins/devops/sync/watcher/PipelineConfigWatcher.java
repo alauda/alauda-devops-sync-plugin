@@ -20,16 +20,13 @@ import com.cloudbees.hudson.plugins.folder.Folder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.Extension;
-import hudson.Plugin;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.ParameterDefinition;
 import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
-import hudson.util.VersionNumber;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
@@ -162,14 +159,27 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       String pipelineName = pipelineConfig.getMetadata().getName();
       logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
 
-      if (!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
+      boolean bindingToCurrentJenkins = false;
+      if(action == Watcher.Action.DELETED) {
+          WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
+
+          if(job != null) {
+              PipelineConfigProjectProperty pro = job.getProperty(PipelineConfigProjectProperty.class);
+              if(pro != null) {
+                  bindingToCurrentJenkins = pipelineConfig.getMetadata().getUid().equals(pro.getUid());
+              }
+          }
+      } else {
+          bindingToCurrentJenkins = ResourcesCache.getInstance().isBinding(pipelineConfig);
+      }
+
+      if (!bindingToCurrentJenkins) {
           String pipelineBinding = pipelineConfig.getSpec().getJenkinsBinding().getName();
           String jenkinsService = ResourcesCache.getInstance().getJenkinsService();
 
           String msg = String.format("%s[%s] is not binding to current jenkins[%s]",
                   pipelineName, pipelineBinding, jenkinsService);
           logger.warning(msg);
-          return;
       }
 
       try {

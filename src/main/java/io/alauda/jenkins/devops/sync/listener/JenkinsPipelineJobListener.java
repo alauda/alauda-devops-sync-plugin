@@ -125,8 +125,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
             WorkflowJob job = (WorkflowJob) item;
             PipelineConfigProjectProperty property = pipelineConfigProjectForJob(job);
             if (property != null) {
-
-                NamespaceName pipelineName = AlaudaUtils.pipelineConfigNameFromJenkinsJobName(property.getName(), property.getNamespace());
+                NamespaceName pipelineName = AlaudaUtils.pipelineConfigNameFromJenkinsJobName(
+                        property.getName(), property.getNamespace());
                 final String namespace = pipelineName.getNamespace();
                 final String pipelineConfigName = pipelineName.getName();
 
@@ -193,7 +193,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
         //we just take care of our style's jobs
         if (canUpdate(job, property)) {
-            logger.info(() -> "Upsert WorkflowJob " + job.getName() + " to PipelineConfig: " + property.getNamespace() + "/" + property.getName() + " in Alauda Kubernetes");
+            logger.info(() -> "Upsert WorkflowJob " + job.getName() + " to PipelineConfig: "
+                    + property.getNamespace() + "/" + property.getName() + " in Alauda Kubernetes");
 
             upsertPipelineConfigForJob(job, property);
         }
@@ -271,22 +272,9 @@ public class JenkinsPipelineJobListener extends ItemListener {
         if (jobPipelineConfig == null) {
             Namespace targetNS = client.namespaces().withName(namespace).get();
             String msg = String.format("There's not namespace with name: %s. Can't create PipelineConfig.", namespace);
-            if(targetNS == null && !job.getDescription().equals(msg)) {
+            if(targetNS == null) {
                 logger.severe(msg);
-                try {
-                    job.setDescription(msg);
-                    job.save();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
                 return;
-            } else if(job.getDescription().equals(msg)){
-                try {
-                    job.setDescription("");
-                    job.save();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
             }
 
             logger.info("Can't find PipelineConfig, will create. namespace:" + namespace + "; name: " + jobName);

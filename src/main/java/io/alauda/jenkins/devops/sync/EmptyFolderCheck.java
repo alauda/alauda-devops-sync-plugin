@@ -4,9 +4,12 @@ import com.cloudbees.hudson.plugins.folder.Folder;
 import hudson.Extension;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
+import hudson.model.TopLevelItem;
 import jenkins.model.Jenkins;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -23,9 +26,23 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
             return;
         }
 
-        folders.stream().filter(folder -> folder.getItems().size() > 0 && folder.getProperties().stream().anyMatch(
+        // when the folder is dirty and there is not any custom itemJenkinsPipelineJobListener
+        folders.stream().filter(folder -> folder.getProperties().stream().anyMatch(
                 pro -> (pro instanceof AlaudaFolderProperty) && ((AlaudaFolderProperty) pro).isDirty()
-        )).forEach(folder -> {
+        )).filter(folder -> {
+            Collection<TopLevelItem> items = folder.getItems();
+            if(items.size() == 0) {
+                return true;
+            }
+
+            // find custom created item
+            return items.stream().noneMatch(item -> {
+                if(item instanceof WorkflowJob) {
+                    return ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class) == null;
+                }
+                return false;
+            });
+        }).forEach(folder -> {
             try {
                 folder.delete();
             } catch (IOException e) {
