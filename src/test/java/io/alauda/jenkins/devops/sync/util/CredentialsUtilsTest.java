@@ -34,7 +34,7 @@ public class CredentialsUtilsTest {
 
         assertFalse(CredentialsUtils.hasCredentials());
 
-        assertNull(CredentialsUtils.lookupCredentials(""));
+        assertNull(CredentialsUtils.lookupCredentials("", ""));
 
         assertNull(CredentialsUtils.upsertCredential(null));
 
