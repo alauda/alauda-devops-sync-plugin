@@ -77,7 +77,12 @@ public class JenkinsPipelineJobListener extends ItemListener {
     }
 
     private void init() {
-        namespaces = AlaudaUtils.getNamespaceOrUseDefault(jenkinsService, AlaudaUtils.getAlaudaClient());
+        AlaudaDevOpsClient client = AlaudaUtils.getAlaudaClient();
+        if(client == null) {
+            logger.severe("Can't get AlaudaDevOpsClient when init JenkinsPipelineJobListener.");
+            return;
+        }
+        namespaces = AlaudaUtils.getNamespaceOrUseDefault(jenkinsService, client);
     }
 
     @Override
