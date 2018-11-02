@@ -7,6 +7,7 @@ import io.alauda.kubernetes.api.model.Pipeline;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.api.model.Secret;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,10 +26,7 @@ public class ResourcesCache {
     private String jenkinsService;
 
     private Set<String> namespaces = new CopyOnWriteArraySet<>();
-//    @Deprecated
-//    private Set<String> pipelineConfigs = new CopyOnWriteArraySet<>();
     private Map<String, String> bindingMap = new ConcurrentHashMap<>();
-
     private Map<String, PipelineConfig> pipelineConfigMap = new ConcurrentHashMap<>();
 
     private static final ResourcesCache RESOURCES_CACHE = new ResourcesCache();
@@ -77,6 +75,10 @@ public class ResourcesCache {
 
             removeJenkinsBinding(jenkinsBinding);
         }
+    }
+
+    public Set<String> getNamespaces() {
+        return Collections.unmodifiableSet(namespaces);
     }
 
     public void addPipelineConfig(PipelineConfig pipelineConfig) {

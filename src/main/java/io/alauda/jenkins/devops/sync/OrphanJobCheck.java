@@ -59,7 +59,9 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                     return false;
                 }
 
-                return ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class) != null;
+                PipelineConfigProjectProperty pro =
+                        ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class);
+                return pro != null && pro.isValid();
             }).forEach(item ->{
                 PipelineConfigProjectProperty pro =
                         ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class);
@@ -100,6 +102,6 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
     @Override
     public long getRecurrencePeriod() {
-        return TimeUnit.MINUTES.toMillis(1);
+        return TimeUnit.MINUTES.toMillis(15);
     }
 }
