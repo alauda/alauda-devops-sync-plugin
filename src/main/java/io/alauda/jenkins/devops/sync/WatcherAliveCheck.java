@@ -1,14 +1,12 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
-import hudson.ExtensionList;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import io.alauda.jenkins.devops.sync.watcher.AbstractWatcher;
-import jenkins.model.Jenkins;
+import io.alauda.kubernetes.client.KubernetesClientException;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +25,6 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
         AlaudaSyncGlobalConfiguration sync = AlaudaSyncGlobalConfiguration.get();
         boolean invalid = !sync.isValid();
-        PrintStream log = listener.getLogger();
         if(invalid) {
             LOGGER.warning("Sync is invalid.");
             return;
@@ -38,10 +35,16 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
         watcherList.add(sync.getPipelineWatcher());
         watcherList.add(sync.getSecretWatcher());
         watcherList.add(sync.getJenkinsBindingWatcher());
+        watcherList.add(sync.getNamespaceWatcher());
 
         if(watcherList.contains(null)){
             LOGGER.warning("Get broken watcher, need to restart sync.");
-            sync.configChange();
+            try {
+                sync.configChange();
+            } catch (KubernetesClientException e) {
+                e.printStackTrace();
+            }
+
             return;
         }
 

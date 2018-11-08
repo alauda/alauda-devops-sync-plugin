@@ -71,6 +71,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private transient PipelineConfigWatcher pipelineConfigWatcher;
     private transient SecretWatcher secretWatcher;
     private transient JenkinsBindingWatcher jenkinsBindingWatcher;
+    private transient NamespaceWatcher namespaceWatcher;
 
     public AlaudaSyncGlobalConfiguration() {
         this.load();
@@ -304,6 +305,9 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         this.secretWatcher = new SecretWatcher();
         this.secretWatcher.watch();
         this.secretWatcher.init(namespaces);
+
+        namespaceWatcher = new NamespaceWatcher();
+        namespaceWatcher.watch();
     }
 
     public void stopWatchers() {
@@ -325,6 +329,11 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         if (jenkinsBindingWatcher != null) {
             jenkinsBindingWatcher.stop();
             jenkinsBindingWatcher = null;
+        }
+
+        if(namespaceWatcher != null) {
+            namespaceWatcher.stop();
+            namespaceWatcher = null;
         }
     }
 
@@ -358,6 +367,10 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
     public void setJenkinsBindingWatcher(JenkinsBindingWatcher jenkinsBindingWatcher) {
         this.jenkinsBindingWatcher = jenkinsBindingWatcher;
+    }
+
+    public NamespaceWatcher getNamespaceWatcher() {
+        return namespaceWatcher;
     }
 
     public void stopWatchersAndClient() {

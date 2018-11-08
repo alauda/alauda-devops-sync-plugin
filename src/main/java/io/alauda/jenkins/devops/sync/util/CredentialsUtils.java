@@ -419,7 +419,7 @@ public abstract class CredentialsUtils {
           }
           String username = authData.getString("username");
           String password = authData.getString("password");
-          logger.info("Username: "+username+" password:"+password);
+          logger.info(String.format("Username: %s password: ***", username));
           if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) {
             logger.log(Level.WARNING, "Invalid docker data, secretName: " +
               secretName + " username is empty? "+StringUtils.isEmpty(username)+" password is empty?" + StringUtils.isEmpty(password));

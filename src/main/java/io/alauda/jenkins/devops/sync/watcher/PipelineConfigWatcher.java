@@ -20,13 +20,11 @@ import com.cloudbees.hudson.plugins.folder.Folder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.Extension;
-import hudson.Plugin;
 import hudson.model.ItemGroup;
 import hudson.model.Job;
 import hudson.model.ParameterDefinition;
 import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
-import hudson.util.VersionNumber;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
@@ -161,14 +159,27 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       String pipelineName = pipelineConfig.getMetadata().getName();
       logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
 
-      if (!ResourcesCache.getInstance().isBinding(pipelineConfig)) {
+      boolean bindingToCurrentJenkins = false;
+      if(action == Watcher.Action.DELETED) {
+          WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
+
+          if(job != null) {
+              PipelineConfigProjectProperty pro = job.getProperty(PipelineConfigProjectProperty.class);
+              if(pro != null) {
+                  bindingToCurrentJenkins = pipelineConfig.getMetadata().getUid().equals(pro.getUid());
+              }
+          }
+      } else {
+          bindingToCurrentJenkins = ResourcesCache.getInstance().isBinding(pipelineConfig);
+      }
+
+      if (!bindingToCurrentJenkins) {
           String pipelineBinding = pipelineConfig.getSpec().getJenkinsBinding().getName();
           String jenkinsService = ResourcesCache.getInstance().getJenkinsService();
 
           String msg = String.format("%s[%s] is not binding to current jenkins[%s]",
                   pipelineName, pipelineBinding, jenkinsService);
           logger.warning(msg);
-          return;
       }
 
       try {
@@ -321,12 +332,6 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             }
             boolean newJob = job == null;
             if (newJob) {
-              // TODO: this is not used now
-//              String disableOn = getAnnotation(pipelineConfig, DISABLE_SYNC_CREATE);
-//              if (disableOn != null && disableOn.length() > 0) {
-//                logger.fine("Not creating missing jenkins job " + jobFullName + " due to annotation: " + DISABLE_SYNC_CREATE);
-//                return null;
-//              }
               parent = AlaudaUtils.getFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
               job = new WorkflowJob(parent, jobName);
             }
@@ -430,54 +435,6 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       }
     }
   }
-
-//    /**
-//     * Check PipelineConfig dependency
-//     * @param pipelineConfig PipelineConfig
-//     * @param conditions condition list
-//     */
-//    private void dependencyCheck(@Nonnull PipelineConfig pipelineConfig, @Nonnull List<Condition> conditions) {
-//        boolean fromTpl = createFromTpl(pipelineConfig);
-//        if(!fromTpl) {
-//            // just care about template case
-//            return;
-//        }
-//
-//        PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
-//        PipelineDependency dependencies = template.getSpec().getDependencies();
-//        if(dependencies == null || CollectionUtils.isEmpty(dependencies.getPlugins())) {
-//            logger.info("PipelineConfig " + pipelineConfig.getMetadata().getName() + " no any dependencies.");
-//            return;
-//        }
-//
-//        final Jenkins jenkins = Jenkins.getInstance();
-//        dependencies.getPlugins().forEach(plugin -> {
-//            String name = plugin.getName();
-//            String version = plugin.getVersion();
-//            VersionNumber verNumber = new VersionNumber(version);
-//            VersionNumber currentNumber;
-//
-//            Condition condition = new Condition();
-//            condition.setReason(ErrorMessages.PLUGIN_ERROR);
-//
-//            Plugin existsPlugin = jenkins.getPlugin(name);
-//            if (existsPlugin == null) {
-//
-//                condition.setMessage(String.format("Lack plugin: %s, version: %s", name, version));
-//            } else {
-//                currentNumber = existsPlugin.getWrapper().getVersionNumber();
-//
-//                if (currentNumber.isOlderThan(verNumber)) {
-//                    condition.setMessage(
-//                            String.format("Require plugin: %s, version: %s, found %s", name, version, currentNumber));
-//                }
-//            }
-//
-//            if(condition.getMessage() != null) {
-//                conditions.add(condition);
-//            }
-//        });
-//    }
 
     /**
      * Whether PipelineConfig is create from a template

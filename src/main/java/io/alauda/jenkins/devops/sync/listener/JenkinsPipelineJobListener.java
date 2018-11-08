@@ -40,6 +40,7 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.logging.Level;
@@ -76,7 +77,12 @@ public class JenkinsPipelineJobListener extends ItemListener {
     }
 
     private void init() {
-        namespaces = AlaudaUtils.getNamespaceOrUseDefault(jenkinsService, AlaudaUtils.getAlaudaClient());
+        AlaudaDevOpsClient client = AlaudaUtils.getAlaudaClient();
+        if(client == null) {
+            logger.severe("Can't get AlaudaDevOpsClient when init JenkinsPipelineJobListener.");
+            return;
+        }
+        namespaces = AlaudaUtils.getNamespaceOrUseDefault(jenkinsService, client);
     }
 
     @Override
@@ -124,8 +130,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
             WorkflowJob job = (WorkflowJob) item;
             PipelineConfigProjectProperty property = pipelineConfigProjectForJob(job);
             if (property != null) {
-
-                NamespaceName pipelineName = AlaudaUtils.pipelineConfigNameFromJenkinsJobName(property.getName(), property.getNamespace());
+                NamespaceName pipelineName = AlaudaUtils.pipelineConfigNameFromJenkinsJobName(
+                        property.getName(), property.getNamespace());
                 final String namespace = pipelineName.getNamespace();
                 final String pipelineConfigName = pipelineName.getName();
 
@@ -150,7 +156,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
                         PipelineConfigToJobMap.removeJobWithPipelineConfig(pipelineConfig);
                     }
                 } else {
-                    logger.info(() -> "No pipeline config for  " + namespace + "/" + pipelineConfigName);
+                    logger.info(() -> "No pipeline config for " + namespace + "/" + pipelineConfigName);
                 }
             }
         }
@@ -192,7 +198,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
         //we just take care of our style's jobs
         if (canUpdate(job, property)) {
-            logger.info(() -> "Upsert WorkflowJob " + job.getName() + " to PipelineConfig: " + property.getNamespace() + "/" + property.getName() + " in Alauda Kubernetes");
+            logger.info(() -> "Upsert WorkflowJob " + job.getName() + " to PipelineConfig: "
+                    + property.getNamespace() + "/" + property.getName() + " in Alauda Kubernetes");
 
             upsertPipelineConfigForJob(job, property);
         }
@@ -255,13 +262,26 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     private void upsertPipelineConfigForJob(WorkflowJob job, PipelineConfigProjectProperty pipelineConfigProjectProperty) {
         boolean create = false;
+        final AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         final String namespace = pipelineConfigProjectProperty.getNamespace();
         final String jobName = pipelineConfigProjectProperty.getName();
+        if(client == null) {
+            logger.warning("Can't get kubernetes client in method upsertPipelineConfigForJob.");
+            return;
+        }
 
-        PipelineConfigResource<PipelineConfig, DoneablePipelineConfig, Void, Pipeline> pipelineConfigResource = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(namespace).withName(jobName);
+        PipelineConfigResource<PipelineConfig, DoneablePipelineConfig, Void, Pipeline> pipelineConfigResource =
+                client.pipelineConfigs().inNamespace(namespace).withName(jobName);
 
         PipelineConfig jobPipelineConfig = pipelineConfigResource.get();
         if (jobPipelineConfig == null) {
+            Namespace targetNS = client.namespaces().withName(namespace).get();
+            String msg = String.format("There's not namespace with name: %s. Can't create PipelineConfig.", namespace);
+            if(targetNS == null) {
+                logger.severe(msg);
+                return;
+            }
+
             logger.info("Can't find PipelineConfig, will create. namespace:" + namespace + "; name: " + jobName);
 
             create = true;
