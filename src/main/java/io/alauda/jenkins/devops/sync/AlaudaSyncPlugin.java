@@ -35,11 +35,15 @@ public class AlaudaSyncPlugin extends Plugin {
                     if(result != null && result) {
                         break;
                     }
-
-                    Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 } catch (ExecutionException e) {
+                    e.printStackTrace();
+                }
+
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }

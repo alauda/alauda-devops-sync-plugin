@@ -62,8 +62,9 @@ public class PipelineConfigDepCheck implements Callable<Boolean> {
             return true;
         }
 
-        client = AlaudaUtils.getAlaudaClient();
+        client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
+            AlaudaUtils.initializeAlaudaDevOpsClient(AlaudaSyncGlobalConfiguration.get().getServer());
             LOGGER.warning("Can't get the Kubernetes client.");
             return false;
         }
