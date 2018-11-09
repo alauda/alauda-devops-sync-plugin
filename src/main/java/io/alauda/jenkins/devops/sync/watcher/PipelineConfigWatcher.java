@@ -248,51 +248,18 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
       logger.log(Level.WARNING, "Caught: " + e, e);
     }
   }
-//
-//  /**
-//   * Check whether the PipelineConfig is bound with current Jenkins.
-//   * @param pipelineConfig PipelineConfig
-//   * @return check result
-//   */
-//  private boolean isBoundPipelineConfig(PipelineConfig pipelineConfig) {
-//    String bindingName = pipelineConfig.getSpec().getJenkinsBinding().getName();
-//    String namespace = pipelineConfig.getMetadata().getNamespace();
-//
-//    JenkinsBinding jenkinsBinding = AlaudaUtils.getAuthenticatedAlaudaClient().jenkinsBindings()
-//      .inNamespace(namespace).withName(bindingName).get();
-//    if(jenkinsBinding != null) {
-//      String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
-//      String pluginJenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
-//
-//      if(!jenkinsName.equals(pluginJenkinsService)) {
-//        logger.info("PipelineConfig is in Jenkins " + jenkinsName + ", but current Jenkins is " + pluginJenkinsService);
-//        return false;
-//      }
-//    } else {
-//      logger.warning("Can't found the JenkinsBinding by namespace : " + namespace + "; name : " + bindingName);
-//      return false;
-//    }
-//
-//    return true;
-//  }
 
-  public <T> void eventReceived(Watcher.Action action, T resource) {
-    PipelineConfig pc = (PipelineConfig)resource;
-    eventReceived(action, pc);
-  }
+    public <T> void eventReceived(Watcher.Action action, T resource) {
+        PipelineConfig pc = (PipelineConfig) resource;
+        eventReceived(action, pc);
+    }
 
-  private void updateJob(WorkflowJob job, InputStream jobStream, String jobName, PipelineConfig pipelineConfig/*, String existingPipelineRunPolicy*/, PipelineConfigProjectProperty pipelineConfigProjectProperty) throws IOException {
-    Source source = new StreamSource(jobStream);
-    job.updateByXml(source);
-    job.save();
-    logger.info("Updated job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
-
-    // TODO don't know why here need to re-check
-//    if (existingPipelineRunPolicy != null && !existingPipelineRunPolicy.equals(pipelineConfigProjectProperty.getPipelineRunPolicy())) {
-//      // TODO: Change to schedule pipeline
-//       JenkinsUtils.maybeScheduleNext(job);
-//    }
-  }
+    private void updateJob(WorkflowJob job, InputStream jobStream, String jobName, PipelineConfig pipelineConfig/*, String existingPipelineRunPolicy*/, PipelineConfigProjectProperty pipelineConfigProjectProperty) throws IOException {
+        Source source = new StreamSource(jobStream);
+        job.updateByXml(source);
+        job.save();
+        logger.info("Updated job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
+    }
 
   /**
    * Update or create PipelineConfig
@@ -450,7 +417,8 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
     private void updatePipelineConfigPhase(final PipelineConfig pipelineConfig) {
         PipelineConfigStatusBuilder statusBuilder = new PipelineConfigStatusBuilder();
 
-        List<Condition> conditions = pipelineConfig.getStatus().getConditions();
+        PipelineConfigStatus status = pipelineConfig.getStatus();
+        List<Condition> conditions = status.getConditions();
         if(conditions.size() > 0) {
             conditions.forEach(condition -> {
                 statusBuilder.addNewConditionLike(condition).endCondition();
