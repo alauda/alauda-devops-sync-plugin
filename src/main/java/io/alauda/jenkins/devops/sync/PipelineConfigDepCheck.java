@@ -51,8 +51,7 @@ public class PipelineConfigDepCheck implements Callable<Boolean> {
     @Override
     public Boolean call() {
         Jenkins j = Jenkins.getInstance();
-        InitMilestone initLevel = j.getInitLevel();
-        if (initLevel != InitMilestone.COMPLETED) {
+        if (j == null || j.getInitLevel() != InitMilestone.COMPLETED) {
             return false;
         }
 
