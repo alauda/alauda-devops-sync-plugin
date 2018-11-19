@@ -321,7 +321,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
             AlaudaUtils.addAnnotation(jobPipelineConfig, Annotations.JENKINS_JOB_PATH, JenkinsUtils.getFullJobName(job));
 
             try {
-                PipelineConfig pc = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(jobPipelineConfig.getMetadata().getNamespace()).create(jobPipelineConfig);
+                PipelineConfig pc = client.pipelineConfigs().inNamespace(jobPipelineConfig.getMetadata().getNamespace()).
+                        create(jobPipelineConfig);
                 String uid = pc.getMetadata().getUid();
                 pipelineConfigProjectProperty.setUid(uid);
             } catch (Exception e) {
@@ -331,8 +332,12 @@ public class JenkinsPipelineJobListener extends ItemListener {
             try {
                 PipelineConfigSpec spec = jobPipelineConfig.getSpec();
 
-                AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().
-                        inNamespace(namespace).withName(jobName).edit().editOrNewSpec().withTriggers(spec.getTriggers()).withParameters(spec.getParameters()).withSource(spec.getSource()).withStrategy(spec.getStrategy()).endSpec().withNewStatus().withPhase(PipelineConfigPhase.READY).endStatus().done();
+                client.pipelineConfigs().
+                        inNamespace(namespace).withName(jobName).edit().editOrNewSpec()
+                        .withTriggers(spec.getTriggers())
+                        .withParameters(spec.getParameters()).
+                        withSource(spec.getSource()).withStrategy(spec.getStrategy()).endSpec().
+                        done();
                 logger.info("PipelineConfig update success, " + jobName);
             } catch (Exception e) {
                 logger.log(Level.WARNING, "Failed to update PipelineConfig: " + NamespaceName.create(jobPipelineConfig) + ". " + e, e);
