@@ -2,6 +2,7 @@ package io.alauda.jenkins.devops.sync;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import hudson.init.InitMilestone;
+import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
@@ -12,6 +13,8 @@ import io.alauda.kubernetes.api.model.Condition;
 import io.alauda.kubernetes.api.model.Namespace;
 import io.alauda.kubernetes.api.model.PipelineConfigList;
 import jenkins.model.Jenkins;
+import org.acegisecurity.context.SecurityContext;
+import org.acegisecurity.context.SecurityContextHolder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,27 +58,32 @@ public class PipelineConfigDepCheck implements Callable<Boolean> {
             return false;
         }
 
-        List<Folder> folders = j.getItems(Folder.class);
-        if(folders == null || folders.size() == 0) {
-            LOGGER.warning("Found zero folder in Jenkins.");
-            return true;
-        }
-
-        client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            AlaudaUtils.initializeAlaudaDevOpsClient(AlaudaSyncGlobalConfiguration.get().getServer());
-            LOGGER.warning("Can't get the Kubernetes client.");
-            return false;
-        }
-
-        folders.stream().filter(folder -> folder.getItems().size() > 0).forEach(folder -> {
-            String ns = folder.getName();
-
-            Namespace namespace = client.namespaces().withName(ns).get();
-            if(namespace != null) {
-                handlePipelineConfig(ns);
+        final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
+        try {
+            List<Folder> folders = j.getItems(Folder.class);
+            if(folders == null || folders.size() == 0) {
+                LOGGER.warning("Found zero folder in Jenkins.");
+                return true;
             }
-        });
+
+            client = AlaudaUtils.getAuthenticatedAlaudaClient();
+            if(client == null) {
+                AlaudaUtils.initializeAlaudaDevOpsClient(AlaudaSyncGlobalConfiguration.get().getServer());
+                LOGGER.warning("Can't get the Kubernetes client.");
+                return false;
+            }
+
+            folders.stream().filter(folder -> folder.getItems().size() > 0).forEach(folder -> {
+                String ns = folder.getName();
+
+                Namespace namespace = client.namespaces().withName(ns).get();
+                if(namespace != null) {
+                    handlePipelineConfig(ns);
+                }
+            });
+        } finally {
+            SecurityContextHolder.setContext(previousContext);
+        }
 
         return true;
     }
