@@ -142,7 +142,6 @@ public class CacheWorker extends AsyncPeriodicWork {
 
     @Override
     public long getRecurrencePeriod() {
-        // TODO need to change this
-        return TimeUnit.MINUTES.toMillis(1);
+        return TimeUnit.MINUTES.toMillis(10);
     }
 }
