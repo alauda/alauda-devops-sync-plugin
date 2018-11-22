@@ -1,11 +1,13 @@
 package io.alauda.jenkins.devops.sync.util;
 
+import com.cloudbees.hudson.plugins.folder.Folder;
 import com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey;
 import com.cloudbees.plugins.credentials.*;
 import com.cloudbees.plugins.credentials.domains.Domain;
 import com.cloudbees.plugins.credentials.domains.DomainRequirement;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
 import hudson.model.Fingerprint;
+import hudson.model.TopLevelItem;
 import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
@@ -23,6 +25,7 @@ import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -117,6 +120,9 @@ public abstract class CredentialsUtils {
             final String name = metadata.getName();
 
             credID = upsertCredential(sourceSecret, namespace, name);
+            if(credID == null) {
+                return null;
+            }
 
             PipelineConfigSecretToCredentialsMap.linkPCSecretToCredential(NamespaceName.create(pipelineConfig).toString(), credID);
         } else {
@@ -179,24 +185,26 @@ public abstract class CredentialsUtils {
                 throw new InvalidSecretException(secret.getKind());
             }
 
-            Credentials existingCredentials = lookupCredentials(id);
+            Credentials existingCredentials = lookupCredentials(namespace, id);
             final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
             try {
-                CredentialsStore s = CredentialsProvider
-                        .lookupStores(Jenkins.getInstance()).iterator()
-                        .next();
+                CredentialsStore store = getStore(namespace);
+                if(store == null) {
+                    return null;
+                }
+
                 if (existingCredentials != null) {
-                    s.updateCredentials(Domain.global(), existingCredentials, credentials);
+                    store.updateCredentials(Domain.global(), existingCredentials, credentials);
                     logger.info("Updated credential " + id + " from Secret "
                             + NamespaceName.create(secret) + " with revision: "
                             + secret.getMetadata().getResourceVersion());
                 } else {
-                    s.addCredentials(Domain.global(), credentials);
+                    store.addCredentials(Domain.global(), credentials);
                     logger.info("Created credential " + id + " from Secret "
                             + NamespaceName.create(secret) + " with revision: "
                             + secret.getMetadata().getResourceVersion());
                 }
-                s.save();
+                store.save();
             } finally {
                 SecurityContextHolder.setContext(previousContext);
             }
@@ -207,12 +215,11 @@ public abstract class CredentialsUtils {
     
     private static void deleteCredential(String id, NamespaceName name,
             String resourceRevision) throws IOException {
-        Credentials existingCred = lookupCredentials(id);
+        Credentials existingCred = lookupCredentials(name.getNamespace(), id);
         if (existingCred != null) {
             final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
             try {
-                Fingerprint fp = CredentialsProvider
-                        .getFingerprintOf(existingCred);
+                Fingerprint fp = CredentialsProvider.getFingerprintOf(existingCred);
                 if (fp != null && fp.getJobs().size() > 0) {
                     // per messages in credentials console, it is not a given,
                     // but
@@ -227,13 +234,15 @@ public abstract class CredentialsUtils {
                     logger.info("About to delete credential " + id
                             + "which is referenced by jobs: " + sb.toString());
                 }
-                CredentialsStore s = CredentialsProvider
-                        .lookupStores(Jenkins.getInstance()).iterator()
-                        .next();
-                s.removeCredentials(Domain.global(), existingCred);
+                CredentialsStore store = getStore(name.getNamespace());
+                if(store == null) {
+                    return;
+                }
+
+                store.removeCredentials(Domain.global(), existingCred);
                 logger.info("Deleted credential " + id + " from Secret " + name
                         + " with revision: " + resourceRevision);
-                s.save();
+                store.save();
             } finally {
                 SecurityContextHolder.setContext(previousContext);
             }
@@ -281,12 +290,57 @@ public abstract class CredentialsUtils {
         }
     }
 
-    public static Credentials lookupCredentials(String id) {
-        return CredentialsMatchers.firstOrNull(CredentialsProvider
-                .lookupCredentials(Credentials.class,
-                        Jenkins.getInstance(), ACL.SYSTEM,
-                        Collections.emptyList()),
-                CredentialsMatchers.withId(id));
+    public static Credentials lookupCredentials(String namespace, String id) {
+        final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
+        try {
+            return findCredentials(namespace, id);
+        } finally {
+            SecurityContextHolder.setContext(previousContext);
+        }
+    }
+
+    public static Credentials findCredentials(String namespace, String id) {
+        Jenkins jenkins = Jenkins.getInstance();
+        List<Credentials> credentials;
+        if(isGlobal(namespace)) {
+            credentials = CredentialsProvider.lookupCredentials(Credentials.class,
+                    jenkins, ACL.SYSTEM,
+                    Collections.emptyList());
+        } else{
+            credentials = CredentialsProvider.lookupCredentials(Credentials.class,
+                    jenkins.getItem(namespace), ACL.SYSTEM,
+                    Collections.emptyList());
+        }
+
+        return CredentialsMatchers.firstOrNull(credentials, CredentialsMatchers.withId(id));
+    }
+
+    public static CredentialsStore getStore(String namespace) {
+        Jenkins jenkins = Jenkins.getInstance();
+
+        if(isGlobal(namespace)) {
+            return CredentialsProvider
+                    .lookupStores(jenkins).iterator()
+                    .next();
+        } else {
+            TopLevelItem folder = jenkins.getItem(namespace);
+            if(folder == null) {
+                logger.warning(String.format("Can't find folder[%s], can't create credentials.", namespace));
+                return null;
+            }
+
+            return CredentialsProvider
+                    .lookupStores(folder).iterator()
+                    .next();
+        }
+    }
+
+    public static boolean isGlobal(String namespace) {
+        if(namespace == null) {
+            return true;
+        }
+
+        return (namespace.equals(AlaudaSyncGlobalConfiguration.get().getSharedNamespace()));
     }
 
     private static String secretName(String namespace, String name) {

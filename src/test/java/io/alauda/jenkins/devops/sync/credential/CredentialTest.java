@@ -33,7 +33,7 @@ public class CredentialTest {
         Credentials token = CredentialsUtils.newTokenCredentials(secretName, "");
         store.addCredentials(Domain.global(), token);
 
-        assertNotNull(CredentialsUtils.lookupCredentials(secretName));
+        assertNotNull(CredentialsUtils.lookupCredentials(null, secretName));
 
         // create by web ui
         j.jenkins.setSecurityRealm(SecurityRealm.NO_AUTHENTICATION);

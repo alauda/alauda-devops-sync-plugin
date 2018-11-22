@@ -97,45 +97,20 @@ pipeline {
 							}
 
 							sh """
-                        mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
-						# tests needs refactoring, still using the same host address for multiple jenkins instances
-						# mvn clean install -U findbugs:findbugs
+                                mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
+                                # tests needs refactoring, still using the same host address for multiple jenkins instances
+                                # mvn clean install -U findbugs:findbugs
 
-                        if [ -d .tmp ]; then
-                          rm -rf .tmp
-                        fi;
+                                if [ -d .tmp ]; then
+                                  rm -rf .tmp
+                                fi;
 
-                        mkdir .tmp
-                        cp artifacts/images/* .tmp
-                        cp target/*.hpi .tmp
-                    """
-
-							withDockerContainer(JENKINS_IMAGE) {
-								sh '/usr/local/bin/install-plugins.sh alauda-devops-sync:latest'
-								sh "cp /usr/share/jenkins/ref/plugins/* .tmp"
-								sh "ls /usr/share/jenkins/ref/plugins/"
-							}
-							sh "ls -la .tmp"
-
-							def imageRepo = 'index.alauda.cn/alaudak8s/jenkins-plugin-injector'
-
-							// currently is building code inside the container
-							IMAGE = deploy.dockerBuild(
-								".tmp/Dockerfile", //Dockerfile
-								".tmp", // build context
-								imageRepo,
-								"${RELEASE_BUILD}", // tag
-								"alaudak8s", // credentials for pushing
-								)
-							// start and push
-							// IMAGE.start().push().push(GIT_COMMIT)
-							// TODO: change to commit when we have a
-							// more final solution
-							IMAGE.start().push().push(IMAGE_TAG)
+                                mkdir .tmp
+                                cp artifacts/images/* .tmp
+                                cp target/*.hpi .tmp
+                            """
 
                             archiveArtifacts 'target/*.hpi'
-
-							addShortText id: 'AlaudaDockerImage', text: RELEASE_BUILD, link: 'http://' + imageRepo
 						}
 					}
 				}
