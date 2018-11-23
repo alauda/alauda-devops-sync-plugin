@@ -1,6 +1,6 @@
 package io.alauda.jenkins.devops.sync.util;
 
-import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import jenkins.model.Jenkins;
@@ -27,12 +27,12 @@ public class PipelineConfigToJobMap {
         }
 
         for (WorkflowJob job : jobs) {
-            PipelineConfigProjectProperty pipelineConfigProjectProperty = job.getProperty(PipelineConfigProjectProperty.class);
-            if (pipelineConfigProjectProperty == null) {
+            WorkflowJobProperty workflowJobProperty = job.getProperty(WorkflowJobProperty.class);
+            if (workflowJobProperty == null) {
                 continue;
             }
 
-            String pcUid = pipelineConfigProjectProperty.getUid();
+            String pcUid = workflowJobProperty.getUid();
             if (isNotBlank(pcUid)) {
                 pipelineConfigToJobMap.put(pcUid, job);
             }

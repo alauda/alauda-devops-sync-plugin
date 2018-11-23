@@ -102,7 +102,7 @@ public class CacheWorker extends AsyncPeriodicWork {
                 notExists = true;
             } else {
                 if(item instanceof WorkflowJob) {
-                    PipelineConfigProjectProperty pro = ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class);
+                    WorkflowJobProperty pro = ((WorkflowJob) item).getProperty(WorkflowJobProperty.class);
                     if(pro != null) {
                         if(!pro.getUid().equals(meta.getUid())) {
                             LOGGER.severe(String.format("Found stale workflow job[%s], going to remove it.", name));

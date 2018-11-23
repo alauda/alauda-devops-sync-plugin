@@ -59,12 +59,12 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                     return false;
                 }
 
-                PipelineConfigProjectProperty pro =
-                        ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class);
+                WorkflowJobProperty pro =
+                        ((WorkflowJob) item).getProperty(WorkflowJobProperty.class);
                 return pro != null && pro.isValid();
             }).forEach(item ->{
-                PipelineConfigProjectProperty pro =
-                        ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class);
+                WorkflowJobProperty pro =
+                        ((WorkflowJob) item).getProperty(WorkflowJobProperty.class);
 
                 String ns = pro.getNamespace();
                 String name = pro.getName();

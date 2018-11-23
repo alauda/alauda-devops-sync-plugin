@@ -21,7 +21,7 @@ import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.PipelineNumComparator;
-import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
@@ -222,8 +222,8 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
                 }
                 continue;
             }
-            PipelineConfigProjectProperty bcp = job
-                    .getProperty(PipelineConfigProjectProperty.class);
+            WorkflowJobProperty bcp = job
+                    .getProperty(WorkflowJobProperty.class);
             if (bcp == null) {
                 List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
                 for (Pipeline pipe : pipelines) {
@@ -398,7 +398,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
 
     for (WorkflowJob job : jobs) {
-      PipelineConfigProjectProperty pcpp = job.getProperty(PipelineConfigProjectProperty.class);
+      WorkflowJobProperty pcpp = job.getProperty(WorkflowJobProperty.class);
       if (pcpp == null) {
         // If we encounter a job without a BuildConfig, skip the reconciliation logic
         continue;

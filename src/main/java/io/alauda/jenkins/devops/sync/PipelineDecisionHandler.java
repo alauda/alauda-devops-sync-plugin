@@ -30,8 +30,6 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
 import javax.annotation.Nonnull;
-import javax.validation.constraints.NotNull;
-import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,16 +50,16 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             // in case of triggered by users
             WorkflowJob workflowJob = (WorkflowJob) p;
             String taskName = p.getName();
-            PipelineConfigProjectProperty pipelineConfigProjectProperty = workflowJob.getProperty(PipelineConfigProjectProperty.class);
-            if (pipelineConfigProjectProperty == null || !hasValidProperty(workflowJob)) {
+            WorkflowJobProperty workflowJobProperty = workflowJob.getProperty(WorkflowJobProperty.class);
+            if (workflowJobProperty == null || !hasValidProperty(workflowJob)) {
                 return true;
             }
 
-            final String namespace = pipelineConfigProjectProperty.getNamespace();
-            final String name = pipelineConfigProjectProperty.getName();
+            final String namespace = workflowJobProperty.getNamespace();
+            final String name = workflowJobProperty.getName();
             final String jobURL = getJobUrl(workflowJob, namespace);
 
-            LOGGER.info(() -> "Got this namespace " + namespace + " from this pipelineConfigProjectProperty: " + name);
+            LOGGER.info(() -> "Got this namespace " + namespace + " from this workflowJobProperty: " + name);
             // TODO: Add trigger API for pipelineconfig (like above)
 
             PipelineConfig config = null;
@@ -132,7 +130,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
     }
 
     private boolean hasValidProperty(WorkflowJob workflowJob) {
-        PipelineConfigProjectProperty property = workflowJob.getProperty(PipelineConfigProjectProperty.class);
+        WorkflowJobProperty property = workflowJob.getProperty(WorkflowJobProperty.class);
         if (property == null) {
             return false;
         }

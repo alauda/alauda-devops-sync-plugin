@@ -31,7 +31,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  * - Namespace - Pipeline Config name - Pipeline Config uid - Pipeline Config resource
  * version - Pipeline Config run policy
  */
-public class PipelineConfigProjectProperty extends JobProperty<Job<?, ?>> {
+public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements AlaudaJobProperty {
 
     // The build config uid this job relates to.
     private String uid;
@@ -40,26 +40,17 @@ public class PipelineConfigProjectProperty extends JobProperty<Job<?, ?>> {
     private String resourceVersion;
 
     @DataBoundConstructor
-    public PipelineConfigProjectProperty(String namespace, String name,
-                                         String uid, String resourceVersion) {
+    public WorkflowJobProperty(String namespace, String name,
+                               String uid, String resourceVersion) {
         this.namespace = namespace;
         this.name = name;
         this.uid = uid;
         this.resourceVersion = resourceVersion;
     }
 
-    public PipelineConfigProjectProperty(PipelineConfig pc) {
+    public WorkflowJobProperty(PipelineConfig pc) {
         this(pc.getMetadata().getNamespace(), pc.getMetadata().getName(), pc
                 .getMetadata().getUid(), pc.getMetadata().getResourceVersion());
-    }
-
-    public PipelineConfig getPipelineConfig() {
-        PipelineConfig pc = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
-                .inNamespace(namespace).withName(name).get();
-        if (pc != null && pc.getMetadata().getUid().equals(uid)) {
-            return pc;
-        }
-        return null;
     }
 
     public String getUid() {
@@ -99,9 +90,5 @@ public class PipelineConfigProjectProperty extends JobProperty<Job<?, ?>> {
         public boolean isApplicable(Class<? extends Job> jobType) {
             return WorkflowJob.class.isAssignableFrom(jobType);
         }
-    }
-
-    public boolean isValid() {
-        return StringUtils.isNotBlank(namespace) && StringUtils.isNotBlank(name) && StringUtils.isNotBlank(uid);
     }
 }

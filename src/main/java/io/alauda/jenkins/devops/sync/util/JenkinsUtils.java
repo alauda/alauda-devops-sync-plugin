@@ -31,7 +31,7 @@ import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.PipelineComparator;
-import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
@@ -360,7 +360,7 @@ public abstract class JenkinsUtils {
             return false;
         }
 
-        PipelineConfigProjectProperty pcProp = job.getProperty(PipelineConfigProjectProperty.class);
+        WorkflowJobProperty pcProp = job.getProperty(WorkflowJobProperty.class);
         if (pcProp == null) {
             LOGGER.warning(() -> "aborting trigger of pipeline " + pipeline
                     + "because of missing pc project property");
@@ -622,7 +622,7 @@ public abstract class JenkinsUtils {
 	}
 
     public static void maybeScheduleNext(WorkflowJob job) {
-        PipelineConfigProjectProperty pcp = job.getProperty(PipelineConfigProjectProperty.class);
+        WorkflowJobProperty pcp = job.getProperty(WorkflowJobProperty.class);
         if (pcp == null) {
             return;
         }
