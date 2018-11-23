@@ -20,6 +20,7 @@ import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -48,9 +49,11 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
         this.resourceVersion = resourceVersion;
     }
 
-    public WorkflowJobProperty(PipelineConfig pc) {
-        this(pc.getMetadata().getNamespace(), pc.getMetadata().getName(), pc
-                .getMetadata().getUid(), pc.getMetadata().getResourceVersion());
+    public static WorkflowJobProperty getInstance(PipelineConfig pc) {
+        ObjectMeta meta = pc.getMetadata();
+
+        return new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
+                meta.getUid(), meta.getResourceVersion());
     }
 
     public String getUid() {

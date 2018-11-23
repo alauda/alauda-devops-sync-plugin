@@ -310,7 +310,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                         if (workflowJobProperty != null) {
                             long updatedBCResourceVersion = AlaudaUtils.parseResourceVersion(pipelineConfig);
                             long oldBCResourceVersion = parseResourceVersion(workflowJobProperty.getResourceVersion());
-                            WorkflowJobProperty newProperty = new WorkflowJobProperty(pipelineConfig);
+                            WorkflowJobProperty newProperty = WorkflowJobProperty.getInstance(pipelineConfig);
                             if (updatedBCResourceVersion <= oldBCResourceVersion
                                     && newProperty.getUid().equals(workflowJobProperty.getUid())
                                     && newProperty.getNamespace().equals(workflowJobProperty.getNamespace())
@@ -323,7 +323,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                             workflowJobProperty.setName(newProperty.getName());
                             workflowJobProperty.setResourceVersion(newProperty.getResourceVersion());
                         } else {
-                            job.addProperty(new WorkflowJobProperty(pipelineConfig));
+                            job.addProperty(WorkflowJobProperty.getInstance(pipelineConfig));
                         }
 
                         job.setDisplayName(AlaudaUtils.jenkinsJobDisplayName(pipelineConfig));
