@@ -82,4 +82,9 @@ public final class Constants {
     public static final String DEFAULT_JENKINS_FILEPATH = "Jenkinsfile";
 
     public static final String ANNOTATION_BADGE = "alauda.io/jenkins-badges";
+
+    public static final String PIPELINECONFIG_KIND_MULTI_BRANCH = "multi-branch";
+    public static final String PIPELINECONFIG_KIND = "pipeline.kind";
+    public static final String MULTI_BRANCH_CATEGORY = "multiBranchCategory";
+    public static final String MULTI_BRANCH_NAME = "multiBranchName";
 }

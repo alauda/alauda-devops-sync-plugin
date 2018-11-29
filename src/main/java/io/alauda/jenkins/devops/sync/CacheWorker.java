@@ -22,6 +22,7 @@ import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 import java.io.IOException;
 import java.util.List;
@@ -101,27 +102,31 @@ public class CacheWorker extends AsyncPeriodicWork {
             if(item == null) {
                 notExists = true;
             } else {
+                AlaudaJobProperty property = null;
                 if(item instanceof WorkflowJob) {
-                    WorkflowJobProperty pro = ((WorkflowJob) item).getProperty(WorkflowJobProperty.class);
-                    if(pro != null) {
-                        if(!pro.getUid().equals(meta.getUid())) {
-                            LOGGER.severe(String.format("Found stale workflow job[%s], going to remove it.", name));
-                            notExists = true;
-                            try {
-                                item.delete();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        } else {
-                            needModfiy = !pro.getResourceVersion().equals(meta.getResourceVersion());
-                        }
-                    } else {
-                        errMsg = "Exists workflow job that created by manual";
-                    }
+                    property = ((WorkflowJob) item).getProperty(WorkflowJobProperty.class);
+                } if(item instanceof WorkflowMultiBranchProject) {
+                    property = ((WorkflowMultiBranchProject) item).getProperties().get(MultiBranchProperty.class);
                 } else {
                     errMsg = "Exists other type job: " + item.getClass().getName();
+                }
+
+                if(property != null) {
+                    if(!property.getUid().equals(meta.getUid())) {
+                        LOGGER.severe(String.format("Found stale workflow job[%s], going to remove it.", name));
+                        notExists = true;
+                        try {
+                            item.delete();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+                        needModfiy = !property.getResourceVersion().equals(meta.getResourceVersion());
+                    }
+                } else {
+                    errMsg = "Exists workflow job that created by manual";
                 }
             }
         }

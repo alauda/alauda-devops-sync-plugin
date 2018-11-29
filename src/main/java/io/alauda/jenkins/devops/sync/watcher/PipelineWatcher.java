@@ -61,8 +61,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
             return;
         }
 
-        PipelineList list = client
-                .pipelines().inAnyNamespace().list();
+        PipelineList list = client.pipelines().inAnyNamespace().list();
         String ver = "0";
         if(list != null) {
             ver = list.getMetadata().getResourceVersion();
@@ -364,15 +363,13 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     private static synchronized void deleteEventToJenkinsJobRun(
             final Pipeline pipeline) throws Exception {
       logger.info("Pipeline delete: "+pipeline.getMetadata().getName());
-        List<OwnerReference> ownerRefs = pipeline.getMetadata()
-                .getOwnerReferences();
-        String pcUid = null;
+        List<OwnerReference> ownerRefs = pipeline.getMetadata().getOwnerReferences();
         for (OwnerReference ref : ownerRefs) {
             if ("PipelineConfig".equals(ref.getKind()) && ref.getUid() != null
                     && ref.getUid().length() > 0) {
                 // employ intern to facilitate sync'ing on the same actual
                 // object
-                pcUid = ref.getUid().intern();
+                String pcUid = ref.getUid().intern();
                 synchronized (pcUid) {
                     // if entire job already deleted via bc delete, just return
                     if (PipelineConfigToJobMap.getJobFromPipelineConfigUid(pcUid) == null)

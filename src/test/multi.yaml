@@ -1,0 +1,34 @@
+apiVersion: devops.alauda.io/v1alpha1
+kind: PipelineConfig
+metadata:
+  labels:
+    pipeline.kind: "multi-branch"
+  name: multi
+  namespace: zxj
+  ownerReferences:
+  - apiVersion: devops.alauda.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: JenkinsBinding
+    name: jenkins
+    uid: 4c03048f-f12c-11e8-aa7d-0a580ade00ac
+spec:
+  jenkinsBinding:
+    name: jenkins
+  runPolicy: Serial
+  source:
+    git:
+      uri: "https://github.com/linuxsuren/demo"
+      ref: "master"
+#    codeRepository:
+#      ref: "master"
+#      name: github-surenpi-demo
+  strategy:
+    jenkins:
+      jenkinsfilePath: Jenkinsfile
+      multiBranch:
+        orphaned:
+          max: 18
+          days: 2
+status:
+  phase: "Syncing"

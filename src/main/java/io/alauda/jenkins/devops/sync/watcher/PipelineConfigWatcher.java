@@ -15,25 +15,18 @@
  */
 package io.alauda.jenkins.devops.sync.watcher;
 
-import antlr.ANTLRException;
-import com.cloudbees.hudson.plugins.folder.Folder;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import hudson.BulkChange;
 import hudson.Extension;
-import hudson.model.ItemGroup;
-import hudson.model.Job;
-import hudson.model.ParameterDefinition;
+import hudson.ExtensionList;
+import hudson.model.TopLevelItem;
 import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
-import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
-import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
+import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
+import io.alauda.jenkins.devops.sync.PipelineConfigConvert;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
-import io.alauda.jenkins.devops.sync.constants.PipelineRunPolicy;
 import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Watcher;
@@ -41,24 +34,16 @@ import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.tools.ant.filters.StringInputStream;
-import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
-import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
 import javax.annotation.Nonnull;
-import javax.xml.transform.Source;
-import javax.xml.transform.stream.StreamSource;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.parseResourceVersion;
 import static java.util.logging.Level.SEVERE;
 
 /**
@@ -156,17 +141,17 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
 
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
     public synchronized void eventReceived(Watcher.Action action, PipelineConfig pipelineConfig) {
-        String pipelineName = pipelineConfig.getMetadata().getName();
+        ObjectMeta meta = pipelineConfig.getMetadata();
+        String pipelineName = meta.getName();
         logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
 
         boolean bindingToCurrentJenkins = false;
         if (action == Watcher.Action.DELETED) {
-            WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
-
-            if (job != null) {
-                WorkflowJobProperty pro = job.getProperty(WorkflowJobProperty.class);
+            TopLevelItem item = PipelineConfigToJobMap.getItemByPC(pipelineConfig);
+            if (item != null) {
+                AlaudaJobProperty pro = PipelineConfigToJobMap.getProperty(item);
                 if (pro != null) {
-                    bindingToCurrentJenkins = pipelineConfig.getMetadata().getUid().equals(pro.getUid());
+                    bindingToCurrentJenkins = meta.getUid().equals(pro.getUid());
                 }
             }
         } else {
@@ -194,10 +179,10 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                     modifyEventToJenkinsJob(pipelineConfig);
                     break;
                 case ERROR:
-                    logger.warning("watch for PipelineConfig " + pipelineConfig.getMetadata().getName() + " received error event ");
+                    logger.warning("watch for PipelineConfig " + meta.getName() + " received error event ");
                     break;
                 default:
-                    logger.warning("watch for PipelineConfig " + pipelineConfig.getMetadata().getName() + " received unknown event " + action);
+                    logger.warning("watch for PipelineConfig " + meta.getName() + " received unknown event " + action);
                     break;
             }
             // we employ impersonation here to insure we have "full access";
@@ -232,9 +217,9 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
 //                }
                                 // TODO: Change to PipelineList and filter
                                 PipelineList pipelineList = JenkinsUtils.filterNew(AlaudaUtils.getAuthenticatedAlaudaClient().pipelines().inNamespace(pipelineConfig.getMetadata().getNamespace())
-                                        .withLabel(Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pipelineConfig.getMetadata().getName()).list());
+                                        .withLabel(Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, meta.getName()).list());
                                 if (pipelineList.getItems().size() > 0) {
-                                    logger.info("pipeline backup query for " + pipelineConfig.getMetadata().getName() + " found new pipelines");
+                                    logger.info("pipeline backup query for " + meta.getName() + " found new pipelines");
                                     PipelineWatcher.onInitialPipelines(pipelineList);
                                 }
                             }
@@ -252,13 +237,6 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
     public <T> void eventReceived(Watcher.Action action, T resource) {
         PipelineConfig pc = (PipelineConfig) resource;
         eventReceived(action, pc);
-    }
-
-    private void updateJob(WorkflowJob job, InputStream jobStream, String jobName, PipelineConfig pipelineConfig/*, String existingPipelineRunPolicy*/, WorkflowJobProperty workflowJobProperty) throws IOException {
-        Source source = new StreamSource(jobStream);
-        job.updateByXml(source);
-        job.save();
-        logger.info("Updated job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
     }
 
     /**
@@ -289,112 +267,12 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                 ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, Exception>() {
                     @Override
                     public Void call() throws Exception {
-                        String jobName = AlaudaUtils.jenkinsJobName(pipelineConfig);
-                        String jobFullName = AlaudaUtils.jenkinsJobFullName(pipelineConfig);
-                        WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
-                        Jenkins activeInstance = Jenkins.getInstance();
-                        formatJenkinsfile(pipelineConfig);
-                        ItemGroup parent = activeInstance;
-                        if (job == null) {
-                            job = (WorkflowJob) activeInstance.getItemByFullName(jobFullName);
-                        }
-                        boolean newJob = job == null;
-                        if (newJob) {
-                            parent = AlaudaUtils.getFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
-                            job = new WorkflowJob(parent, jobName);
-                        }
-
-                        BulkChange bk = new BulkChange(job);
-
-                        WorkflowJobProperty workflowJobProperty = job.getProperty(WorkflowJobProperty.class);
-                        if (workflowJobProperty != null) {
-                            long updatedBCResourceVersion = AlaudaUtils.parseResourceVersion(pipelineConfig);
-                            long oldBCResourceVersion = parseResourceVersion(workflowJobProperty.getResourceVersion());
-                            WorkflowJobProperty newProperty = WorkflowJobProperty.getInstance(pipelineConfig);
-                            if (updatedBCResourceVersion <= oldBCResourceVersion
-                                    && newProperty.getUid().equals(workflowJobProperty.getUid())
-                                    && newProperty.getNamespace().equals(workflowJobProperty.getNamespace())
-                                    && newProperty.getName().equals(workflowJobProperty.getName())) {
-                                return null;
-                            }
-
-                            workflowJobProperty.setUid(newProperty.getUid());
-                            workflowJobProperty.setNamespace(newProperty.getNamespace());
-                            workflowJobProperty.setName(newProperty.getName());
-                            workflowJobProperty.setResourceVersion(newProperty.getResourceVersion());
+                        ExtensionList<PipelineConfigConvert> convertList = Jenkins.getInstance().getExtensionList(PipelineConfigConvert.class);
+                        Optional<PipelineConfigConvert> optional = convertList.stream().filter(convert -> convert.accept(pipelineConfig)).findFirst();
+                        if(optional.isPresent()) {
+                            optional.get().convert(pipelineConfig);
                         } else {
-                            job.addProperty(WorkflowJobProperty.getInstance(pipelineConfig));
-                        }
-
-                        job.setDisplayName(AlaudaUtils.jenkinsJobDisplayName(pipelineConfig));
-
-                        FlowDefinition flowFromPipelineConfig = PipelineConfigToJobMapper.mapPipelineConfigToFlow(pipelineConfig);
-                        if (flowFromPipelineConfig == null) {
-                            updatePipelineConfigPhase(pipelineConfig);
-                            return null;
-                        }
-
-                        job.setDefinition(flowFromPipelineConfig);
-
-                        // (re)populate job param list with any parameters
-                        // from the PipelineConfig
-                        Map<String, ParameterDefinition> paramMap = JenkinsUtils.addJobParamForPipelineParameters(job, pipelineConfig.getSpec().getParameters(), true);
-
-                        job.setConcurrentBuild(!(pipelineConfig.getSpec().getRunPolicy().equals(PipelineRunPolicy.SERIAL)));
-
-                        // Setting triggers according to pipeline config
-                        List<ANTLRException> triggerExceptions = JenkinsUtils.setJobTriggers(job, pipelineConfig.getSpec().getTriggers());
-                        triggerExceptions.forEach(ex -> {
-                            Condition condition = new Condition();
-                            condition.setReason(ErrorMessages.INVALID_TRIGGER);
-                            condition.setMessage(ex.getMessage());
-                            pipelineConfig.getStatus().getConditions().add(condition);
-                        });
-
-                        InputStream jobStream = new StringInputStream(new XStream2().toXML(job));
-
-                        if (newJob) {
-                            try {
-                                if (parent instanceof Folder) {
-                                    Folder folder = (Folder) parent;
-                                    folder.createProjectFromXML(jobName, jobStream).save();
-                                } else {
-                                    activeInstance.createProjectFromXML(jobName, jobStream).save();
-                                }
-
-                                logger.info("Created job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig)
-                                        + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
-                            } catch (IllegalArgumentException e) {
-                                // jenkins might reload existing jobs on
-                                // startup between the
-                                // newJob check above and when we make
-                                // the createProjectFromXML call; if so,
-                                // retry as an update
-                                updateJob(job, jobStream, jobName, pipelineConfig, workflowJobProperty);
-                            }
-                        } else {
-                            updateJob(job, jobStream, jobName, pipelineConfig, workflowJobProperty);
-                        }
-                        bk.commit();
-                        String fullName = job.getFullName();
-                        WorkflowJob workflowJob = activeInstance.getItemByFullName(fullName, WorkflowJob.class);
-                        if (workflowJob == null && parent instanceof Folder) {
-                            // we should never need this but just in
-                            // case there's an
-                            // odd timing issue or something...
-                            Folder folder = (Folder) parent;
-                            folder.add(job, jobName);
-                            workflowJob = activeInstance.getItemByFullName(fullName, WorkflowJob.class);
-                        }
-
-                        if (workflowJob == null) {
-                            logger.warning("Could not find created job " + fullName + " for PipelineConfig: "
-                                    + AlaudaUtils.getNamespace(pipelineConfig) + "/" + AlaudaUtils.getName(pipelineConfig));
-                        } else {
-                            updatePipelineConfigPhase(pipelineConfig);
-
-                            JenkinsUtils.verifyEnvVars(paramMap, workflowJob);
-                            PipelineConfigToJobMap.putJobWithPipelineConfig(workflowJob, pipelineConfig);
+                            logger.warning("Can't handle this kind of PipelineConfig." + NamespaceName.create(pipelineConfig));
                         }
 
                         return null;
@@ -479,30 +357,28 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             upsertJob(pipelineConfig);
             return;
         }
-
-        // no longer a Jenkins build so lets delete it if it exists
-//    deleteEventToJenkinsJob(pipelineConfig);
     }
 
     // innerDeleteEventToJenkinsJob is the actual delete logic at the heart of
     // deleteEventToJenkinsJob
     // that is either in a sync block or not based on the presence of a BC uid
     private void innerDeleteEventToJenkinsJob(final PipelineConfig pipelineConfig) throws Exception {
-        final Job job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
-        if (job != null) {
+        final TopLevelItem item = PipelineConfigToJobMap.getItemByPC(pipelineConfig);
+        if (item != null) {
             // employ intern of the BC UID to facilitate sync'ing on the same
             // actual object
             synchronized (pipelineConfig.getMetadata().getUid().intern()) {
                 ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, Exception>() {
                     @Override
                     public Void call() throws Exception {
+                        final String pcId = pipelineConfig.getMetadata().getNamespace() + pipelineConfig.getMetadata().getName();
                         try {
-                            deleteInProgress(pipelineConfig.getMetadata().getNamespace() + pipelineConfig.getMetadata().getName());
-                            job.delete();
+                            deleteInProgress(pcId);
+                            item.delete();
                         } finally {
                             PipelineConfigToJobMap.removeJobWithPipelineConfig(pipelineConfig);
                             Jenkins.getInstance().rebuildDependencyGraphAsync();
-                            deleteCompleted(pipelineConfig.getMetadata().getNamespace() + pipelineConfig.getMetadata().getName());
+                            deleteCompleted(pcId);
                         }
                         return null;
                     }
@@ -512,9 +388,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                 // with secret watch)
                 CredentialsUtils.deleteSourceCredentials(pipelineConfig);
             }
-
         }
-
     }
 
     // in response to receiving an alauda delete build config event, this

@@ -24,4 +24,9 @@ public final class Annotations {
     public static final String GENERATED_BY = "jenkins.alauda.io/generated-by";
     public static final String GENERATED_BY_JENKINS = "jenkins";
     public static final String DISABLE_SYNC_CREATE = "jenkins.alauda.io/disable-sync-create";
+
+    public static final String MULTI_BRANCH_BRANCH = "alauda.io/jenkins.branch";
+    public static final String MULTI_BRANCH_STALE_BRANCH = "alauda.io/jenkins.stale.branch";
+    public static final String MULTI_BRANCH_PR = "alauda.io/jenkins.pr";
+    public static final String MULTI_BRANCH_STALE_PR = "alauda.io/jenkins.stale.pr";
 }

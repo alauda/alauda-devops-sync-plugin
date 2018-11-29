@@ -1,0 +1,56 @@
+apiVersion: devops.alauda.io/v1alpha1
+kind: Pipeline
+metadata:
+  annotations:
+    alauda.io/displayName: ""
+    alauda.io/jenkins-badges: '[]'
+    alauda.io/jenkins-blueocean-log-url: /http://devops-jenkins:8080/blue/organizations/jenkins/zxj%2Fzxj-simple/detail/zxj-simple/1/
+    alauda.io/jenkins-build-uri: null/job/zxj/job/zxj-simple/1/
+    alauda.io/jenkins-console-log-url: null/job/zxj/job/zxj-simple/1/console
+    alauda.io/jenkins-log-url: null/job/zxj/job/zxj-simple/1/consoleText
+    alauda.io/jenkins-stages-json: '{"start_stage_id":null,"stages":[]}'
+    alauda.io/jenkins-status-json: '{"_links":{"self":{"href":"null/null/job/zxj/job/zxj-simple/1/wfapi/describe"}},"id":"1","name":"#1","status":"SUCCESS","startTimeMillis":1543827688733,"endTimeMillis":1543827688824,"durationMillis":91,"queueDurationMillis":5,"pauseDurationMillis":0,"stages":[]}'
+    alauda.io/pipeline.number: "1"
+    alauda.io/pipelineConfig.name: simple
+  labels:
+    app: ""
+    pipelineConfig: multi
+    multiBranchName: master
+  name: multi-1
+  namespace: zxj
+  ownerReferences:
+  - apiVersion: devops.alauda.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: PipelineConfig
+    name: simple
+    uid: 042ce7bb-f6da-11e8-96d5-0a580ade00fe
+spec:
+  cause:
+    message: Triggered using Alauda DevOps Console
+    type: manual
+  hooks: null
+  jenkinsBinding:
+    name: jenkins
+  parameters: null
+  pipelineConfig:
+    name: multi
+  runPolicy: Serial
+  source: {}
+  strategy:
+    jenkins:
+      jenkinsfile: echo "SD"
+      jenkinsfilePath: Jenkinsfile
+      multiBranch:
+        behaviours:
+          discoverBranches: ""
+          discoverPRFromForks: ""
+          discoverPRFromOrigin: ""
+          discoverTags: false
+          filterExpression: ""
+          forksTrust: ""
+        orphaned:
+          days: 0
+          max: 0
+    template: null
+  triggers: []

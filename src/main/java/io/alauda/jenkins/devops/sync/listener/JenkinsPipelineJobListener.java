@@ -23,11 +23,12 @@ import hudson.model.ItemGroup;
 import hudson.model.listeners.ItemListener;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.dsl.PipelineConfigResource;
+import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
-import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -35,15 +36,23 @@ import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.jenkins.devops.sync.watcher.PipelineConfigWatcher;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONException;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.kohsuke.stapler.DataBoundConstructor;
 
+import javax.validation.constraints.NotNull;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_BRANCH;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 
 /**
@@ -91,7 +100,57 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
         reconfigure();
         super.onCreated(item);
-        upsertItem(item);
+
+        if(fromMultiBranch(item)){
+            BranchJobProperty pro = ((WorkflowJob) item).getProperty(BranchJobProperty.class);
+            if(pro != null) {
+                String name = pro.getBranch().getEncodedName();
+                WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
+            }
+        } else {
+            upsertItem(item);
+        }
+    }
+
+    private boolean fromMultiBranch(@NotNull Item item) {
+        return item.getParent() instanceof WorkflowMultiBranchProject;
+    }
+
+    private void addBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
+        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
+        if(pro == null) {
+            return;
+        }
+
+        String namespace = pro.getNamespace();
+        String name = pro.getName();
+
+        AlaudaUtils.getAuthenticatedAlaudaClient();
+    }
+
+    private void addBranchAnnotation(@NotNull PipelineConfig pc, String name) {
+        ObjectMeta meta = pc.getMetadata();
+        Map<String, String> annotations = meta.getAnnotations();
+        if(annotations == null) {
+            annotations = new HashMap();
+            meta.setAnnotations(annotations);
+        }
+
+        JSONArray jsonArray;
+        String branchJson = annotations.get(MULTI_BRANCH_BRANCH);
+        if(branchJson == null) {
+            jsonArray = new JSONArray();
+        } else {
+            try {
+                jsonArray = JSONArray.fromObject(branchJson);
+            } catch (JSONException e) {
+                e.printStackTrace();
+                jsonArray = new JSONArray();
+            }
+        }
+
+        jsonArray.add(name);
+        annotations.put(MULTI_BRANCH_BRANCH, jsonArray.toString());
     }
 
     @Override
@@ -232,29 +291,29 @@ public class JenkinsPipelineJobListener extends ItemListener {
             }
         }
 
-        String patternRegex = this.jobNamePattern;
-        String jobName = JenkinsUtils.getFullJobName(job);
-        if (StringUtils.isNotEmpty(jobName) && StringUtils.isNotEmpty(patternRegex) && jobName.matches(patternRegex)) {
-            String pipelineConfigName = AlaudaUtils.convertNameToValidResourceName(JenkinsUtils.getBuildConfigName(job));
-
-            // we will update the uuid when we create the BC
-            String uuid = null;
-
-            // TODO what to do for the resourceVersion?
-            String resourceVersion = null;
-            String pipelineRunPolicy = Constants.PIPELINE_RUN_POLICY_DEFAULT;
-            for (String namespace : namespaces) {
-                logger.info("Creating WorkflowJobProperty for namespace: " + namespace + " name: " + pipelineConfigName);
-                if (property != null) {
-                    property.setNamespace(namespace);
-                    property.setName(pipelineConfigName);
-                    return property;
-                } else {
-                    return new WorkflowJobProperty(namespace, pipelineConfigName, uuid, resourceVersion);
-                }
-            }
-
-        }
+//        String patternRegex = this.jobNamePattern;
+//        String jobName = JenkinsUtils.getFullJobName(job);
+//        if (StringUtils.isNotEmpty(jobName) && StringUtils.isNotEmpty(patternRegex) && jobName.matches(patternRegex)) {
+//            String pipelineConfigName = AlaudaUtils.convertNameToValidResourceName(JenkinsUtils.getBuildConfigName(job));
+//
+//            // we will update the uuid when we create the BC
+//            String uuid = null;
+//
+//            // TODO what to do for the resourceVersion?
+//            String resourceVersion = null;
+//            String pipelineRunPolicy = Constants.PIPELINE_RUN_POLICY_DEFAULT;
+//            for (String namespace : namespaces) {
+//                logger.info("Creating WorkflowJobProperty for namespace: " + namespace + " name: " + pipelineConfigName);
+//                if (property != null) {
+//                    property.setNamespace(namespace);
+//                    property.setName(pipelineConfigName);
+//                    return property;
+//                } else {
+//                    return new WorkflowJobProperty(namespace, pipelineConfigName, uuid, resourceVersion);
+//                }
+//            }
+//
+//        }
         return null;
     }
 
