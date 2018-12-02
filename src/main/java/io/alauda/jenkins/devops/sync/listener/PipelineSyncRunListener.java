@@ -98,29 +98,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         this.pollPeriodMs = pollPeriodMs;
     }
 
-    /**
-     * Joins all the given strings, ignoring nulls so that they form a URL with
-     * / between the paths without a // if the previous path ends with / and the
-     * next path starts with / unless a path item is blank
-     *
-     * @param strings the sequence of strings to join
-     * @return the strings concatenated together with / while avoiding a double
-     * // between non blank strings.
-     */
-    public static String joinPaths(String... strings) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < strings.length; i++) {
-            sb.append(strings[i]);
-            if (i < strings.length - 1) {
-                sb.append("/");
-            }
-        }
-        String joined = sb.toString();
-
-        // And normalize it...
-        return joined.replaceAll("/+", "/").replaceAll("/\\?", "?").replaceAll("/#", "#").replaceAll(":/", "://");
-    }
-
     @Override
     public void onInitialize(Run run) {
         super.onInitialize(run);
@@ -129,15 +106,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     @Override
     public void onStarted(Run run, TaskListener listener) {
         if (shouldPollRun(run)) {
-            try {
-                JenkinsPipelineCause cause = (JenkinsPipelineCause) run.getCause(JenkinsPipelineCause.class);
-                if (cause != null) {
-                    // TODO This should be a link to the Alauda DevOps
-                    run.setDescription(cause.getShortDescription());
-                }
-            } catch (IOException e) {
-                logger.log(WARNING, "Cannot set build description: " + e);
-            }
             if (runsToPoll.add(run)) {
                 logger.info("starting polling build " + run.getUrl());
             }
@@ -147,7 +115,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         }
     }
 
-    protected void checkTimerStarted() {
+    private void checkTimerStarted() {
         if (timerStarted.compareAndSet(false, true)) {
             Timer.get().scheduleAtFixedRate(new SafeTimerTask() {
                 @Override
@@ -274,7 +242,14 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             try {
                 pollRun(run);
 
-                runsToPoll.remove(run);
+                StatusExt status = RunExt.create((WorkflowRun) run).getStatus();
+                switch(status) {
+                    case IN_PROGRESS:
+                    case PAUSED_PENDING_INPUT:
+                        continue;
+                    default:
+                        runsToPoll.remove(run);
+                }
             } catch (KubernetesClientException e) {
                 e.printStackTrace();
             } catch (TimeoutException e) {
@@ -317,7 +292,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         logger.fine(String.format("shouldUpdatePipeline curr time %s last update %s curr stage num %s last stage num %s" + "curr flow num %s last flow num %s status %s", String.valueOf(currTime), String.valueOf(cause.getLastUpdateToAlaudaDevOps()), String.valueOf(latestStageNum), String.valueOf(cause.getNumStages()), String.valueOf(latestNumFlowNodes), String.valueOf(cause.getNumFlowNodes()), status.toString()));
 
         // if we have not updated in maxDelay time, update
-        if (currTime > (cause.getLastUpdateToAlaudaDevOps() + maxDelay)) {
+        if (currTime > (cause.getLastUpdateToAlaudaDevOps() + pollPeriodMs)) {
             return true;
         }
 
@@ -698,8 +673,32 @@ public class PipelineSyncRunListener extends RunListener<Run> {
      * @param run the Run to test against
      * @return true if the should poll the status of this build run
      */
-    protected boolean shouldPollRun(Run run) {
-        return run instanceof WorkflowRun && run.getCause(JenkinsPipelineCause.class) != null && AlaudaSyncGlobalConfiguration.get().isEnabled();
+    private boolean shouldPollRun(Run run) {
+        return run instanceof WorkflowRun && run.getCause(JenkinsPipelineCause.class) != null &&
+                AlaudaSyncGlobalConfiguration.get().isEnabled();
+    }
+
+    /**
+     * Joins all the given strings, ignoring nulls so that they form a URL with
+     * / between the paths without a // if the previous path ends with / and the
+     * next path starts with / unless a path item is blank
+     *
+     * @param strings the sequence of strings to join
+     * @return the strings concatenated together with / while avoiding a double
+     * // between non blank strings.
+     */
+    public static String joinPaths(String... strings) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < strings.length; i++) {
+            sb.append(strings[i]);
+            if (i < strings.length - 1) {
+                sb.append("/");
+            }
+        }
+        String joined = sb.toString();
+
+        // And normalize it...
+        return joined.replaceAll("/+", "/").replaceAll("/\\?", "?").replaceAll("/#", "#").replaceAll(":/", "://");
     }
 
     private static class BlueJsonStage {
@@ -750,7 +749,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         public Long pause_duration_millis;
         public List<BluePipelineNode.Edge> edges;
 
-        PipelineStage(String id, String name, String status, String result, String start_time, Long duration_millis, Long pause_duration_millis, List<BluePipelineNode.Edge> edges) {
+        PipelineStage(String id, String name, String status, String result, String start_time, Long duration_millis,
+                      Long pause_duration_millis, List<BluePipelineNode.Edge> edges) {
             this.id = id;
             this.name = name;
             this.status = status;
