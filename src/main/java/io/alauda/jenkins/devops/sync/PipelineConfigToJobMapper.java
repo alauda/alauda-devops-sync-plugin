@@ -159,25 +159,31 @@ public abstract class PipelineConfigToJobMapper {
      * @param pipelineConfig PipelineConfig
      */
     private static void updateTrigger(WorkflowJob job, PipelineConfig pipelineConfig) {
-        // checking if there are triggers to be updated
-        List<PipelineTrigger> pipelineConfigTriggers = pipelineConfig.getSpec().getTriggers();
         Map<TriggerDescriptor, Trigger<?>> triggers = job.getTriggers();
-
-        pipelineConfigTriggers.clear();
         if (triggers == null) {
             return;
+        }
+
+        // checking if there are triggers to be updated
+        List<PipelineTrigger> pipelineConfigTriggers = pipelineConfig.getSpec().getTriggers();
+        if(pipelineConfigTriggers == null) {
+            pipelineConfig.getSpec().setTriggers(new ArrayList<>());
+        } else {
+            pipelineConfigTriggers.clear();
         }
 
         triggers.forEach((desc, trigger) -> {
             PipelineTrigger pipelineTrigger = null;
             if (trigger instanceof SCMTrigger) {
-                pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE).withNewCodeChange().withEnabled(true).withPeriodicCheck(trigger.getSpec()).endCodeChange().build();
+                pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE)
+                        .withNewCodeChange().withEnabled(true).withPeriodicCheck(trigger.getSpec()).endCodeChange().build();
             } else if (trigger instanceof TimerTrigger) {
-                pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CRON).withNewCron(true, trigger.getSpec()).build();
+                pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
+                        .withNewCron().withEnabled(true).withRule(trigger.getSpec()).endCron().build();
             }
 
             if (pipelineTrigger != null) {
-                pipelineConfigTriggers.add(pipelineTrigger);
+                pipelineConfig.getSpec().getTriggers().add(pipelineTrigger);
             } else {
                 LOGGER.warning(() -> "Not support trigger type : " + trigger.getClass());
             }

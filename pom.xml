@@ -32,9 +32,7 @@
   <packaging>hpi</packaging>
 
   <properties>
-    <!-- Baseline Jenkins version you use to build the plugin. Users must have this version or newer to run. -->
     <jenkins.version>2.83</jenkins.version>
-    <!-- Java Level to use. Java 7 required when using core >= 1.612 -->
     <java.level>8</java.level>
 
     <devops-client.version>0.2.6</devops-client.version>
@@ -50,7 +48,6 @@
     <org.json.version>20180130</org.json.version>
     <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
     <jsonschema2pojo.version>0.4.23</jsonschema2pojo.version>
-    <!--<junit.version>4.12</junit.version>-->
     <validation-api.version>1.1.0.Final</validation-api.version>
     <lombok.version>1.16.10</lombok.version>
 
@@ -132,7 +129,7 @@
     <dependency>
       <groupId>io.alauda</groupId>
       <artifactId>kubernetes-model</artifactId>
-      <version>0.2.6</version>
+      <version>0.2.7</version>
     </dependency>
 
     <dependency>
@@ -241,16 +238,6 @@
       <groupId>org.csanchez.jenkins.plugins</groupId>
       <artifactId>kubernetes</artifactId>
       <version>1.5</version>
-      <!--<exclusions>-->
-        <!--<exclusion>-->
-          <!--<groupId>io.fabric8</groupId>-->
-          <!--<artifactId>kubernetes-client</artifactId>-->
-        <!--</exclusion>-->
-        <!--<exclusion>-->
-          <!--<groupId>org.apache.httpcomponent</groupId>-->
-          <!--<artifactId>httpclient</artifactId>-->
-        <!--</exclusion>-->
-      <!--</exclusions>-->
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
