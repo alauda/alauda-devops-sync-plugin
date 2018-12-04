@@ -65,7 +65,8 @@ public class DevOpsInit {
     public void addCronTrigger4PipelineConfig(AlaudaDevOpsClient client, String name, String cron) {
         client.pipelineConfigs().inNamespace(namespace)
                 .withName(name).edit()
-                .editOrNewSpec().addNewTrigger().withType("cron").withNewCron(true, cron)
+                .editOrNewSpec().addNewTrigger().withType("cron").withNewCron()
+                .withEnabled(true).withRule(cron).endCron()
                 .endTrigger().endSpec().done();
     }
 
@@ -99,7 +100,7 @@ public class DevOpsInit {
 
         if(cron != null) {
             PipelineTrigger trigger = new PipelineTriggerBuilder()
-                    .withType("cron").withNewCron(true, cron).build();
+                    .withType("cron").withNewCron().withEnabled(true).withRule(cron).endCron().build();
             specBuilder.withTriggers(trigger);
         }
 

@@ -218,9 +218,9 @@ public class JenkinsUtilsTest {
 
         // with correct cron and scm triggers
         triggers.add(new PipelineTrigger(null,
-                new PipelineTriggerCron(true, "* * * * *"), PIPELINE_TRIGGER_TYPE_CRON));
+                new PipelineTriggerCron(true, "* * * * *", null), PIPELINE_TRIGGER_TYPE_CRON));
         triggers.add(new PipelineTrigger(null,
-                new PipelineTriggerCron(false, "* * * * *"), PIPELINE_TRIGGER_TYPE_CRON));
+                new PipelineTriggerCron(false, "* * * * *", null), PIPELINE_TRIGGER_TYPE_CRON));
         triggers.add(new PipelineTrigger(new PipelineTriggerCodeChange(true, "* * * * *"),
                 null, PIPELINE_TRIGGER_TYPE_CODE_CHANGE));
         triggers.add(new PipelineTrigger(new PipelineTriggerCodeChange(false, "* * * * *"),
@@ -232,11 +232,11 @@ public class JenkinsUtilsTest {
 
         // with invalid cron
         triggers.add(new PipelineTrigger(null,
-                new PipelineTriggerCron(true, "abc"), PIPELINE_TRIGGER_TYPE_CRON));
+                new PipelineTriggerCron(true, "abc", null), PIPELINE_TRIGGER_TYPE_CRON));
         triggers.add(new PipelineTrigger(new PipelineTriggerCodeChange(true, "abc"),
                 null, PIPELINE_TRIGGER_TYPE_CODE_CHANGE));
         triggers.add(new PipelineTrigger(null,
-                new PipelineTriggerCron(true, "abc"), "fake"));
+                new PipelineTriggerCron(true, "abc", null), "fake"));
         exs = JenkinsUtils.setJobTriggers(wfJob, triggers);
         assertEquals(2, exs.size());
     }
