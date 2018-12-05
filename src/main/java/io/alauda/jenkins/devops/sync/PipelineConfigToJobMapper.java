@@ -49,6 +49,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.DEFAULT_JENKINS_FILEPATH;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
 import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 public abstract class PipelineConfigToJobMapper {
@@ -166,10 +167,15 @@ public abstract class PipelineConfigToJobMapper {
 
         // checking if there are triggers to be updated
         List<PipelineTrigger> pipelineConfigTriggers = pipelineConfig.getSpec().getTriggers();
+        final PipelineTrigger cronTrigger;
         if(pipelineConfigTriggers == null) {
             pipelineConfig.getSpec().setTriggers(new ArrayList<>());
+            cronTrigger = null;
         } else {
             pipelineConfigTriggers.clear();
+
+            cronTrigger = pipelineConfigTriggers.stream().filter(trigger ->
+                            PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType())).findFirst().get();
         }
 
         triggers.forEach((desc, trigger) -> {
@@ -178,8 +184,16 @@ public abstract class PipelineConfigToJobMapper {
                 pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE)
                         .withNewCodeChange().withEnabled(true).withPeriodicCheck(trigger.getSpec()).endCodeChange().build();
             } else if (trigger instanceof TimerTrigger) {
-                pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
-                        .withNewCron().withEnabled(true).withRule(trigger.getSpec()).endCron().build();
+                if(cronTrigger == null) {
+                    pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
+                            .withNewCron().withEnabled(true).withRule(trigger.getSpec()).endCron().build();
+                } else {
+                    PipelineTriggerCron cron = new PipelineTriggerCron();
+                    cron.setEnabled(true);
+                    cron.setRule(trigger.getSpec());
+                    cronTrigger.setCron(cron);
+                    pipelineTrigger = cronTrigger;
+                }
             }
 
             if (pipelineTrigger != null) {
