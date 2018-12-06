@@ -1,5 +1,6 @@
 package io.alauda.jenkins.devops.sync;
 
+import hudson.model.AbstractItem;
 import hudson.model.TopLevelItem;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
@@ -28,11 +29,11 @@ public interface PipelineConfigConvert<T extends TopLevelItem> {
         return pipelineConfig.getMetadata().getUid().equals(jobProperty.getUid());
     }
 
-    default void updateJob(WorkflowJob job, InputStream jobStream, String jobName, PipelineConfig pipelineConfig) throws IOException {
+    default void updateJob(AbstractItem item, InputStream jobStream, String jobName, PipelineConfig pipelineConfig) throws IOException {
         Source source = new StreamSource(jobStream);
-        job.updateByXml(source);
-        job.save();
-//        logger.info("Updated job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
+        item.updateByXml(source);
+        item.save();
+//        logger.info("Updated item " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
     }
 
     default void updatePipelineConfigPhase(@NotNull final PipelineConfig pipelineConfig) {

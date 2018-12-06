@@ -22,13 +22,15 @@ spec:
       ref: "master"
 #    codeRepository:
 #      ref: "master"
-#      name: github-surenpi-demo
+#      name: bitbucket-zhaoxiaojie-zxj-test
   strategy:
     jenkins:
       jenkinsfilePath: Jenkinsfile
       multiBranch:
+        behaviours:
+          filterExpression: hello-worl.*
         orphaned:
           max: 18
-          days: 2
+          days: 3
 status:
   phase: "Syncing"

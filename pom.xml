@@ -173,20 +173,26 @@
     </dependency>
 
     <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-multibranch</artifactId>
-      <version>2.18</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-          <artifactId>workflow-support</artifactId>
-          <!-- according to https://jenkins.io/security/advisory/2018-02-05/ -->
-        </exclusion>
-        <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-          <artifactId>workflow-cps</artifactId>
-        </exclusion>
-      </exclusions>
+        <groupId>org.jenkins-ci</groupId>
+        <artifactId>annotation-indexer</artifactId>
+        <version>1.12</version>
+    </dependency>
+
+    <dependency>
+        <groupId>org.jenkins-ci.plugins.workflow</groupId>
+        <artifactId>workflow-multibranch</artifactId>
+        <version>2.18</version>
+        <exclusions>
+            <exclusion>
+                <groupId>org.jenkins-ci.plugins.workflow</groupId>
+                <artifactId>workflow-support</artifactId>
+                <!-- according to https://jenkins.io/security/advisory/2018-02-05/ -->
+            </exclusion>
+            <exclusion>
+                <groupId>org.jenkins-ci.plugins.workflow</groupId>
+                <artifactId>workflow-cps</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
 
     <dependency>
@@ -198,7 +204,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>git</artifactId>
-      <version>3.0.0</version>
+      <version>3.4.0</version>
       <exclusions>
         <exclusion>
           <groupId>org.apache.httpcomponents</groupId>

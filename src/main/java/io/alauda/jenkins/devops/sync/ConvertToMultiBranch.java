@@ -2,6 +2,7 @@ package io.alauda.jenkins.devops.sync;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
+import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.ItemGroup;
 import hudson.util.XStream2;
@@ -18,6 +19,7 @@ import io.alauda.kubernetes.api.model.CodeRepository;
 import io.alauda.kubernetes.api.model.CodeRepositoryRef;
 import io.alauda.kubernetes.api.model.CodeRepositorySpec;
 import io.alauda.kubernetes.api.model.Condition;
+import io.alauda.kubernetes.api.model.MultiBranchBehaviours;
 import io.alauda.kubernetes.api.model.MultiBranchOrphan;
 import io.alauda.kubernetes.api.model.MultiBranchPipeline;
 import io.alauda.kubernetes.api.model.OriginCodeRepository;
@@ -33,6 +35,12 @@ import jenkins.branch.DefaultBranchPropertyStrategy;
 import jenkins.model.Jenkins;
 import jenkins.plugins.git.AbstractGitSCMSource;
 import jenkins.plugins.git.GitSCMSource;
+import jenkins.plugins.git.traits.BranchDiscoveryTrait;
+import jenkins.scm.api.SCMSource;
+import jenkins.scm.api.trait.SCMSourceBuilder;
+import jenkins.scm.api.trait.SCMSourceTrait;
+import jenkins.scm.impl.trait.RegexSCMHeadFilterTrait;
+import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowBranchProjectFactory;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -42,6 +50,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -84,6 +93,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
         Jenkins activeInstance = Jenkins.getInstance();
         ItemGroup parent = activeInstance;
         if (job == null) {
+            logger.info(String.format("No job [namespace: %s, name: %s] found from the cache.", namespace, name));
             job = (WorkflowMultiBranchProject) activeInstance.getItemByFullName(jobFullName);
         }
 
@@ -92,14 +102,19 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             parent = AlaudaUtils.getFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
             job = new WorkflowMultiBranchProject(parent, jobName);
             job.addProperty(new MultiBranchProperty(namespace, name, uid, resourceVer));
+
+            logger.info(String.format("New MultiBranchProject [%s] will be created.", job.getFullName()));
         } else {
             MultiBranchProperty mbProperty = job.getProperties().get(MultiBranchProperty.class);
             if(mbProperty == null) {
+                logger.warning(String.format("No MultiBranchProperty in job: %s.", job.getFullName()));
                 return null;
             }
 
             if(isSameJob(pipelineConfig, mbProperty)) {
                 mbProperty.setResourceVersion(resourceVer);
+
+                PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
             } else {
                 return null;
             }
@@ -110,28 +125,34 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
         PipelineConfigSpec spec = pipelineConfig.getSpec();
         PipelineStrategyJenkins strategy = spec.getStrategy().getJenkins();
-        if(strategy != null) {
-            WorkflowBranchProjectFactory wfFactory = new WorkflowBranchProjectFactory();
-            wfFactory.setScriptPath(strategy.getJenkinsfilePath());
-            job.setProjectFactory(wfFactory);
+        if(strategy == null) {
+            logger.severe(String.format("No strategy in here, namespace: %s, name: %s.", namespace, name));
+            return null;
+        }
 
-            // orphaned setting
-            MultiBranchPipeline multiBranch = strategy.getMultiBranch();
-            if(multiBranch != null) {
-                MultiBranchOrphan orphaned = multiBranch.getOrphaned();
-                DefaultOrphanedItemStrategy orphanedStrategy;
-                if(orphaned != null) {
-                    orphanedStrategy = new DefaultOrphanedItemStrategy(
-                            true, String.valueOf(orphaned.getDays()), String.valueOf(orphaned.getMax()));
-                } else {
-                    orphanedStrategy = new DefaultOrphanedItemStrategy(
-                            false, "", "");
-                }
-                job.setOrphanedItemStrategy(orphanedStrategy);
+        WorkflowBranchProjectFactory wfFactory = new WorkflowBranchProjectFactory();
+        wfFactory.setScriptPath(strategy.getJenkinsfilePath());
+        job.setProjectFactory(wfFactory);
+
+        MultiBranchBehaviours behaviours = null;
+        // orphaned setting
+        MultiBranchPipeline multiBranch = strategy.getMultiBranch();
+        if(multiBranch != null) {
+            MultiBranchOrphan orphaned = multiBranch.getOrphaned();
+            DefaultOrphanedItemStrategy orphanedStrategy;
+            if(orphaned != null) {
+                orphanedStrategy = new DefaultOrphanedItemStrategy(
+                        true, String.valueOf(orphaned.getDays()), String.valueOf(orphaned.getMax()));
+            } else {
+                orphanedStrategy = new DefaultOrphanedItemStrategy(false, "", "");
             }
+            job.setOrphanedItemStrategy(orphanedStrategy);
+
+            behaviours = multiBranch.getBehaviours();
         }
 
         PipelineSource source = spec.getSource();
+        AbstractGitSCMSource gitSCMSource = null;
 
         CodeRepositoryRef codeRepoRef = source.getCodeRepository();
         PipelineSourceGit gitSource = source.getGit();
@@ -152,20 +173,15 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
                 CodeRepoBindingSpec codeRepoBindSpec = codeRepoBind.getSpec();
                 CodeRepoBindingAccount account = codeRepoBindSpec.getAccount();
 
-//                CodeRepoService codeRepoService = client.codeRepoServices().inNamespace(namespace).withName(codeRepoBindSpec.getCodeRepoService().getName()).get();
-//                CodeRepoServiceSpec codeRepoServiceSpec = codeRepoService.getSpec();
                 if(haveSupported(codeRepoSpec, pipelineConfig.getStatus())) {
-
                     // TODO need to deal with the private repo
 
                     try {
-                        AbstractGitSCMSource gitSCMSource = createGitSCMSource(codeRepoType, repoOwner, repository);
+                        gitSCMSource = createGitSCMSource(codeRepoType, repoOwner, repository);
                         if(gitSCMSource == null) {
                             logger.warning(String.format("Can't create instance for AbstractGitSCMSource. Type is %s.", codeRepoType));
                             return null;
                         }
-
-                        job.getSourcesList().add(new BranchSource(gitSCMSource, new DefaultBranchPropertyStrategy(new BranchProperty[0])));
                     } catch (ReflectiveOperationException e) {
                         e.printStackTrace();
                     }
@@ -181,10 +197,23 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             String uri = gitSource.getUri();
             String credentialId = CredentialsUtils.updateSourceCredentials(pipelineConfig);
 
-            job.getSourcesList().add(new BranchSource(new GitSCMSource(null, uri, credentialId, "*", "", false),
-                    new DefaultBranchPropertyStrategy(new BranchProperty[0])));
+            GitSCMSource scmSource = new GitSCMSource(uri);
+            scmSource.setCredentialsId(credentialId);
+            gitSCMSource = scmSource;
         } else {
             logger.warning("Not found git repository.");
+        }
+
+        if(gitSCMSource != null) {
+            List<SCMSourceTrait> traits = gitSCMSource.getTraits();
+
+            if(behaviours != null && StringUtils.isNotBlank(behaviours.getFilterExpression())) {
+                traits.add(new RegexSCMHeadFilterTrait(behaviours.getFilterExpression()));
+            }
+
+            traits.add(new BranchDiscoveryTrait());
+
+            job.getSourcesList().add(new BranchSource(gitSCMSource));
         }
 
         InputStream jobStream = new StringInputStream(new XStream2().toXML(job));
@@ -198,6 +227,8 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
             logger.info("Created job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig)
                     + " with revision: " + resourceVer);
+        } else {
+            updateJob(job, jobStream, jobName, pipelineConfig);
         }
 
         updatePipelineConfigPhase(pipelineConfig);
@@ -228,13 +259,13 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
     private boolean haveSupported(@NotNull CodeRepositorySpec codeRepoSpec, @NotNull PipelineConfigStatus status) {
         OriginCodeRepository repo = codeRepoSpec.getRepository();
-        if(repo.getPrivate() != null || repo.getPrivate()) {
-            Condition condition = new Condition();
-            condition.setStatus("ERROR");
-            condition.setReason("No support for private git service");
-            status.getConditions().add(condition);
-            return false;
-        }
+//        if(repo.getPrivate() != null || repo.getPrivate()) {
+//            Condition condition = new Condition();
+//            condition.setStatus("ERROR");
+//            condition.setReason("No support for private git service");
+//            status.getConditions().add(condition);
+//            return false;
+//        }
 
         String type = repo.getCodeRepoServiceType();
         if(!CodeRepoServiceEnum.Bitbucket.name().equals(type) && !CodeRepoServiceEnum.Github.name().equals(type)) {

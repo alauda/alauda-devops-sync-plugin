@@ -11,20 +11,12 @@ metadata:
     alauda.io/jenkins-stages-json: '{"start_stage_id":null,"stages":[]}'
     alauda.io/jenkins-status-json: '{"_links":{"self":{"href":"null/null/job/zxj/job/zxj-simple/1/wfapi/describe"}},"id":"1","name":"#1","status":"SUCCESS","startTimeMillis":1543827688733,"endTimeMillis":1543827688824,"durationMillis":91,"queueDurationMillis":5,"pauseDurationMillis":0,"stages":[]}'
     alauda.io/pipeline.number: "1"
-    alauda.io/pipelineConfig.name: simple
   labels:
     app: ""
     pipelineConfig: multi
-    multiBranchName: master
+    multiBranchName: hello-world
   name: multi-1
   namespace: zxj
-  ownerReferences:
-  - apiVersion: devops.alauda.io/v1alpha1
-    blockOwnerDeletion: true
-    controller: true
-    kind: PipelineConfig
-    name: simple
-    uid: 042ce7bb-f6da-11e8-96d5-0a580ade00fe
 spec:
   cause:
     message: Triggered using Alauda DevOps Console
