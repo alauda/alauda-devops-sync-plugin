@@ -2,14 +2,26 @@ package io.alauda.jenkins.devops.sync.util;
 
 import hudson.model.Action;
 import hudson.model.CauseAction;
+import hudson.model.Item;
+import hudson.model.ItemGroup;
 import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.*;
+import jenkins.branch.Branch;
+import jenkins.branch.BranchProperty;
+import jenkins.scm.api.SCMHead;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
+import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
@@ -24,7 +36,48 @@ public abstract class PipelineGenerator {
         return buildPipeline(config, null, actions);
     }
 
+    public static Pipeline buildPipeline(PipelineConfig config, @NotNull WorkflowJob job,
+                                         String triggerURL, List<Action> actions) {
+        ItemGroup parent = job.getParent();
+        Map<String, String> annotations = new HashMap<>();
+        if(parent instanceof WorkflowMultiBranchProject) {
+            BranchJobProperty property = job.getProperty(BranchJobProperty.class);
+            if(property != null) {
+                Branch branch = property.getBranch();
+                annotations.put(Constants.MULTI_BRANCH_NAME, branch.getEncodedName());
+
+                SCMHead head = SCMHead.HeadByItem.findHead(job);
+
+                // TODO need to consider multi-tag like GitTagSCMHead
+                if(isPR(job)) {
+                    annotations.put(Constants.MULTI_BRANCH_CATEGORY, "pr");
+                } else {
+                    annotations.put(Constants.MULTI_BRANCH_CATEGORY, "branch");
+                }
+            }
+        }
+
+        return buildPipeline(config, annotations, triggerURL, actions);
+    }
+
+    public static boolean isPR(Item item) {
+        SCMHead head = SCMHead.HeadByItem.findHead(item);
+        if(head == null) {
+            return false;
+        }
+
+        String headClsName = head.getClass().getName();
+        return "org.jenkinsci.plugins.github_branch_source.PullRequestSCMHead".equals(headClsName)
+                || "com.cloudbees.jenkins.plugins.bitbucket.BranchSCMHead".equals(headClsName);
+    }
+
+
+    @Deprecated
     public static Pipeline buildPipeline(PipelineConfig config, String triggerURL, List<Action> actions) {
+        return buildPipeline(config, new HashMap<>(), triggerURL, actions);
+    }
+
+    public static Pipeline buildPipeline(PipelineConfig config, Map<String, String> annotations, String triggerURL, List<Action> actions) {
         PipelineSpec pipelineSpec = buildPipelineSpec(config, triggerURL);
 
         // TODO here should be multi-cause, fix later
@@ -85,7 +138,7 @@ public abstract class PipelineGenerator {
             .pipelines()
             .inNamespace(namespace)
             .createNew()
-            .withNewMetadata()
+            .withNewMetadata().addToAnnotations(annotations)
             .withName(config.getMetadata().getName())
             .withNamespace(namespace)
             .endMetadata()

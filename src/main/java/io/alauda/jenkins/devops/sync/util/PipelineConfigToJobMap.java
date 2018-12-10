@@ -74,7 +74,7 @@ public class PipelineConfigToJobMap {
         return null;
     }
 
-    public static WorkflowMultiBranchProject getMultiBranchById(String uid) {
+    private static synchronized WorkflowMultiBranchProject getMultiBranchById(String uid) {
         TopLevelItem item = pipelineConfigToJobMap.get(uid);
         if(item instanceof WorkflowMultiBranchProject) {
             return (WorkflowMultiBranchProject) item;
@@ -82,7 +82,7 @@ public class PipelineConfigToJobMap {
         return null;
     }
 
-    public static WorkflowMultiBranchProject getMultiBranchByPC(PipelineConfig pc){
+    public static synchronized WorkflowMultiBranchProject getMultiBranchByPC(PipelineConfig pc){
         ObjectMeta meta = pc.getMetadata();
         if (meta == null) {
             return null;
@@ -94,7 +94,7 @@ public class PipelineConfigToJobMap {
         return pipelineConfigToJobMap.get(uid);
     }
 
-    public static TopLevelItem getItemByPC(PipelineConfig pc) {
+    public static synchronized TopLevelItem getItemByPC(PipelineConfig pc) {
         ObjectMeta meta = pc.getMetadata();
         if (meta == null) {
             return null;
@@ -117,7 +117,7 @@ public class PipelineConfigToJobMap {
         putJobWithPipelineConfigUid(job, meta.getUid());
     }
 
-    static synchronized void putJobWithPipelineConfigUid(TopLevelItem job, String uid) {
+    private static synchronized void putJobWithPipelineConfigUid(TopLevelItem job, String uid) {
         if (isBlank(uid)) {
             throw new IllegalArgumentException("PipelineConfig uid must not be blank");
         }
@@ -135,7 +135,7 @@ public class PipelineConfigToJobMap {
         removeJobWithPipelineConfigUid(meta.getUid());
     }
 
-    static synchronized void removeJobWithPipelineConfigUid(String uid) {
+    private static synchronized void removeJobWithPipelineConfigUid(String uid) {
         if (isBlank(uid)) {
             throw new IllegalArgumentException("PipelineConfig uid must not be blank");
         }

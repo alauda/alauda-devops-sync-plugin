@@ -49,7 +49,9 @@ import jenkins.util.Timer;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.httpclient.HttpStatus;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputAction;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputStepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -90,12 +92,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     private transient AtomicBoolean timerStarted = new AtomicBoolean(false);
     private transient AtomicBoolean unSyncedTimerStarted = new AtomicBoolean(false);
 
-    public PipelineSyncRunListener() {
-    }
-
     @DataBoundConstructor
-    public PipelineSyncRunListener(long pollPeriodMs) {
-        this.pollPeriodMs = pollPeriodMs;
+    public PipelineSyncRunListener() {
     }
 
     @Override
@@ -344,10 +342,78 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         }
 
         String namespace = cause.getNamespace();
-        String rootUrl = AlaudaUtils.getJenkinsURL(client, namespace);
+        String rootUrl = ""; // TODO should remove this, AlaudaUtils.getJenkinsURL(client, namespace);
         String buildUrl = joinPaths(rootUrl, run.getUrl());
         String logsUrl = joinPaths(buildUrl, "/consoleText");
         String logsConsoleUrl = joinPaths(buildUrl, "/console");
+
+        String viewLogUrl;
+        String stagesUrl;
+        String stagesLogUrl;
+        String stepsUrl;
+        String stepsLogUrl;
+        if(JenkinsUtils.fromMultiBranch(run)) {
+            WorkflowJob wfJob = (WorkflowJob) run.getParent();
+            WorkflowMultiBranchProject multiWfJob = (WorkflowMultiBranchProject) wfJob.getParent();
+            viewLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/steps/%%d/log/",
+                    cause.getNamespace(),
+                    multiWfJob.getName(),
+                    wfJob.getName(),
+                    run.number);
+
+            stagesUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/",
+                    cause.getNamespace(),
+                    multiWfJob.getName(),
+                    wfJob.getName(),
+                    run.number);
+
+            stagesLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/log/",
+                    cause.getNamespace(),
+                    multiWfJob.getName(),
+                    wfJob.getName(),
+                    run.number);
+
+            stepsLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/log/",
+                    cause.getNamespace(),
+                    multiWfJob.getName(),
+                    wfJob.getName(),
+                    run.number);
+
+            stepsUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/steps/",
+                    cause.getNamespace(),
+                    multiWfJob.getName(),
+                    wfJob.getName(),
+                    run.number);
+        } else {
+            Job wfJob = run.getParent();
+
+            viewLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/%%d/steps/%%d/log/",
+                    cause.getNamespace(),
+                    wfJob.getName(),
+                    run.number);
+
+            stagesLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/%%d/log/",
+                    cause.getNamespace(),
+                    wfJob.getName(),
+                    run.number);
+
+            stagesUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/",
+                    cause.getNamespace(),
+                    wfJob.getName(),
+                    run.number);
+
+            stepsLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/%%d/log/",
+                    cause.getNamespace(),
+                    wfJob.getName(),
+                    run.number);
+
+            stepsUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/%%d/steps/",
+                    cause.getNamespace(),
+                    wfJob.getName(),
+                    run.number);
+        }
+
+        String progressiveLogUrl = joinPaths(buildUrl, "/logText/progressiveText");
         String logsBlueOceanUrl = null;
         try {
             // there are utility functions in the blueocean-dashboard plugin
@@ -371,12 +437,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                         Object blueOceanURI = getRunURLMethod.invoke(displayURL, run);
                         logsBlueOceanUrl = blueOceanURI.toString();
                         logsBlueOceanUrl = logsBlueOceanUrl.replaceAll("http://unconfigured-jenkins-location/", "");
-                        if (logsBlueOceanUrl.startsWith("http://") || logsBlueOceanUrl.startsWith("https://")) {
-                            // still normalize string
-                            logsBlueOceanUrl = joinPaths("", logsBlueOceanUrl);
-                        } else {
-                            logsBlueOceanUrl = joinPaths(rootUrl, logsBlueOceanUrl);
-                        }
+//                        if (logsBlueOceanUrl.startsWith("http://") || logsBlueOceanUrl.startsWith("https://")) {
+//                            // still normalize string
+//                            logsBlueOceanUrl = joinPaths("", logsBlueOceanUrl);
+//                        } else {
+//                            logsBlueOceanUrl = joinPaths(rootUrl, logsBlueOceanUrl);
+//                        }
                     }
                 }
             }
@@ -502,6 +568,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL, logsUrl);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL, logsConsoleUrl);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL, logsBlueOceanUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG, viewLogUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES, stagesUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG, stagesLogUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS, stepsUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG, stepsLogUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG, progressiveLogUrl);
         pipeline.getMetadata().setAnnotations(annotations);
 
         badgeHandle(run, annotations);

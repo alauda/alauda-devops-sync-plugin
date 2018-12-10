@@ -18,7 +18,7 @@ public class JenkinsPipelineJobListenerTest {
 
     @Test
     public void simple() throws IOException, InterruptedException {
-        JenkinsPipelineJobListener listener = new JenkinsPipelineJobListener("", "", "");
+        JenkinsPipelineJobListener listener = new JenkinsPipelineJobListener();
         assertNotNull(listener);
 
         // not enable

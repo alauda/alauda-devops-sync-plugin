@@ -29,10 +29,18 @@ public final class Constants {
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL = "alauda.io/jenkins-log-url";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL = "alauda.io/jenkins-console-log-url";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL = "alauda.io/jenkins-blueocean-log-url";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG = "alauda.io/jenkins-stages-log";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES = "alauda.io/jenkins-stages";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG = "alauda.io/jenkins-steps-log";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS = "alauda.io/jenkins-steps";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG = "alauda.io/jenkins-view-log";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG = "alauda.io/jenkins-progressive-log";
+
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON = "alauda.io/jenkins-pending-input-actions-json";
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON = "alauda.io/jenkins-status-json";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON = "alauda.io/jenkins-stages-json";
+
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE = "alauda.io/jenkins-namespace";
 
     /** secret keys */

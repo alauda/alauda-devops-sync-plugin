@@ -225,6 +225,8 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
                 activeInstance.createProjectFromXML(jobName, jobStream).save();
             }
 
+            PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
+
             logger.info("Created job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig)
                     + " with revision: " + resourceVer);
         } else {
@@ -232,7 +234,6 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
         }
 
         updatePipelineConfigPhase(pipelineConfig);
-        PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
 
         return job;
     }
