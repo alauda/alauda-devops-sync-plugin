@@ -17,18 +17,32 @@ spec:
     name: jenkins
   runPolicy: Serial
   source:
-    git:
-      uri: "https://github.com/linuxsuren/demo"
+    codeRepository:
+      name: github-surenpi-demo
       ref: "master"
+#  source:
 #    codeRepository:
-#      ref: "master"
 #      name: bitbucket-zhaoxiaojie-zxj-test
+#      ref: "master"
+#  source:
+#    git:
+#      uri: "https://github.com/linuxsuren/demo"
+#      ref: "master"
+#  source:
+#    git:
+#      ref: master
+#      uri: https://bitbucket.org/mathildetech/zxj-test
+#    secret:
+#      apiTokenKey: ""
+#      name: zxj-bit
+#      namespace: zxj
+#      usernameKey:
   strategy:
     jenkins:
       jenkinsfilePath: Jenkinsfile
       multiBranch:
         behaviours:
-          filterExpression: hello-worl.*
+          filterExpression: hello-worl.*|master
         orphaned:
           max: 18
           days: 3

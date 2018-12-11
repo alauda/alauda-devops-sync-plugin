@@ -4,7 +4,9 @@ import com.cloudbees.hudson.plugins.folder.Folder;
 import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.PluginManager;
 import hudson.model.ItemGroup;
+import hudson.plugins.git.GitSCM;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.constants.CodeRepoServiceEnum;
@@ -37,6 +39,7 @@ import jenkins.plugins.git.AbstractGitSCMSource;
 import jenkins.plugins.git.GitSCMSource;
 import jenkins.plugins.git.traits.BranchDiscoveryTrait;
 import jenkins.scm.api.SCMSource;
+import jenkins.scm.api.trait.SCMHeadAuthority;
 import jenkins.scm.api.trait.SCMSourceBuilder;
 import jenkins.scm.api.trait.SCMSourceTrait;
 import jenkins.scm.impl.trait.RegexSCMHeadFilterTrait;
@@ -50,12 +53,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND_MULTI_BRANCH;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 /**
  * TODO 需要考虑的兼容问题： 当 git 服务从不支持 PR 转到支持的情况下，如何保持不修改已经有结构（例如：gitlab 暂时不支持）
@@ -152,12 +155,14 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
         }
 
         PipelineSource source = spec.getSource();
-        AbstractGitSCMSource gitSCMSource = null;
+        SCMSource scmSource = null;
 
         CodeRepositoryRef codeRepoRef = source.getCodeRepository();
         PipelineSourceGit gitSource = source.getGit();
+        List<SCMSourceTrait> traits = new ArrayList<>();
         // TODO maybe put some redundancy into annotation
         if(codeRepoRef != null) {
+            // cases for git provider
             String codeRepoName = codeRepoRef.getName();
 
             CodeRepository codeRep = client.codeRepositories().inNamespace(namespace).withName(codeRepoName).get();
@@ -167,18 +172,12 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
                 String repoOwner = codeRepo.getOwner().getName();
                 String repository = codeRepo.getName();
                 String codeRepoType = codeRepo.getCodeRepoServiceType();
-                String codeBindName = codeRepoSpec.getCodeRepoBinding().getName();
-
-                CodeRepoBinding codeRepoBind = client.codeRepoBindings().inNamespace(namespace).withName(codeBindName).get();
-                CodeRepoBindingSpec codeRepoBindSpec = codeRepoBind.getSpec();
-                CodeRepoBindingAccount account = codeRepoBindSpec.getAccount();
 
                 if(haveSupported(codeRepoSpec, pipelineConfig.getStatus())) {
-                    // TODO need to deal with the private repo
-
+                    // TODO need to deal with the private git providers
                     try {
-                        gitSCMSource = createGitSCMSource(codeRepoType, repoOwner, repository);
-                        if(gitSCMSource == null) {
+                        scmSource = createGitSCMSource(codeRepoType, repoOwner, repository);
+                        if(scmSource == null) {
                             logger.warning(String.format("Can't create instance for AbstractGitSCMSource. Type is %s.", codeRepoType));
                             return null;
                         }
@@ -187,35 +186,30 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
                     }
                 } else {
                     // TODO should take care of clean up job
-                    logger.warning(String.format("Not support for %s, codeRepo name is %s.", codeRepoType, codeRepoName));
-                    return null;
+                    logger.warning(String.format("Not support for %s, codeRepo name is %s. Fall back to general git.", codeRepoType, codeRepoName));
+
+                    scmSource = new GitSCMSource(codeRepo.getCloneURL());
                 }
             } else {
                 logger.warning(String.format("Can't found codeRepository %s, namespace %s.", codeRepoName, namespace));
             }
         } else if(gitSource != null) {
-            String uri = gitSource.getUri();
-            String credentialId = CredentialsUtils.updateSourceCredentials(pipelineConfig);
-
-            GitSCMSource scmSource = new GitSCMSource(uri);
-            scmSource.setCredentialsId(credentialId);
-            gitSCMSource = scmSource;
+            // general git
+            scmSource = new GitSCMSource(gitSource.getUri());
         } else {
             logger.warning("Not found git repository.");
         }
 
-        if(gitSCMSource != null) {
-            List<SCMSourceTrait> traits = gitSCMSource.getTraits();
+        // handle common settings
+        if(scmSource != null) {
+            handleSCMTraits(scmSource, behaviours);
 
-            if(behaviours != null && StringUtils.isNotBlank(behaviours.getFilterExpression())) {
-                traits.add(new RegexSCMHeadFilterTrait(behaviours.getFilterExpression()));
-            }
+            handleCredentials(scmSource, pipelineConfig);
 
-            traits.add(new BranchDiscoveryTrait());
-
-            job.getSourcesList().add(new BranchSource(gitSCMSource));
+            job.getSourcesList().add(new BranchSource(scmSource));
         }
 
+        // going to save the configuration
         InputStream jobStream = new StringInputStream(new XStream2().toXML(job));
         if (newJob) {
             if (parent instanceof Folder) {
@@ -238,36 +232,120 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
         return job;
     }
 
-    private AbstractGitSCMSource createGitSCMSource(@NotNull String type, @NotNull String repoOwner, @NotNull String repository)
+    // TODO should create a PR to unit the interface
+    private void handleSCMTraits(@NotNull SCMSource source, MultiBranchBehaviours behaviours) {
+        List<SCMSourceTrait> traits = new ArrayList<>();
+        if(behaviours != null && StringUtils.isNotBlank(behaviours.getFilterExpression())) {
+            traits.add(new RegexSCMHeadFilterTrait(behaviours.getFilterExpression()));
+        }
+
+        if(source instanceof GitSCMSource) {
+            traits.add(new BranchDiscoveryTrait());
+        } else if(source.getClass().getName().equals(GITHUB_SCM_SOURCE)) {
+            try {
+                Class<?> discoverBranchClz = loadClass(GITHUB_BRANCH_DISCOVERY_TRAIT);
+                traits.add((SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(1));
+            } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                Class<?> discoverBranchClz = loadClass(GITHUB_ORIGIN_PR_TRAIT);
+                traits.add((SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(1));
+            } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                Class<?> discoverBranchClz = loadClass(GITHUB_FORK_PR_TRAIT);
+                Class<?> trustClz = loadClass(GITHUB_FORK_PR_TRUST_TRAIT);
+                traits.add((SCMSourceTrait) discoverBranchClz.getConstructor(int.class, SCMHeadAuthority.class).newInstance(1, trustClz.newInstance()));
+            } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        } else if(source.getClass().getName().equals(BITBUCKET_SCM_SOURCE)) {
+            try {
+                Class<?> discoverBranchClz = loadClass(BITBUCKET_BRANCH_DISCOVERY_TRAIT);
+                traits.add((SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(1));
+            } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                Class<?> discoverBranchClz = loadClass(BITBUCKET_ORIGIN_PR_TRAIT);
+                traits.add((SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(1));
+            } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                Class<?> discoverBranchClz = loadClass(BITBUCKET_FORK_PR_TRAIT);
+                Class<?> trustClz = loadClass(BITBUCKET_FORK_PR_TRUST_TRAIT);
+                traits.add((SCMSourceTrait) discoverBranchClz.getConstructor(int.class, SCMHeadAuthority.class).newInstance(1, trustClz.newInstance()));
+            } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            Method method = source.getClass().getMethod("setTraits", List.class);
+            method.invoke(source, traits);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+            logger.severe(String.format("Can't setting traits, source class is %s", source.getClass()));
+        }
+    }
+
+    // TODO should create a PR to unit the interface
+    private void handleCredentials(@NotNull SCMSource source, @NotNull PipelineConfig pipelineConfig) throws IOException {
+        String credentialId = CredentialsUtils.updateSourceCredentials(pipelineConfig);
+
+        try {
+            Method method = source.getClass().getMethod("setCredentialsId", String.class);
+            method.invoke(source, credentialId);
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+            logger.severe(String.format("Can't setting credentials, source class is %s", source.getClass()));
+        }
+    }
+
+    private SCMSource createGitSCMSource(@NotNull String type, @NotNull String repoOwner, @NotNull String repository)
             throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        String gitSCMSourceClz;
+        String scmSourceClz;
         if(CodeRepoServiceEnum.Github.name().equals(type)) {
-            gitSCMSourceClz = "org.jenkinsci.plugins.github_branch_source.GitHubSCMSource";
+            scmSourceClz = GITHUB_SCM_SOURCE;
         } else if(CodeRepoServiceEnum.Bitbucket.name().equals(type)) {
-            gitSCMSourceClz = "com.cloudbees.jenkins.plugins.bitbucket.BitbucketSCMSource";
+            scmSourceClz = BITBUCKET_SCM_SOURCE;
         } else {
             return null;
         }
 
-        Class<?> gitSCMSource = Class.forName(gitSCMSourceClz);
-        AbstractGitSCMSource instance = (AbstractGitSCMSource) gitSCMSource.getConstructor(String.class, String.class).newInstance(repoOwner, repository);
+        Class<?> scmSource = loadClass(scmSourceClz);
+        if(scmSource != null) {
+            return (SCMSource) scmSource.getConstructor(String.class, String.class).newInstance(repoOwner, repository);
+        } else {
+            return null;
+        }
+    }
 
-        Method setApiUri = gitSCMSource.getMethod("setApiUri", String.class);
-        setApiUri.invoke(instance, "http://baidu.com");
+    private Class<?> loadClass(String clazz) throws ClassNotFoundException {
+        PluginManager pluginMgr = Jenkins.getInstance().getPluginManager();
+        if (pluginMgr != null) {
+            ClassLoader loader = pluginMgr.uberClassLoader;
+            if (loader != null) {
+                return loader.loadClass(clazz);
+            } else {
+                logger.severe("No UBerClassLoader found.");
+            }
+        } else {
+            logger.severe("No PluginManager found.");
+        }
 
-        return instance;
+        return null;
     }
 
     private boolean haveSupported(@NotNull CodeRepositorySpec codeRepoSpec, @NotNull PipelineConfigStatus status) {
         OriginCodeRepository repo = codeRepoSpec.getRepository();
-//        if(repo.getPrivate() != null || repo.getPrivate()) {
-//            Condition condition = new Condition();
-//            condition.setStatus("ERROR");
-//            condition.setReason("No support for private git service");
-//            status.getConditions().add(condition);
-//            return false;
-//        }
-
         String type = repo.getCodeRepoServiceType();
         if(!CodeRepoServiceEnum.Bitbucket.name().equals(type) && !CodeRepoServiceEnum.Github.name().equals(type)) {
             Condition condition = new Condition();

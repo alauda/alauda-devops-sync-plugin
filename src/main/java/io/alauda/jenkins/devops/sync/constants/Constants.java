@@ -95,4 +95,16 @@ public final class Constants {
     public static final String PIPELINECONFIG_KIND = "pipeline.kind";
     public static final String MULTI_BRANCH_CATEGORY = "multiBranchCategory";
     public static final String MULTI_BRANCH_NAME = "multiBranchName";
+
+    public static final String GITHUB_SCM_SOURCE = "org.jenkinsci.plugins.github_branch_source.GitHubSCMSource";
+    public static final String GITHUB_BRANCH_DISCOVERY_TRAIT = "org.jenkinsci.plugins.github_branch_source.BranchDiscoveryTrait";
+    public static final String GITHUB_ORIGIN_PR_TRAIT = "org.jenkinsci.plugins.github_branch_source.OriginPullRequestDiscoveryTrait";
+    public static final String GITHUB_FORK_PR_TRAIT = "org.jenkinsci.plugins.github_branch_source.ForkPullRequestDiscoveryTrait";
+    public static final String GITHUB_FORK_PR_TRUST_TRAIT = "org.jenkinsci.plugins.github_branch_source.ForkPullRequestDiscoveryTrait$TrustPermission";
+
+    public static final String BITBUCKET_SCM_SOURCE = "com.cloudbees.jenkins.plugins.bitbucket.BitbucketSCMSource";
+    public static final String BITBUCKET_BRANCH_DISCOVERY_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.BranchDiscoveryTrait";
+    public static final String BITBUCKET_ORIGIN_PR_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.OriginPullRequestDiscoveryTrait";
+    public static final String BITBUCKET_FORK_PR_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait";
+    public static final String BITBUCKET_FORK_PR_TRUST_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait$TrustTeamForks";
 }
