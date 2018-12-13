@@ -2,11 +2,9 @@ package io.alauda.jenkins.devops.sync;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
-import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.ItemGroup;
-import hudson.plugins.git.GitSCM;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.constants.CodeRepoServiceEnum;
@@ -14,9 +12,6 @@ import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
-import io.alauda.kubernetes.api.model.CodeRepoBinding;
-import io.alauda.kubernetes.api.model.CodeRepoBindingAccount;
-import io.alauda.kubernetes.api.model.CodeRepoBindingSpec;
 import io.alauda.kubernetes.api.model.CodeRepository;
 import io.alauda.kubernetes.api.model.CodeRepositoryRef;
 import io.alauda.kubernetes.api.model.CodeRepositorySpec;
@@ -24,6 +19,7 @@ import io.alauda.kubernetes.api.model.Condition;
 import io.alauda.kubernetes.api.model.MultiBranchBehaviours;
 import io.alauda.kubernetes.api.model.MultiBranchOrphan;
 import io.alauda.kubernetes.api.model.MultiBranchPipeline;
+import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.OriginCodeRepository;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.api.model.PipelineConfigSpec;
@@ -31,16 +27,12 @@ import io.alauda.kubernetes.api.model.PipelineConfigStatus;
 import io.alauda.kubernetes.api.model.PipelineSource;
 import io.alauda.kubernetes.api.model.PipelineSourceGit;
 import io.alauda.kubernetes.api.model.PipelineStrategyJenkins;
-import jenkins.branch.BranchProperty;
 import jenkins.branch.BranchSource;
-import jenkins.branch.DefaultBranchPropertyStrategy;
 import jenkins.model.Jenkins;
-import jenkins.plugins.git.AbstractGitSCMSource;
 import jenkins.plugins.git.GitSCMSource;
 import jenkins.plugins.git.traits.BranchDiscoveryTrait;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMHeadAuthority;
-import jenkins.scm.api.trait.SCMSourceBuilder;
 import jenkins.scm.api.trait.SCMSourceTrait;
 import jenkins.scm.impl.trait.RegexSCMHeadFilterTrait;
 import org.apache.commons.lang.StringUtils;
@@ -54,6 +46,7 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -227,6 +220,10 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             updateJob(job, jobStream, jobName, pipelineConfig);
         }
 
+        Map<String, String> logURLs = Collections.singletonMap(ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG,
+                String.format("/job/%s/job/%s/indexing/logText/progressiveText", namespace, jobName));
+        addAnnotations(pipelineConfig, logURLs, client);
+
         updatePipelineConfigPhase(pipelineConfig);
 
         return job;
@@ -357,4 +354,14 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
         return true;
     }
+
+    private void addAnnotations(@NotNull PipelineConfig pc, @NotNull Map<String, String> annotations,
+                                @NotNull AlaudaDevOpsClient client) {
+        ObjectMeta meta = pc.getMetadata();
+        client.pipelineConfigs().inNamespace(meta.getNamespace())
+                .withName(meta.getName()).edit()
+                .editMetadata().addToAnnotations(annotations)
+                .endMetadata().done();
+    }
+
 }
