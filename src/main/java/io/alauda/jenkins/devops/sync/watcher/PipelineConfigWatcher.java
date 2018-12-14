@@ -165,6 +165,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             String msg = String.format("%s[%s] is not binding to current jenkins[%s]",
                     pipelineName, pipelineBinding, jenkinsService);
             logger.warning(msg);
+            return;
         }
 
         try {
