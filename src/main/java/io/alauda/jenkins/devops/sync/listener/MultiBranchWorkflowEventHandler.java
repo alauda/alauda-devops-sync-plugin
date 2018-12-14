@@ -9,12 +9,13 @@ import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
-import jenkins.branch.MultiBranchProject;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONException;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.DoNotUse;
 
 import javax.validation.constraints.NotNull;
 import java.util.HashMap;
@@ -25,7 +26,8 @@ import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_B
 import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_STALE_BRANCH;
 
 @Extension
-public class MultiBranchWorkflowEventHandler implements ItemEventHandler {
+@Restricted(DoNotUse.class)
+public class MultiBranchWorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
     private static final Logger logger = Logger.getLogger(MultiBranchWorkflowEventHandler.class.getName());
 
     @Override
@@ -35,12 +37,12 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler {
         }
 
         ItemGroup<? extends Item> parent = item.getParent();
-        return (parent instanceof MultiBranchProject);
+        return (parent instanceof WorkflowMultiBranchProject);
     }
 
     @Override
-    public void onCreated(Item item) {
-        BranchJobProperty pro = ((WorkflowJob) item).getProperty(BranchJobProperty.class);
+    public void onCreated(WorkflowJob item) {
+        BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
         if(pro != null) {
             String name = pro.getBranch().getEncodedName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
@@ -50,15 +52,13 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler {
     }
 
     @Override
-    public void onUpdated(Item item) {
-        WorkflowJob wfJob = (WorkflowJob) item;
-
-        BranchJobProperty pro = wfJob.getProperty(BranchJobProperty.class);
+    public void onUpdated(WorkflowJob item) {
+        BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
         if(pro != null) {
             String name = pro.getBranch().getEncodedName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
-            if(wfJob.isDisabled()) {
+            if(item.isDisabled()) {
                 // it's a stale pipeline for multi-branch
                 delBranchAnnotation(parent, name);
                 addStaleAnnotation(parent, name);
@@ -71,8 +71,8 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler {
     }
 
     @Override
-    public void onDeleted(Item item) {
-        BranchJobProperty pro = ((WorkflowJob) item).getProperty(BranchJobProperty.class);
+    public void onDeleted(WorkflowJob item) {
+        BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
         if(pro != null) {
             String name = pro.getBranch().getEncodedName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();

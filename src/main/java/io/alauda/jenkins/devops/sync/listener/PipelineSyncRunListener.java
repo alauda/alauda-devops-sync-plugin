@@ -437,12 +437,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                         Object blueOceanURI = getRunURLMethod.invoke(displayURL, run);
                         logsBlueOceanUrl = blueOceanURI.toString();
                         logsBlueOceanUrl = logsBlueOceanUrl.replaceAll("http://unconfigured-jenkins-location/", "");
-//                        if (logsBlueOceanUrl.startsWith("http://") || logsBlueOceanUrl.startsWith("https://")) {
-//                            // still normalize string
-//                            logsBlueOceanUrl = joinPaths("", logsBlueOceanUrl);
-//                        } else {
-//                            logsBlueOceanUrl = joinPaths(rootUrl, logsBlueOceanUrl);
-//                        }
                     }
                 }
             }
@@ -777,21 +771,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         public StageNodeExt stage;
         public BlueRunResult result;
         public List<BluePipelineNode.Edge> edges;
-//      public List<BluePipelineStep> steps;
-
 
         public BlueJsonStage(StageNodeExt stage, BlueRunResult result, List<BluePipelineNode.Edge> edges, List<BluePipelineStep> steps) {
             this.stage = stage;
             this.result = result;
             this.edges = edges;
-//        this.steps = steps;
         }
-
-    /*
-    Map<String, BlueRunResult> blueRunResults = new HashMap<>();
-        Map<String, List<BluePipelineNode.Edge>> blueRunEdges = new HashMap<>();
-        Map<String, List<BluePipelineStep>> blueRunSteps = new HashMap<>();
-     */
     }
 
     private static class PipelineJson {

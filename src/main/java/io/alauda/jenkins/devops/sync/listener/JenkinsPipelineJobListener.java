@@ -124,6 +124,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public String toString() {
-        return "JenkinsPipelineJobListener{" + "server='" + server + '\'' + ", jenkinsService='" + jenkinsService + '\'' + ", namespace='" + Arrays.toString(namespaces) + '\'' + ", jobNamePattern='" + jobNamePattern + '\'' + '}';
+        return "JenkinsPipelineJobListener{" + "server='" + server + '\'' + ", jenkinsService='" +
+                jenkinsService + '\'' + ", namespace='" + Arrays.toString(namespaces) + '\'' + ", jobNamePattern='" +
+                jobNamePattern + '\'' + '}';
     }
 }

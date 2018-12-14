@@ -1,17 +1,16 @@
 package io.alauda.jenkins.devops.sync;
 
+import hudson.ExtensionPoint;
 import hudson.model.AbstractItem;
 import hudson.model.TopLevelItem;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.kubernetes.api.model.Condition;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.api.model.PipelineConfigStatus;
 import io.alauda.kubernetes.api.model.PipelineConfigStatusBuilder;
-import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
 import javax.validation.constraints.NotNull;
 import javax.xml.transform.Source;
@@ -20,7 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
-public interface PipelineConfigConvert<T extends TopLevelItem> {
+public interface PipelineConfigConvert<T extends TopLevelItem> extends ExtensionPoint {
     boolean accept(PipelineConfig pipelineConfig);
 
     T convert(PipelineConfig pipelineConfig) throws IOException;

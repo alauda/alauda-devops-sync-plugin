@@ -26,7 +26,6 @@ import io.alauda.kubernetes.api.model.PipelineSourceGit;
 import io.alauda.kubernetes.api.model.PipelineStrategy;
 import io.alauda.kubernetes.api.model.PipelineStrategyJenkins;
 import io.alauda.kubernetes.client.KubernetesClientException;
-import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -38,15 +37,11 @@ import java.util.logging.Logger;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 
 @Extension
-public class WorkflowEventHandler implements ItemEventHandler {
+public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
     private static final Logger logger = Logger.getLogger(WorkflowEventHandler.class.getName());
 
     @Override
     public boolean accept(Item item) {
-        if(item == null) {
-            return false;
-        }
-
         if(!(item instanceof WorkflowJob)) {
             return false;
         }
@@ -56,25 +51,24 @@ public class WorkflowEventHandler implements ItemEventHandler {
     }
 
     @Override
-    public void onCreated(Item item){
-        upsertItem(item);
+    public void onCreated(WorkflowJob item){
+        upsertWorkflowJob(item);
     }
 
     @Override
-    public void onUpdated(Item item) {
-        upsertItem(item);
+    public void onUpdated(WorkflowJob item) {
+        upsertWorkflowJob(item);
     }
 
     @Override
-    public void onDeleted(Item item) {
+    public void onDeleted(WorkflowJob item) {
         final AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
             logger.severe("alauda client is null, stop from onDeleted.");
             return;
         }
 
-        WorkflowJob job = (WorkflowJob) item;
-        WorkflowJobProperty property = pipelineConfigProjectForJob(job);
+        WorkflowJobProperty property = pipelineConfigProjectForJob(item);
         if (property != null) {
             final String namespace = property.getNamespace();
             final String pipelineConfigName = property.getName();
@@ -101,31 +95,6 @@ public class WorkflowEventHandler implements ItemEventHandler {
                 }
             } else {
                 logger.info(() -> "No pipeline config for " + namespace + "/" + pipelineConfigName);
-            }
-        }
-    }
-
-    /**
-     * Create or update the pipeline job
-     * @param item
-     */
-    public void upsertItem(Item item) {
-        if (item instanceof WorkflowJob) {
-            upsertWorkflowJob((WorkflowJob) item);
-        } else if (item instanceof ItemGroup) {
-            upsertItemGroup((ItemGroup) item);
-        }
-    }
-
-    private void upsertItemGroup(ItemGroup itemGroup) {
-        Collection items = itemGroup.getItems();
-        if (items != null) {
-            for (Object child : items) {
-                if (child instanceof WorkflowJob) {
-                    upsertWorkflowJob((WorkflowJob) child);
-                } else if (child instanceof ItemGroup) {
-                    upsertItemGroup((ItemGroup) child);
-                }
             }
         }
     }

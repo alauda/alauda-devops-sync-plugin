@@ -3,10 +3,14 @@ package io.alauda.jenkins.devops.sync;
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
 import com.cloudbees.hudson.plugins.folder.AbstractFolderProperty;
 import com.cloudbees.hudson.plugins.folder.AbstractFolderPropertyDescriptor;
-import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
+import hudson.model.Descriptor;
 import jenkins.branch.MultiBranchProject;
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
+
+import javax.annotation.Nonnull;
 
 public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?>>
         implements AlaudaJobProperty {
@@ -24,9 +28,15 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
         this.resourceVersion = resourceVersion;
     }
 
+    @Override
+    public AbstractFolderProperty<?> reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
+        return this;
+    }
+
     @Extension
     public static class DescriptorImpl extends AbstractFolderPropertyDescriptor {
-        @NonNull
+
+        @Nonnull
         @Override
         public String getDisplayName() {
             return "Alauda MultiBranch Project";

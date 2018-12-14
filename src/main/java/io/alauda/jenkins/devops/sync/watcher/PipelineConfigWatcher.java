@@ -356,7 +356,6 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
     private synchronized void modifyEventToJenkinsJob(PipelineConfig pipelineConfig) throws Exception {
         if (AlaudaUtils.isPipelineStrategyPipelineConfig(pipelineConfig)) {
             upsertJob(pipelineConfig);
-            return;
         }
     }
 
