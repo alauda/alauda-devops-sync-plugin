@@ -30,8 +30,6 @@ public class JenkinsfileFormatAction implements RootAction {
     @SuppressWarnings("unused")
     @RequirePOST
     public HttpResponse doFormatJenkinsfile(StaplerRequest req) {
-        Jenkins.getInstance().checkPermission(Jenkins.READ);
-
         JSONObject result = new JSONObject();
 
         String unformattedGroovyPipeline = req.getParameter("jenkinsfile");
