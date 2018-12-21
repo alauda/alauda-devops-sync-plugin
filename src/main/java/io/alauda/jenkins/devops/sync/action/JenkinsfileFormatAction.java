@@ -1,10 +1,9 @@
 package io.alauda.jenkins.devops.sync.action;
 
 import hudson.Extension;
-import hudson.model.RootAction;
+import hudson.model.UnprotectedRootAction;
 import hudson.security.csrf.CrumbExclusion;
 import hudson.util.HttpResponses;
-import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.pipeline.modeldefinition.ast.ModelASTPipelineDef;
@@ -22,7 +21,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @Extension
-public class JenkinsfileFormatAction implements RootAction {
+public class JenkinsfileFormatAction implements UnprotectedRootAction {
 
     public static final String FORMATTER_URL = "alauda-formatter";
 
