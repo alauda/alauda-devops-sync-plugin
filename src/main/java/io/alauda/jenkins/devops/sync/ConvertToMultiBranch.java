@@ -1,11 +1,13 @@
 package io.alauda.jenkins.devops.sync;
 
+import antlr.ANTLRException;
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
 import hudson.Extension;
 import hudson.model.ItemGroup;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -23,6 +25,8 @@ import io.alauda.kubernetes.api.model.PipelineConfigSpec;
 import io.alauda.kubernetes.api.model.PipelineSource;
 import io.alauda.kubernetes.api.model.PipelineSourceGit;
 import io.alauda.kubernetes.api.model.PipelineStrategyJenkins;
+import io.alauda.kubernetes.api.model.PipelineTrigger;
+import io.alauda.kubernetes.api.model.PipelineTriggerCron;
 import jenkins.branch.BranchSource;
 import jenkins.model.Jenkins;
 import jenkins.plugins.git.GitSCMSource;
@@ -198,6 +202,23 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             handleCredentials(scmSource, pipelineConfig);
 
             job.getSourcesList().add(new BranchSource(scmSource));
+        }
+
+        job.getTriggers().clear();
+        List<PipelineTrigger> triggers = spec.getTriggers();
+        if(triggers != null) {
+            Optional<PipelineTrigger> triggerOpt = triggers.stream().filter(
+                    trigger -> PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType())).findFirst();
+            if(triggerOpt.isPresent()) {
+                PipelineTrigger trigger = triggerOpt.get();
+                PipelineTriggerCron cron = trigger.getCron();
+
+                try {
+                    job.addTrigger(new CronFolderTrigger(cron.getRule()));
+                } catch (ANTLRException e) {
+                    e.printStackTrace();
+                }
+            }
         }
 
         // going to save the configuration
