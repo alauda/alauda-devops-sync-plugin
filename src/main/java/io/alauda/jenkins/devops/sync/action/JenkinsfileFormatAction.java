@@ -23,7 +23,7 @@ import java.io.IOException;
 @Extension
 public class JenkinsfileFormatAction implements UnprotectedRootAction {
 
-    public static final String FORMATTER_URL = "alauda-formatter";
+    public static final String FORMATTER_URL = "alaudaFormatter";
 
 
     @SuppressWarnings("unused")
@@ -37,7 +37,7 @@ public class JenkinsfileFormatAction implements UnprotectedRootAction {
             ModelASTPipelineDef pipelineDef = Converter.scriptToPipelineDef(unformattedGroovyPipeline);
             if (pipelineDef != null) {
                 result.accumulate("result", "success");
-                result.accumulate("json", pipelineDef.toPrettyGroovy());
+                result.accumulate("jenkinsfile", pipelineDef.toPrettyGroovy());
             } else {
                 reportFailure(result, "Jenkinsfile content '" + unformattedGroovyPipeline + "' did not contain the 'pipeline' step");
             }
