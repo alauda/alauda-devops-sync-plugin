@@ -70,6 +70,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         } else {
             WorkflowJobProperty wfJobProperty = job.getProperty(WorkflowJobProperty.class);
             if(wfJobProperty == null) {
+                logger.warning("Missing the AlaudaWorkflowJobProperty.");
                 return null;
             }
 
@@ -77,6 +78,9 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
                 // only could update the resourceVersion
                 wfJobProperty.setResourceVersion(resourceVer);
             } else {
+                logger.warning(String.format("Not the same job, can't handle it." +
+                        "PipelineConfig uid is %s, job uid is %s",
+                        pipelineConfig.getMetadata().getUid(), wfJobProperty.getUid()));
                 return null;
             }
         }

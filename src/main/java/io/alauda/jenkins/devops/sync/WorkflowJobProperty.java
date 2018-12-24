@@ -16,15 +16,20 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
+import hudson.model.Descriptor;
 import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
+import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
+
+import javax.annotation.Nonnull;
 
 /**
  * Stores the Alauda DevOps Pipeline Config related project properties.
@@ -92,6 +97,12 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
     public static final class DescriptorImpl extends JobPropertyDescriptor {
         public boolean isApplicable(Class<? extends Job> jobType) {
             return WorkflowJob.class.isAssignableFrom(jobType);
+        }
+
+        @Nonnull
+        @Override
+        public String getDisplayName() {
+            return "Alauda Pipeline job";
         }
     }
 }
