@@ -2,8 +2,11 @@ package io.alauda.jenkins.devops.sync.action;
 
 import com.gargoylesoftware.htmlunit.HttpMethod;
 import com.gargoylesoftware.htmlunit.WebRequest;
+import com.google.common.base.Strings;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -38,12 +41,13 @@ public class JenkinsfileFormatActionTest {
                 foundExpectedErrorInJSON(resultData.getJSONArray("errors"), expectedError));
     }
 
+    @Test
     public void testFormatJenkinsfile() throws IOException {
         JenkinsRule.WebClient wc = j.createWebClient();
 
         WebRequest req = new WebRequest(new URL(wc.getContextPath() + JenkinsfileFormatAction.FORMATTER_URL + "/formatJenkinsfile"), HttpMethod.POST);
 
-        String jenkinsfile = "pipeline {}";
+        String jenkinsfile = IOUtils.toString(getClass().getResourceAsStream("unformattedJenkinsfile"));
         req.setRequestBody("jenkinsfile=" + jenkinsfile);
 
         String rawResult = wc.getPage(req).getWebResponse().getContentAsString();
@@ -55,7 +59,8 @@ public class JenkinsfileFormatActionTest {
         assertNotNull(resultData);
         assertEquals("Result wasn't a success - " + result.toString(2), "success", resultData.getString("result"));
 
-        String expectedJenkinsfile = "pipeline {\n}";
+        String expectedJenkinsfile = IOUtils.toString(getClass().getResourceAsStream("expectedJenkinsfile"));
+
         assertEquals(expectedJenkinsfile, resultData.getString("jenkinsfile"));
     }
 
