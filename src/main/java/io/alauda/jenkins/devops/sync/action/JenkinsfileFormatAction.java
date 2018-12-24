@@ -2,7 +2,6 @@ package io.alauda.jenkins.devops.sync.action;
 
 import hudson.Extension;
 import hudson.model.UnprotectedRootAction;
-import hudson.security.csrf.CrumbExclusion;
 import hudson.util.HttpResponses;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -14,11 +13,6 @@ import org.kohsuke.stapler.interceptor.RequirePOST;
 import org.parboiled.common.StringUtils;
 
 import javax.annotation.CheckForNull;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 
 @Extension
 public class JenkinsfileFormatAction implements UnprotectedRootAction {
@@ -80,20 +74,4 @@ public class JenkinsfileFormatAction implements UnprotectedRootAction {
         return FORMATTER_URL;
     }
 
-    // Add exception to CSRF protection
-    @Extension
-    public static class ModelConverterActionCrumbExclusion extends CrumbExclusion {
-        @Override
-        public boolean process(HttpServletRequest req, HttpServletResponse resp, FilterChain chain)
-                throws IOException, ServletException {
-            String pathInfo = req.getPathInfo();
-
-            if (pathInfo != null && pathInfo.startsWith("/" + FORMATTER_URL + "/")) {
-                chain.doFilter(req, resp);
-                return true;
-            }
-
-            return false;
-        }
-    }
 }
