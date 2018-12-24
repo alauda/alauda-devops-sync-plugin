@@ -173,9 +173,14 @@ public abstract class PipelineConfigToJobMapper {
             cronTrigger = null;
         } else {
             pipelineConfigTriggers.clear();
+            Optional<PipelineTrigger> triggerOptional = pipelineConfigTriggers.stream().filter(trigger ->
+                    PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType())).findFirst();
 
-            cronTrigger = pipelineConfigTriggers.stream().filter(trigger ->
-                            PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType())).findFirst().get();
+            if(triggerOptional.isPresent()) {
+                cronTrigger = triggerOptional.get();
+            } else {
+                cronTrigger = null;
+            }
         }
 
         triggers.forEach((desc, trigger) -> {
