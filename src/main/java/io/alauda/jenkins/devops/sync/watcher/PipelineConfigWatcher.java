@@ -27,7 +27,6 @@ import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
@@ -41,7 +40,10 @@ import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
+import org.jenkinsci.plugins.pipeline.modeldefinition.ast.ModelASTPipelineDef;
+import org.jenkinsci.plugins.pipeline.modeldefinition.parser.Converter;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
@@ -391,6 +393,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                       + AlaudaUtils.getNamespace(pipelineConfig) + "/" + AlaudaUtils.getName(pipelineConfig));
             } else {
                 updatePipelineConfigPhase(pipelineConfig);
+                formatJenkinsfile(pipelineConfig);
 
                 JenkinsUtils.verifyEnvVars(paramMap, workflowJob);
                 PipelineConfigToJobMap.putJobWithPipelineConfig(workflowJob, pipelineConfig);
@@ -412,6 +415,41 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
         PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
 
         return template != null && template.getSpec() != null;
+    }
+
+    private void formatJenkinsfile(final PipelineConfig pipelineConfig) {
+        String jenkinsfile = pipelineConfig.getSpec().getStrategy().getJenkins().getJenkinsfile();
+        if (StringUtils.isEmpty(jenkinsfile)) {
+            return;
+        }
+
+        ModelASTPipelineDef pipelineDef;
+        try {
+            pipelineDef = Converter.scriptToPipelineDef(jenkinsfile);
+        } catch (Exception ignore) {
+            return;
+        }
+
+        if (pipelineDef == null) {
+            return;
+        }
+
+        String formattedJenkinsfile = pipelineDef.toPrettyGroovy();
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        ObjectMeta metadata = pipelineConfig.getMetadata();
+        String namespace = metadata.getNamespace();
+        String name = metadata.getName();
+
+        PipelineConfigSpec spec = pipelineConfig.getSpec();
+        spec.getStrategy().getJenkins().setJenkinsfile(formattedJenkinsfile);
+
+        PipelineConfig result = client.pipelineConfigs().inNamespace(namespace)
+                .withName(name).edit()
+                .withNewSpecLike(spec).endSpec()
+                .done();
+
+        logger.info(String.format("Format PipelineConfig's jenkinsfile %s, name: %s",
+                result.getSpec().getStrategy().getJenkins().getJenkinsfile(), result.getMetadata().getName()));
     }
 
     private void updatePipelineConfigPhase(final PipelineConfig pipelineConfig) {
