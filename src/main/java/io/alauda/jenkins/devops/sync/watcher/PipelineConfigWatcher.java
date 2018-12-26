@@ -42,8 +42,6 @@ import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
-import org.jenkinsci.plugins.pipeline.modeldefinition.ast.ModelASTPipelineDef;
-import org.jenkinsci.plugins.pipeline.modeldefinition.parser.Converter;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
@@ -423,18 +421,12 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             return;
         }
 
-        ModelASTPipelineDef pipelineDef;
+        String formattedJenkinsfile;
         try {
-            pipelineDef = Converter.scriptToPipelineDef(jenkinsfile);
+            formattedJenkinsfile = JenkinsUtils.formatJenkinsfile(jenkinsfile);
         } catch (Exception ignore) {
             return;
         }
-
-        if (pipelineDef == null) {
-            return;
-        }
-
-        String formattedJenkinsfile = pipelineDef.toPrettyGroovy();
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         ObjectMeta metadata = pipelineConfig.getMetadata();
         String namespace = metadata.getNamespace();

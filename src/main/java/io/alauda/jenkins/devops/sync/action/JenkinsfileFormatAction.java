@@ -3,10 +3,9 @@ package io.alauda.jenkins.devops.sync.action;
 import hudson.Extension;
 import hudson.model.UnprotectedRootAction;
 import hudson.util.HttpResponses;
+import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
-import org.jenkinsci.plugins.pipeline.modeldefinition.ast.ModelASTPipelineDef;
-import org.jenkinsci.plugins.pipeline.modeldefinition.parser.Converter;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.interceptor.RequirePOST;
@@ -25,17 +24,18 @@ public class JenkinsfileFormatAction implements UnprotectedRootAction {
     public HttpResponse doFormatJenkinsfile(StaplerRequest req) {
         JSONObject result = new JSONObject();
 
-        String unformattedGroovyPipeline = req.getParameter("jenkinsfile");
+        String jenkinsfile = req.getParameter("jenkinsfile");
 
-        if (!StringUtils.isEmpty(unformattedGroovyPipeline)) {
-            ModelASTPipelineDef pipelineDef = Converter.scriptToPipelineDef(unformattedGroovyPipeline);
-            if (pipelineDef != null) {
+        if (!StringUtils.isEmpty(jenkinsfile)) {
+            try {
+                String formattedJenkinsfile = JenkinsUtils.formatJenkinsfile(jenkinsfile);
                 result.accumulate("result", "success");
-                result.accumulate("jenkinsfile", pipelineDef.toPrettyGroovy());
-            } else {
-                reportFailure(result, "Jenkinsfile content '" + unformattedGroovyPipeline + "' did not contain the 'pipeline' step");
+                result.accumulate("jenkinsfile", formattedJenkinsfile);
+            } catch (Exception e) {
+                // also catch runtime exception
+                e.printStackTrace();
+                reportFailure(result, e.getMessage());
             }
-
         } else {
             reportFailure(result, "No content found for 'jenkinsfile' parameter");
         }
