@@ -293,6 +293,8 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             String jobFullName = AlaudaUtils.jenkinsJobFullName(pipelineConfig);
             WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
             Jenkins activeInstance = Jenkins.getInstance();
+
+            formatJenkinsfile(pipelineConfig);
             ItemGroup parent = activeInstance;
             if (job == null) {
               job = (WorkflowJob) activeInstance.getItemByFullName(jobFullName);
@@ -391,7 +393,6 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                       + AlaudaUtils.getNamespace(pipelineConfig) + "/" + AlaudaUtils.getName(pipelineConfig));
             } else {
                 updatePipelineConfigPhase(pipelineConfig);
-                formatJenkinsfile(pipelineConfig);
 
                 JenkinsUtils.verifyEnvVars(paramMap, workflowJob);
                 PipelineConfigToJobMap.putJobWithPipelineConfig(workflowJob, pipelineConfig);
