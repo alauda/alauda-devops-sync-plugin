@@ -34,6 +34,7 @@ import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineComparator;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
+import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
@@ -642,7 +643,7 @@ public abstract class JenkinsUtils {
                 return null;
             }
 
-            String branchName = annotations.get(MULTI_BRANCH_NAME);
+            String branchName = annotations.get(Annotations.MULTI_BRANCH_NAME);
             WorkflowMultiBranchProject project = PipelineConfigToJobMap.getMultiBranchByPC(pipelineConfig);
             if(project != null) {
                 final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);

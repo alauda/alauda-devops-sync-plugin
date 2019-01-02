@@ -29,4 +29,7 @@ public final class Annotations {
     public static final String MULTI_BRANCH_STALE_BRANCH = "alauda.io/jenkins.stale.branch";
     public static final String MULTI_BRANCH_PR = "alauda.io/jenkins.pr";
     public static final String MULTI_BRANCH_STALE_PR = "alauda.io/jenkins.stale.pr";
+
+    public static final String MULTI_BRANCH_CATEGORY = "alauda.io/multiBranchCategory";
+    public static final String MULTI_BRANCH_NAME = "alauda.io/multiBranchName";
 }

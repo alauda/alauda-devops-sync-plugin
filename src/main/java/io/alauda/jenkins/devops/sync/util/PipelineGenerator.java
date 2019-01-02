@@ -8,10 +8,9 @@ import hudson.model.ParameterValue;
 import hudson.model.ParametersAction;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
-import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.branch.Branch;
-import jenkins.branch.BranchProperty;
 import jenkins.scm.api.SCMHead;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
@@ -44,15 +43,15 @@ public abstract class PipelineGenerator {
             BranchJobProperty property = job.getProperty(BranchJobProperty.class);
             if(property != null) {
                 Branch branch = property.getBranch();
-                annotations.put(Constants.MULTI_BRANCH_NAME, branch.getEncodedName());
+                annotations.put(Annotations.MULTI_BRANCH_NAME, branch.getEncodedName());
 
                 SCMHead head = SCMHead.HeadByItem.findHead(job);
 
                 // TODO need to consider multi-tag like GitTagSCMHead
                 if(isPR(job)) {
-                    annotations.put(Constants.MULTI_BRANCH_CATEGORY, "pr");
+                    annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "pr");
                 } else {
-                    annotations.put(Constants.MULTI_BRANCH_CATEGORY, "branch");
+                    annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "branch");
                 }
             }
         }
