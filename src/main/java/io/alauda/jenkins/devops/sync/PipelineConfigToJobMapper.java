@@ -431,12 +431,12 @@ public abstract class PipelineConfigToJobMapper {
         PipelineSourceSvn svnSource = source.getSvn();
         String credentialId = getAndUpdateCredential(pc);
 
-        String local = svnSource.getLocal();
+        String localDirectory = svnSource.getDirectory();
         // default local is current directory "."
-        if (StringUtils.isEmpty(local)) {
-            local = ".";
+        if (StringUtils.isEmpty(localDirectory)) {
+            localDirectory = ".";
         }
-        return new SubversionSCM(svnSource.getUri(), credentialId, local);
+        return new SubversionSCM(svnSource.getUri(), credentialId, localDirectory);
     }
 
 
