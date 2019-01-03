@@ -130,6 +130,11 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>io.alauda</groupId>
+      <artifactId>kubernetes-model</artifactId>
+      <version>0.2.9</version>
+    </dependency>
 
     <dependency>
        <groupId>io.jenkins.blueocean</groupId>
@@ -174,6 +179,11 @@
        <groupId>org.jenkins-ci.plugins</groupId>
        <artifactId>credentials</artifactId>
        <version>2.1.16</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>subversion</artifactId>
+      <version>2.12.1</version>
     </dependency>
 
     <dependency>
