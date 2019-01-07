@@ -392,9 +392,8 @@ public abstract class PipelineConfigToJobMapper {
         if (locations != null && locations.length > 0) {
             SubversionSCM.ModuleLocation location = locations[0];
             String url = location.getURL();
-            String local = location.getLocalDir();
 
-            AlaudaUtils.updateSvnSourceUrl(pipelineConfig, url, local);
+            AlaudaUtils.updateSvnSourceUrl(pipelineConfig, url);
             return true;
         }
 
@@ -434,12 +433,7 @@ public abstract class PipelineConfigToJobMapper {
         PipelineSourceSvn svnSource = source.getSvn();
         String credentialId = getAndUpdateCredential(pc);
 
-        String localDirectory = svnSource.getDirectory();
-        // default local is current directory "."
-        if (StringUtils.isEmpty(localDirectory)) {
-            localDirectory = ".";
-        }
-        return new SubversionSCM(svnSource.getUri(), credentialId, localDirectory);
+        return new SubversionSCM(svnSource.getUri(), credentialId, ".");
     }
 
 

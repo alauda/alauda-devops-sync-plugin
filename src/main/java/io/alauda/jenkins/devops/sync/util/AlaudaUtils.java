@@ -510,7 +510,7 @@ public abstract class AlaudaUtils {
         git.setRef(ref);
     }
 
-    public static void updateSvnSourceUrl(PipelineConfig pipelineConfig, String svnUrl, String localDirectory) {
+    public static void updateSvnSourceUrl(PipelineConfig pipelineConfig, String svnUrl) {
         PipelineSource source = getOrCreatePipelineSource(pipelineConfig);
         PipelineSourceSvn svn = source.getSvn();
         if (svn == null) {
@@ -518,7 +518,6 @@ public abstract class AlaudaUtils {
             source.setSvn(svn);
         }
         svn.setUri(svnUrl);
-        svn.setDirectory(localDirectory);
     }
 
     public static PipelineSource getOrCreatePipelineSource(PipelineConfig pipelineConfig) {
