@@ -9,6 +9,7 @@ import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
+import jenkins.scm.api.metadata.ContributorMetadataAction;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONException;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -22,8 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_BRANCH;
-import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_STALE_BRANCH;
+import static io.alauda.jenkins.devops.sync.constants.Annotations.*;
 
 @Extension
 @Restricted(DoNotUse.class)
@@ -47,7 +47,12 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             String name = pro.getBranch().getEncodedName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
-            addBranchAnnotation(parent, name);
+            if(isPR(item)) {
+                // we consider it as a pr
+                addPRAnnotation(parent, name);
+            } else {
+                addBranchAnnotation(parent, name);
+            }
         }
     }
 
@@ -60,12 +65,23 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
             if(item.isDisabled()) {
                 // it's a stale pipeline for multi-branch
-                delBranchAnnotation(parent, name);
-                addStaleAnnotation(parent, name);
+                if(isPR(item)) {
+                    delPRAnnotation(parent, name);
+                    addStaleBranchAnnotation(parent, name);
+                } else {
+                    delBranchAnnotation(parent, name);
+                    addStaleBranchAnnotation(parent, name);
+                }
             } else {
                 // when the deleted branch had been restored
-                delStaleBranchAnnotation(parent, name);
-                addBranchAnnotation(parent, name);
+
+                if(isPR(item)) {
+                    delStalePRAnnotation(parent, name);
+                    addPRAnnotation(parent, name);
+                } else {
+                    delStaleBranchAnnotation(parent, name);
+                    addBranchAnnotation(parent, name);
+                }
             }
         }
     }
@@ -77,11 +93,19 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             String name = pro.getBranch().getEncodedName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
-            delStaleBranchAnnotation(parent, name);
+            if(isPR(item)) {
+                delStalePRAnnotation(parent, name);
+            } else {
+                delStaleBranchAnnotation(parent, name);
+            }
         }
     }
 
-    private void addStaleAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
+    private boolean isPR(WorkflowJob item) {
+        return item.getAction(ContributorMetadataAction.class) != null;
+    }
+
+    private void addStaleBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
         AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
         if(pro == null) {
             logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
@@ -133,12 +157,46 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         updatePipelineConfig(client, namespace, name, pc);
     }
 
+    private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
+        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
+        if(pro == null) {
+            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+            return;
+        }
+
+        String namespace = pro.getNamespace();
+        String name = pro.getName();
+
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.warning("Can't get devops client.");
+            return;
+        }
+
+        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
+        if(pc == null) {
+            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
+            return;
+        }
+
+        addPRAnnotation(pc, branchName);
+        updatePipelineConfig(client, namespace, name, pc);
+    }
+
     private void addBranchAnnotation(@NotNull PipelineConfig pc, String name) {
         addBranchAnnotation(pc, MULTI_BRANCH_BRANCH, name);
     }
 
+    private void addPRAnnotation(@NotNull PipelineConfig pc, String name) {
+        addBranchAnnotation(pc, MULTI_BRANCH_PR, name);
+    }
+
     private void addStaleBranchAnnotation(@NotNull PipelineConfig pc, String name) {
         addBranchAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
+    }
+
+    private void addStalePRAnnotation(@NotNull PipelineConfig pc, String name) {
+        addBranchAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
     }
 
     private void addBranchAnnotation(@NotNull PipelineConfig pc, final String annotation, String name) {
@@ -168,6 +226,32 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         annotations.put(annotation, jsonArray.toString());
     }
 
+    private void delPRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
+        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
+        if(pro == null) {
+            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+            return;
+        }
+
+        String namespace = pro.getNamespace();
+        String name = pro.getName();
+
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.warning("Can't get devops client.");
+            return;
+        }
+
+        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
+        if(pc == null) {
+            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
+            return;
+        }
+
+        delPRAnnotation(pc, branchName);
+        updatePipelineConfig(client, namespace, name, pc);
+    }
+
     private void delBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
         AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
         if(pro == null) {
@@ -191,6 +275,32 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         }
 
         delBranchAnnotation(pc, branchName);
+        updatePipelineConfig(client, namespace, name, pc);
+    }
+
+    private void delStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
+        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
+        if(pro == null) {
+            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+            return;
+        }
+
+        String namespace = pro.getNamespace();
+        String name = pro.getName();
+
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.warning("Can't get devops client.");
+            return;
+        }
+
+        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
+        if(pc == null) {
+            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
+            return;
+        }
+
+        delStalePRAnnotation(pc, branchName);
         updatePipelineConfig(client, namespace, name, pc);
     }
 
@@ -221,14 +331,22 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     private void delBranchAnnotation(@NotNull PipelineConfig pc, String name) {
-        delBranchAnnotation(pc, MULTI_BRANCH_BRANCH, name);
+        delAnnotation(pc, MULTI_BRANCH_BRANCH, name);
+    }
+
+    private void delPRAnnotation(@NotNull PipelineConfig pc, String name) {
+        delAnnotation(pc, MULTI_BRANCH_PR, name);
     }
 
     private void delStaleBranchAnnotation(@NotNull PipelineConfig pc, String name) {
-        delBranchAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
+        delAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
     }
 
-    private void delBranchAnnotation(@NotNull PipelineConfig pc, final String annotation, String name) {
+    private void delStalePRAnnotation(@NotNull PipelineConfig pc, String name) {
+        delAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
+    }
+
+    private void delAnnotation(@NotNull PipelineConfig pc, final String annotation, String name) {
         ObjectMeta meta = pc.getMetadata();
         Map<String, String> annotations = meta.getAnnotations();
         if(annotations == null) {
