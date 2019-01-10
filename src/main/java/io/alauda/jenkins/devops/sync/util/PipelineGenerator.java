@@ -43,7 +43,7 @@ public abstract class PipelineGenerator {
             BranchJobProperty property = job.getProperty(BranchJobProperty.class);
             if(property != null) {
                 Branch branch = property.getBranch();
-                annotations.put(Annotations.MULTI_BRANCH_NAME, branch.getEncodedName());
+                annotations.put(Annotations.MULTI_BRANCH_NAME, branch.getName());
 
                 SCMHead head = SCMHead.HeadByItem.findHead(job);
 

@@ -44,7 +44,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     public void onCreated(WorkflowJob item) {
         BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
         if(pro != null) {
-            String name = pro.getBranch().getEncodedName();
+            String name = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
             if(isPR(item)) {
@@ -60,7 +60,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     public void onUpdated(WorkflowJob item) {
         BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
         if(pro != null) {
-            String name = pro.getBranch().getEncodedName();
+            String name = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
             if(item.isDisabled()) {
