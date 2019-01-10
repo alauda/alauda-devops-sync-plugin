@@ -67,7 +67,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
                 // it's a stale pipeline for multi-branch
                 if(isPR(item)) {
                     delPRAnnotation(parent, name);
-                    addStaleBranchAnnotation(parent, name);
+                    addStalePRAnnotation(parent, name);
                 } else {
                     delBranchAnnotation(parent, name);
                     addStaleBranchAnnotation(parent, name);
@@ -128,6 +128,32 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         }
 
         addStaleBranchAnnotation(pc, branchName);
+        updatePipelineConfig(client, namespace, name, pc);
+    }
+
+    private void addStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
+        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
+        if(pro == null) {
+            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+            return;
+        }
+
+        String namespace = pro.getNamespace();
+        String name = pro.getName();
+
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        if(client == null) {
+            logger.warning("Can't get devops client.");
+            return;
+        }
+
+        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
+        if(pc == null) {
+            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
+            return;
+        }
+
+        addStalePRAnnotation(pc, branchName);
         updatePipelineConfig(client, namespace, name, pc);
     }
 
