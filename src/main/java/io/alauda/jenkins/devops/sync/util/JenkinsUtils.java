@@ -39,6 +39,8 @@ import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.transport.URIish;
+import org.jenkinsci.plugins.pipeline.modeldefinition.ast.ModelASTPipelineDef;
+import org.jenkinsci.plugins.pipeline.modeldefinition.parser.Converter;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
@@ -724,4 +726,13 @@ public abstract class JenkinsUtils {
 		}
 		return name;
 	}
+
+	@Nonnull
+    public static String formatJenkinsfile(String unformattedJenkinsfile) throws IOException {
+        ModelASTPipelineDef pipelineDef = Converter.scriptToPipelineDef(unformattedJenkinsfile);
+        if (pipelineDef == null) {
+            throw new IOException("Jenkinsfile content '" + unformattedJenkinsfile + "' did not contain the 'pipeline' step or miss some steps");
+        }
+        return pipelineDef.toPrettyGroovy();
+    }
 }
