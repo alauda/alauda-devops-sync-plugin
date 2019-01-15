@@ -47,11 +47,17 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             String name = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
+            item.getAllActions().forEach(action -> {
+                logger.info(String.format("on create, item is %s, class is %s", item.getName(), action.getClass()));
+            });
+
             if(isPR(item)) {
                 // we consider it as a pr
                 addPRAnnotation(parent, name);
+                logger.info(String.format("add a pr %s", name));
             } else {
                 addBranchAnnotation(parent, name);
+                logger.info(String.format("add a branch %s", name));
             }
         }
     }
@@ -68,9 +74,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
                 if(isPR(item)) {
                     delPRAnnotation(parent, name);
                     addStalePRAnnotation(parent, name);
+                    logger.info(String.format("disable a pr %s", name));
                 } else {
                     delBranchAnnotation(parent, name);
                     addStaleBranchAnnotation(parent, name);
+                    logger.info(String.format("disable a branch %s", name));
                 }
             } else {
                 // when the deleted branch had been restored
@@ -78,9 +86,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
                 if(isPR(item)) {
                     delStalePRAnnotation(parent, name);
                     addPRAnnotation(parent, name);
+                    logger.info(String.format("enable a pr %s", name));
                 } else {
                     delStaleBranchAnnotation(parent, name);
                     addBranchAnnotation(parent, name);
+                    logger.info(String.format("enable a branch %s", name));
                 }
             }
         }
@@ -95,8 +105,10 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
             if(isPR(item)) {
                 delStalePRAnnotation(parent, name);
+                logger.info(String.format("del a stale pr %s", name));
             } else {
                 delStaleBranchAnnotation(parent, name);
+                logger.info(String.format("del a stale branch %s", name));
             }
         }
     }
@@ -210,22 +222,22 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     private void addBranchAnnotation(@NotNull PipelineConfig pc, String name) {
-        addBranchAnnotation(pc, MULTI_BRANCH_BRANCH, name);
+        addAnnotation(pc, MULTI_BRANCH_BRANCH, name);
     }
 
     private void addPRAnnotation(@NotNull PipelineConfig pc, String name) {
-        addBranchAnnotation(pc, MULTI_BRANCH_PR, name);
+        addAnnotation(pc, MULTI_BRANCH_PR, name);
     }
 
     private void addStaleBranchAnnotation(@NotNull PipelineConfig pc, String name) {
-        addBranchAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
+        addAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
     }
 
     private void addStalePRAnnotation(@NotNull PipelineConfig pc, String name) {
-        addBranchAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
+        addAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
     }
 
-    private void addBranchAnnotation(@NotNull PipelineConfig pc, final String annotation, String name) {
+    private void addAnnotation(@NotNull PipelineConfig pc, final String annotation, String name) {
         ObjectMeta meta = pc.getMetadata();
         Map<String, String> annotations = meta.getAnnotations();
         if(annotations == null) {
