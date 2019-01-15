@@ -32,7 +32,6 @@ public interface PipelineConfigConvert<T extends TopLevelItem> extends Extension
         Source source = new StreamSource(jobStream);
         item.updateByXml(source);
         item.save();
-//        logger.info("Updated item " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig) + " with revision: " + pipelineConfig.getMetadata().getResourceVersion());
     }
 
     default void updatePipelineConfigPhase(@NotNull final PipelineConfig pipelineConfig) {
@@ -60,8 +59,5 @@ public interface PipelineConfigConvert<T extends TopLevelItem> extends Extension
                 .withName(name).edit()
                 .withNewStatusLike(statusBuilder.build()).endStatus()
                 .done();
-//
-//        logger.info(String.format("Update PipelineConfig's phase %s, name: %s",
-//                result.getStatus().getPhase(), result.getMetadata().getName()));
     }
 }

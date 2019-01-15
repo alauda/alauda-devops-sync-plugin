@@ -33,9 +33,7 @@ import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
-import org.apache.commons.lang3.StringUtils;
 
-import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -281,76 +279,6 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                 });
             }
         }
-    }
-
-    /**
-     * Whether PipelineConfig is create from a template
-     * @param pipelineConfig PipelineConfig
-     * @return whether PipelineConfig is create from a template
-     */
-    private boolean createFromTpl(@Nonnull PipelineConfig pipelineConfig) {
-        PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
-
-        return template != null && template.getSpec() != null;
-    }
-
-    private void formatJenkinsfile(final PipelineConfig pipelineConfig) {
-        String jenkinsfile = pipelineConfig.getSpec().getStrategy().getJenkins().getJenkinsfile();
-        if (StringUtils.isEmpty(jenkinsfile)) {
-            return;
-        }
-
-        String formattedJenkinsfile;
-        try {
-            formattedJenkinsfile = JenkinsUtils.formatJenkinsfile(jenkinsfile);
-        } catch (Exception ignore) {
-            return;
-        }
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        ObjectMeta metadata = pipelineConfig.getMetadata();
-        String namespace = metadata.getNamespace();
-        String name = metadata.getName();
-
-        PipelineConfigSpec spec = pipelineConfig.getSpec();
-        spec.getStrategy().getJenkins().setJenkinsfile(formattedJenkinsfile);
-
-        PipelineConfig result = client.pipelineConfigs().inNamespace(namespace)
-                .withName(name).edit()
-                .withNewSpecLike(spec).endSpec()
-                .done();
-
-        logger.info(String.format("Format PipelineConfig's jenkinsfile %s, name: %s",
-                result.getSpec().getStrategy().getJenkins().getJenkinsfile(), result.getMetadata().getName()));
-    }
-
-    private void updatePipelineConfigPhase(final PipelineConfig pipelineConfig) {
-        PipelineConfigStatusBuilder statusBuilder = new PipelineConfigStatusBuilder();
-
-        PipelineConfigStatus status = pipelineConfig.getStatus();
-        List<Condition> conditions = status.getConditions();
-        if (conditions.size() > 0) {
-            conditions.forEach(condition -> {
-                statusBuilder.addNewConditionLike(condition).endCondition();
-            });
-
-            statusBuilder.withMessage("Exists errors in process of creating pipeline job.");
-            statusBuilder.withPhase(PipelineConfigPhase.ERROR);
-        } else {
-            statusBuilder.withPhase(PipelineConfigPhase.READY);
-        }
-
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        ObjectMeta metadata = pipelineConfig.getMetadata();
-        String namespace = metadata.getNamespace();
-        String name = metadata.getName();
-
-        PipelineConfig result = client.pipelineConfigs().inNamespace(namespace)
-                .withName(name).edit()
-                .withNewStatusLike(statusBuilder.build()).endStatus()
-                .done();
-
-        logger.info(String.format("Update PipelineConfig's phase %s, name: %s",
-                result.getStatus().getPhase(), result.getMetadata().getName()));
     }
 
     private synchronized void modifyEventToJenkinsJob(PipelineConfig pipelineConfig) throws Exception {

@@ -17,16 +17,13 @@ import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.kubernetes.api.model.Condition;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.PipelineConfigStatus;
-import io.alauda.kubernetes.api.model.PipelineConfigStatusBuilder;
+import io.alauda.kubernetes.api.model.PipelineConfigSpec;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
-import javax.validation.constraints.NotNull;
-import javax.xml.transform.Source;
-import javax.xml.transform.stream.StreamSource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
@@ -57,6 +54,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         String resourceVer = pipelineConfig.getMetadata().getResourceVersion();
         WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
         Jenkins activeInstance = Jenkins.getInstance();
+        formatJenkinsfile(pipelineConfig);
         ItemGroup parent = activeInstance;
         if (job == null) {
             job = (WorkflowJob) activeInstance.getItemByFullName(jobFullName);
@@ -154,5 +152,34 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         }
 
         return workflowJob;
+    }
+
+    private void formatJenkinsfile(final PipelineConfig pipelineConfig) {
+        String jenkinsfile = pipelineConfig.getSpec().getStrategy().getJenkins().getJenkinsfile();
+        if (StringUtils.isEmpty(jenkinsfile)) {
+            return;
+        }
+
+        String formattedJenkinsfile;
+        try {
+            formattedJenkinsfile = JenkinsUtils.formatJenkinsfile(jenkinsfile);
+        } catch (Exception ignore) {
+            return;
+        }
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+        ObjectMeta metadata = pipelineConfig.getMetadata();
+        String namespace = metadata.getNamespace();
+        String name = metadata.getName();
+
+        PipelineConfigSpec spec = pipelineConfig.getSpec();
+        spec.getStrategy().getJenkins().setJenkinsfile(formattedJenkinsfile);
+
+        PipelineConfig result = client.pipelineConfigs().inNamespace(namespace)
+                .withName(name).edit()
+                .withNewSpecLike(spec).endSpec()
+                .done();
+
+        logger.info(String.format("Format PipelineConfig's jenkinsfile %s, name: %s",
+                result.getSpec().getStrategy().getJenkins().getJenkinsfile(), result.getMetadata().getName()));
     }
 }
