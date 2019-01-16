@@ -439,7 +439,8 @@ public abstract class JenkinsUtils {
 
             putJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
 
-            PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
+            //no reason add it again in here
+            //PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
             LOGGER.info(() -> "pipeline config update with job: "+pipelineName+" pipeline config "+pipelineConfig.getMetadata().getName());
 
             Action[] actionArray;

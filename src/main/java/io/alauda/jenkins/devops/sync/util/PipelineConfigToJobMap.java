@@ -13,11 +13,14 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 
 import static org.apache.commons.lang.StringUtils.isBlank;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 public class PipelineConfigToJobMap {
+    private static final Logger LOGGER = Logger.getLogger(PipelineConfigToJobMap.class.getName());
+
     private static Map<String, TopLevelItem> pipelineConfigToJobMap;
 
     private PipelineConfigToJobMap() {
@@ -122,6 +125,8 @@ public class PipelineConfigToJobMap {
             throw new IllegalArgumentException("PipelineConfig uid must not be blank");
         }
         pipelineConfigToJobMap.put(uid, job);
+
+        LOGGER.info(String.format("Add job %s, uid %s, total cache number %d", job.getFullName(), uid, pipelineConfigToJobMap.size()));
     }
 
     public static synchronized void removeJobWithPipelineConfig(PipelineConfig pipelineConfig) {
@@ -140,6 +145,8 @@ public class PipelineConfigToJobMap {
             throw new IllegalArgumentException("PipelineConfig uid must not be blank");
         }
         pipelineConfigToJobMap.remove(uid);
+
+        LOGGER.info(String.format("Remove job uid %s, total cache number %d", uid, pipelineConfigToJobMap.size()));
     }
 
     public static AlaudaJobProperty getProperty(TopLevelItem item) {
