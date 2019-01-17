@@ -45,6 +45,8 @@ public final class Constants {
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG = "alauda.io/multi-branch-scan-log";
 
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE = "alauda.io/pull-request-title";
+
     /** secret keys */
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";
