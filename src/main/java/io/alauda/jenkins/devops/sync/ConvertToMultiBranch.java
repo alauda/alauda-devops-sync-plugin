@@ -204,7 +204,6 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             job.getSourcesList().add(new BranchSource(scmSource));
         }
 
-        job.getTriggers().clear();
         List<PipelineTrigger> triggers = spec.getTriggers();
         if(triggers != null) {
             Optional<PipelineTrigger> triggerOpt = triggers.stream().filter(
@@ -214,7 +213,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
                 PipelineTriggerCron cron = trigger.getCron();
 
                 try {
-                    job.addTrigger(new CronFolderTrigger(cron.getRule()));
+                    job.addTrigger(new CronFolderTrigger(cron.getRule(), cron.getEnabled()));
                 } catch (ANTLRException e) {
                     e.printStackTrace();
                 }

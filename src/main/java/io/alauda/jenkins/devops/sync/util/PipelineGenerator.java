@@ -45,8 +45,6 @@ public abstract class PipelineGenerator {
                 Branch branch = property.getBranch();
                 annotations.put(Annotations.MULTI_BRANCH_NAME, branch.getName());
 
-                SCMHead head = SCMHead.HeadByItem.findHead(job);
-
                 // TODO need to consider multi-tag like GitTagSCMHead
                 if(isPR(job)) {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "pr");
