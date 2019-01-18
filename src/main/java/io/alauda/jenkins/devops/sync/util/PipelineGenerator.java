@@ -65,7 +65,7 @@ public abstract class PipelineGenerator {
 
         String headClsName = head.getClass().getName();
         return "org.jenkinsci.plugins.github_branch_source.PullRequestSCMHead".equals(headClsName)
-                || "com.cloudbees.jenkins.plugins.bitbucket.BranchSCMHead".equals(headClsName);
+                || "com.cloudbees.jenkins.plugins.bitbucket.PullRequestSCMHead".equals(headClsName);
     }
 
 
