@@ -29,43 +29,43 @@ import java.util.logging.Logger;
 public class PipelineQueueListener extends QueueListener {
     private static final Logger logger = Logger.getLogger(PipelineQueueListener.class.getName());
 
-  @Override
-  public void onLeft(Queue.LeftItem leftItem) {
-    super.onLeft(leftItem);
+    @Override
+    public void onLeft(Queue.LeftItem leftItem) {
+        super.onLeft(leftItem);
 
-    boolean isCancelled = leftItem.isCancelled();
-    if(!isCancelled) {
-      return;
-    }
-
-    JenkinsPipelineCause pipelineCause = null;
-    List<Cause> causes = leftItem.getCauses();
-    if(causes != null) {
-      for(Cause cause : causes) {
-        if(!(cause instanceof JenkinsPipelineCause)) {
-          continue;
+        boolean isCancelled = leftItem.isCancelled();
+        if (!isCancelled) {
+            return;
         }
 
-        pipelineCause = (JenkinsPipelineCause) cause;
-      }
-    }
+        JenkinsPipelineCause pipelineCause = null;
+        List<Cause> causes = leftItem.getCauses();
+        if (causes != null) {
+            for (Cause cause : causes) {
+                if (!(cause instanceof JenkinsPipelineCause)) {
+                    continue;
+                }
 
-    String itemUrl = leftItem.getUrl();
-    if(pipelineCause != null) {
-      String namespace = pipelineCause.getNamespace();
-      String name = pipelineCause.getName();
-      AlaudaUtils.getAuthenticatedAlaudaClient()
-        .pipelines()
-        .inNamespace(namespace)
-        .withName(name)
-        .edit()
-        .editOrNewStatus()
-        .withAborted(Boolean.TRUE)
-        .endStatus().done();
+                pipelineCause = (JenkinsPipelineCause) cause;
+            }
+        }
 
-      logger.info("Item " + leftItem + " already sync with alauda'resource.");
-    } else {
-      logger.warning("Can not found JenkinsPipelineCause, item url: " + itemUrl);
+        String itemUrl = leftItem.getUrl();
+        if (pipelineCause != null) {
+            String namespace = pipelineCause.getNamespace();
+            String name = pipelineCause.getName();
+            AlaudaUtils.getAuthenticatedAlaudaClient()
+                    .pipelines()
+                    .inNamespace(namespace)
+                    .withName(name)
+                    .edit()
+                    .editOrNewStatus()
+                    .withAborted(Boolean.TRUE)
+                    .endStatus().done();
+
+            logger.info("Item " + leftItem + " already sync with alauda'resource.");
+        } else {
+            logger.warning("Can not found JenkinsPipelineCause, item url: " + itemUrl);
+        }
     }
-  }
 }

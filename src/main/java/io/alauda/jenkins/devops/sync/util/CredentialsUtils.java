@@ -137,16 +137,15 @@ public abstract class CredentialsUtils {
         return credID;
     }
 
-  public static synchronized void deleteSourceCredentials(
-    PipelineConfig pipelineConfig) throws IOException {
-    Secret sourceSecret = getSourceCredentials(pipelineConfig);
-    if (sourceSecret != null) {
-      // for a pc delete, if we are watching this secret, do not delete
-      // credential until secret is actually deleted
-      // We should only delete once the secret is deleted
-      return;
+    public static synchronized void deleteSourceCredentials(PipelineConfig pipelineConfig) throws IOException {
+        Secret sourceSecret = getSourceCredentials(pipelineConfig);
+        if (sourceSecret != null) {
+            // for a pc delete, if we are watching this secret, do not delete
+            // credential until secret is actually deleted
+            // We should only delete once the secret is deleted
+            return;
+        }
     }
-  }
 
     /**
      * Inserts or creates a Jenkins Credential for the given Secret

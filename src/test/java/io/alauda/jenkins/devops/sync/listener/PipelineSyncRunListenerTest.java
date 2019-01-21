@@ -10,6 +10,6 @@ public class PipelineSyncRunListenerTest {
 
     @Test
     public void constructor() {
-        new PipelineSyncRunListener(0L);
+        new PipelineSyncRunListener();
     }
 }

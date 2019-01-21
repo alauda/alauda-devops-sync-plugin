@@ -12,8 +12,13 @@ import io.alauda.kubernetes.api.model.PipelineDependency;
 import jenkins.model.Jenkins;
 
 import javax.annotation.Nonnull;
+import javax.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
+
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND_MULTI_BRANCH;
 
 public abstract class PipelineConfigUtils {
     private static final Logger logger = Logger.getLogger(PipelineConfigUtils.class.getName());
@@ -93,5 +98,10 @@ public abstract class PipelineConfigUtils {
         PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
 
         return template != null && template.getSpec() != null;
+    }
+
+    public static boolean isMultiBranch(@NotNull PipelineConfig pipelineConfig) {
+        Map<String, String> labels = pipelineConfig.getMetadata().getLabels();
+        return (labels != null && PIPELINECONFIG_KIND_MULTI_BRANCH.equals(labels.get(PIPELINECONFIG_KIND)));
     }
 }

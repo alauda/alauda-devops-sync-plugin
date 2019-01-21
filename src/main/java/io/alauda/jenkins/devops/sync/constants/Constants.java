@@ -29,11 +29,23 @@ public final class Constants {
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL = "alauda.io/jenkins-log-url";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL = "alauda.io/jenkins-console-log-url";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL = "alauda.io/jenkins-blueocean-log-url";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG = "alauda.io/jenkins-stages-log";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES = "alauda.io/jenkins-stages";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG = "alauda.io/jenkins-steps-log";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS = "alauda.io/jenkins-steps";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG = "alauda.io/jenkins-view-log";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG = "alauda.io/jenkins-progressive-log";
+
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON = "alauda.io/jenkins-pending-input-actions-json";
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON = "alauda.io/jenkins-status-json";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON = "alauda.io/jenkins-stages-json";
+
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE = "alauda.io/jenkins-namespace";
+
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG = "alauda.io/multi-branch-scan-log";
+
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE = "alauda.io/pull-request-title";
 
     /** secret keys */
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
@@ -82,4 +94,19 @@ public final class Constants {
     public static final String DEFAULT_JENKINS_FILEPATH = "Jenkinsfile";
 
     public static final String ANNOTATION_BADGE = "alauda.io/jenkins-badges";
+
+    public static final String PIPELINECONFIG_KIND_MULTI_BRANCH = "multi-branch";
+    public static final String PIPELINECONFIG_KIND = "pipeline.kind";
+
+    public static final String GITHUB_SCM_SOURCE = "org.jenkinsci.plugins.github_branch_source.GitHubSCMSource";
+    public static final String GITHUB_BRANCH_DISCOVERY_TRAIT = "org.jenkinsci.plugins.github_branch_source.BranchDiscoveryTrait";
+    public static final String GITHUB_ORIGIN_PR_TRAIT = "org.jenkinsci.plugins.github_branch_source.OriginPullRequestDiscoveryTrait";
+    public static final String GITHUB_FORK_PR_TRAIT = "org.jenkinsci.plugins.github_branch_source.ForkPullRequestDiscoveryTrait";
+    public static final String GITHUB_FORK_PR_TRUST_TRAIT = "org.jenkinsci.plugins.github_branch_source.ForkPullRequestDiscoveryTrait$TrustPermission";
+
+    public static final String BITBUCKET_SCM_SOURCE = "com.cloudbees.jenkins.plugins.bitbucket.BitbucketSCMSource";
+    public static final String BITBUCKET_BRANCH_DISCOVERY_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.BranchDiscoveryTrait";
+    public static final String BITBUCKET_ORIGIN_PR_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.OriginPullRequestDiscoveryTrait";
+    public static final String BITBUCKET_FORK_PR_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait";
+    public static final String BITBUCKET_FORK_PR_TRUST_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait$TrustTeamForks";
 }

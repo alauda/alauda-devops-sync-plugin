@@ -121,7 +121,7 @@ public class DevOpsInit {
         List<PipelineParameter> params = convertTo(paramMap);
 
         PipelineStrategy strategy = new PipelineStrategyBuilder()
-                .withNewJenkins(script, "").build();
+                .withNewJenkins().withJenkinsfile(script).endJenkins().build();
 
         return client.pipelineConfigs().inNamespace(namespace).withName(name)
                 .edit()
@@ -204,7 +204,7 @@ public class DevOpsInit {
                 .withNewPipelineConfig(configName)
                 .withNewJenkinsBinding(bindingName)
                 .withRunPolicy(PIPELINE_RUN_POLICY_SERIAL)
-                .withNewStrategy().withNewJenkins("a", "a").endStrategy()
+                .withNewStrategy().withNewJenkins().withJenkinsfile("a").withJenkinsfilePath("a").endJenkins().endStrategy()
                 .endSpec()
                 .done();
     }
@@ -244,7 +244,7 @@ public class DevOpsInit {
                 .withNewPipelineConfig(pipelineConfig)
                 .withNewJenkinsBinding(bindingName)
                 .withRunPolicy(pipCfgSpec.getRunPolicy())
-                .withNewStrategy().withNewJenkins(jenkins.getJenkinsfile(), jenkins.getJenkinsfilePath()).endStrategy()
+                .withNewStrategy().withNewJenkins().withJenkinsfile(jenkins.getJenkinsfile()).withJenkinsfilePath(jenkins.getJenkinsfilePath()).endJenkins().endStrategy()
                 .endSpec()
                 .done();
     }

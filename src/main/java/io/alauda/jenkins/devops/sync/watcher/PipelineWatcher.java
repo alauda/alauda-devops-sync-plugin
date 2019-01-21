@@ -21,7 +21,7 @@ import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.PipelineNumComparator;
-import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
@@ -61,8 +61,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
             return;
         }
 
-        PipelineList list = client
-                .pipelines().inAnyNamespace().list();
+        PipelineList list = client.pipelines().inAnyNamespace().list();
         String ver = "0";
         if(list != null) {
             ver = list.getMetadata().getResourceVersion();
@@ -222,8 +221,8 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
                 }
                 continue;
             }
-            PipelineConfigProjectProperty bcp = job
-                    .getProperty(PipelineConfigProjectProperty.class);
+            WorkflowJobProperty bcp = job
+                    .getProperty(WorkflowJobProperty.class);
             if (bcp == null) {
                 List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
                 for (Pipeline pipe : pipelines) {
@@ -364,15 +363,13 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     private static synchronized void deleteEventToJenkinsJobRun(
             final Pipeline pipeline) throws Exception {
       logger.info("Pipeline delete: "+pipeline.getMetadata().getName());
-        List<OwnerReference> ownerRefs = pipeline.getMetadata()
-                .getOwnerReferences();
-        String pcUid = null;
+        List<OwnerReference> ownerRefs = pipeline.getMetadata().getOwnerReferences();
         for (OwnerReference ref : ownerRefs) {
             if ("PipelineConfig".equals(ref.getKind()) && ref.getUid() != null
                     && ref.getUid().length() > 0) {
                 // employ intern to facilitate sync'ing on the same actual
                 // object
-                pcUid = ref.getUid().intern();
+                String pcUid = ref.getUid().intern();
                 synchronized (pcUid) {
                     // if entire job already deleted via bc delete, just return
                     if (PipelineConfigToJobMap.getJobFromPipelineConfigUid(pcUid) == null)
@@ -398,7 +395,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
 
     for (WorkflowJob job : jobs) {
-      PipelineConfigProjectProperty pcpp = job.getProperty(PipelineConfigProjectProperty.class);
+      WorkflowJobProperty pcpp = job.getProperty(WorkflowJobProperty.class);
       if (pcpp == null) {
         // If we encounter a job without a BuildConfig, skip the reconciliation logic
         continue;

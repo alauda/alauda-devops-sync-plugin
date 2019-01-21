@@ -28,10 +28,9 @@ import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 import javax.annotation.Nonnull;
-import javax.validation.constraints.NotNull;
-import java.io.IOException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -48,20 +47,32 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
     @Override
     public boolean shouldSchedule(Queue.Task p, List<Action> actions) {
-        if (p instanceof WorkflowJob && triggerFromJenkins(actions)) {
+        if(!(p instanceof WorkflowJob)) {
+            return true;
+        }
+
+        if(triggerFromJenkins(actions)) {
             // in case of triggered by users
             WorkflowJob workflowJob = (WorkflowJob) p;
             String taskName = p.getName();
-            PipelineConfigProjectProperty pipelineConfigProjectProperty = workflowJob.getProperty(PipelineConfigProjectProperty.class);
-            if (pipelineConfigProjectProperty == null || !hasValidProperty(workflowJob)) {
+
+            AlaudaJobProperty alaudaJobProperty ;
+            if(isMultiBranch(workflowJob)) {
+                alaudaJobProperty = ((WorkflowMultiBranchProject)workflowJob.getParent())
+                        .getProperties().get(MultiBranchProperty.class);
+            } else {
+                alaudaJobProperty = workflowJob.getProperty(WorkflowJobProperty.class);
+            }
+
+            if (!isValidProperty(alaudaJobProperty)) {
                 return true;
             }
 
-            final String namespace = pipelineConfigProjectProperty.getNamespace();
-            final String name = pipelineConfigProjectProperty.getName();
+            final String namespace = alaudaJobProperty.getNamespace();
+            final String name = alaudaJobProperty.getName();
             final String jobURL = getJobUrl(workflowJob, namespace);
 
-            LOGGER.info(() -> "Got this namespace " + namespace + " from this pipelineConfigProjectProperty: " + name);
+            LOGGER.info(() -> "Got this namespace " + namespace + " from this alaudaJobProperty: " + name);
             // TODO: Add trigger API for pipelineconfig (like above)
 
             PipelineConfig config = null;
@@ -83,7 +94,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             Pipeline pipeline;
             try {
                 // create k8s resource(Pipeline)
-                pipeline = PipelineGenerator.buildPipeline(config, jobURL, actions);
+                pipeline = PipelineGenerator.buildPipeline(config, workflowJob, jobURL, actions);
             } catch (KubernetesClientException e) {
                 LOGGER.warning(config.getMetadata().getName() + " got error : " + e.getMessage());
 
@@ -121,6 +132,11 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         return true;
     }
 
+    private boolean isMultiBranch(WorkflowJob wfJob) {
+        ItemGroup parent = wfJob.getParent();
+        return parent instanceof WorkflowMultiBranchProject;
+    }
+
     private String getJobUrl(WorkflowJob workflowJob, String namespace) {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
@@ -131,8 +147,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         return PipelineSyncRunListener.joinPaths(jenkinsUrl, workflowJob.getUrl());
     }
 
-    private boolean hasValidProperty(WorkflowJob workflowJob) {
-        PipelineConfigProjectProperty property = workflowJob.getProperty(PipelineConfigProjectProperty.class);
+    private boolean isValidProperty(AlaudaJobProperty property) {
         if (property == null) {
             return false;
         }

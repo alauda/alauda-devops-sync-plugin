@@ -5,15 +5,12 @@
 def GIT_BRANCH
 def GIT_COMMIT
 def FOLDER = "."
-// image can be used for promoting...
-def IMAGE
 def CURRENT_VERSION
 def code_data
 def DEBUG = false
 def deployment
 def RELEASE_VERSION
 def RELEASE_BUILD
-def TEST_IMAGE
 pipeline {
 	// 运行node条件
 	// 为了扩容jenkins的功能一般情况会分开一些功能到不同的node上面
@@ -32,10 +29,8 @@ pipeline {
 	//(optional) 环境变量
 	environment {
 		// for building an scanning
-		JENKINS_IMAGE = "jenkins/jenkins:lts"
 		REPOSITORY = "alauda-devops-sync-plugin"
 		OWNER = "alauda"
-		IMAGE_TAG = "dev"
 		// sonar feedback user
 		// needs to change together with the credentialsID
 		SCM_FEEDBACK_ACCOUNT = "alaudabot"
@@ -86,28 +81,8 @@ pipeline {
 				stage('Build') {
 					steps {
 						script {
-							// setup kubectl
-							if (GIT_BRANCH == "master") {
-								// master is already merged
-								deploy.setupStaging()
-
-							} else {
-								// pull-requests
-								deploy.setupInt()
-							}
-
 							sh """
                                 mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
-                                # tests needs refactoring, still using the same host address for multiple jenkins instances
-                                # mvn clean install -U findbugs:findbugs
-
-                                if [ -d .tmp ]; then
-                                  rm -rf .tmp
-                                fi;
-
-                                mkdir .tmp
-                                cp artifacts/images/* .tmp
-                                cp target/*.hpi .tmp
                             """
 
                             archiveArtifacts 'target/*.hpi'
@@ -125,9 +100,6 @@ pipeline {
 			}
 			steps {
 				script {
-					// promote to release
-					IMAGE.push("release")
-
 					// adding tag to the current commit
 					withCredentials([usernamePassword(credentialsId: TAG_CREDENTIALS, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
 						sh "git tag -l | xargs git tag -d" // clean local tags

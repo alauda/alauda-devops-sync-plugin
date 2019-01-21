@@ -28,15 +28,20 @@ import hudson.triggers.SafeTimerTask;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
 import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineComparator;
-import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
+import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
+import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
+import org.acegisecurity.context.SecurityContext;
+import org.acegisecurity.context.SecurityContextHolder;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.transport.URIish;
 import org.jenkinsci.plugins.pipeline.modeldefinition.ast.ModelASTPipelineDef;
@@ -44,6 +49,7 @@ import org.jenkinsci.plugins.pipeline.modeldefinition.parser.Converter;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
@@ -61,8 +67,6 @@ import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.FAILED;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
-import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.getJobFromPipelineConfig;
-import static io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap.putJobWithPipelineConfig;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
@@ -360,8 +364,14 @@ public abstract class JenkinsUtils {
             return false;
         }
 
-        PipelineConfigProjectProperty pcProp = job.getProperty(PipelineConfigProjectProperty.class);
+        AlaudaJobProperty pcProp = job.getProperty(WorkflowJobProperty.class);
         if (pcProp == null) {
+            if(job.getParent() instanceof WorkflowMultiBranchProject) {
+                pcProp = ((WorkflowMultiBranchProject) job.getParent()).getProperties().get(MultiBranchProperty.class);
+            }
+        }
+
+        if(pcProp == null) {
             LOGGER.warning(() -> "aborting trigger of pipeline " + pipeline
                     + "because of missing pc project property");
             return false;
@@ -429,7 +439,8 @@ public abstract class JenkinsUtils {
 
             putJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
 
-            putJobWithPipelineConfig(job, pipelineConfig);
+            //no reason add it again in here
+            //PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
             LOGGER.info(() -> "pipeline config update with job: "+pipelineName+" pipeline config "+pipelineConfig.getMetadata().getName());
 
             Action[] actionArray;
@@ -606,6 +617,11 @@ public abstract class JenkinsUtils {
 		}
 	}
 
+    /**
+     * Find the workflow job. The job could be normal or multi-branch pipeline job.
+     * @param pipeline pipeline is the build history for pipelineJob
+     * @return workflow job
+     */
 	public static WorkflowJob getJobFromPipeline(@Nonnull Pipeline pipeline) {
         AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
         if(client == null) {
@@ -618,11 +634,41 @@ public abstract class JenkinsUtils {
 		if (pipelineConfig == null) {
 			return null;
 		}
-		return getJobFromPipelineConfig(pipelineConfig);
+
+        if(PipelineConfigUtils.isMultiBranch(pipelineConfig)) {
+            Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
+            if(annotations == null) {
+                ObjectMeta meta = pipeline.getMetadata();
+                LOGGER.severe(String.format("Pipeline [%s,%s] don't have annotations, can't find the Workflow.",
+                        meta.getNamespace(), meta.getName()));
+                return null;
+            }
+
+            String branchName = annotations.get(Annotations.MULTI_BRANCH_NAME);
+            WorkflowMultiBranchProject project = PipelineConfigToJobMap.getMultiBranchByPC(pipelineConfig);
+            if(project != null) {
+                final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
+                try {
+                    WorkflowJob item = project.getItem(branchName);
+                    if(item == null) {
+                        LOGGER.warning(String.format("Can't find item by branchName %s", branchName));
+                    }
+                    return item;
+                } finally {
+                    SecurityContextHolder.setContext(previousContext);
+                }
+            } else {
+                LOGGER.warning(String.format("Can't find multiBranchProject %s", pipelineConfig.getMetadata().getName()));
+            }
+        } else {
+            return PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
+        }
+
+        return null;
 	}
 
     public static void maybeScheduleNext(WorkflowJob job) {
-        PipelineConfigProjectProperty pcp = job.getProperty(PipelineConfigProjectProperty.class);
+        WorkflowJobProperty pcp = job.getProperty(WorkflowJobProperty.class);
         if (pcp == null) {
             return;
         }
@@ -734,5 +780,19 @@ public abstract class JenkinsUtils {
             throw new IOException("Jenkinsfile content '" + unformattedJenkinsfile + "' did not contain the 'pipeline' step or miss some steps");
         }
         return pipelineDef.toPrettyGroovy();
+    }
+
+    /**
+     * TODO consider gather with other methods
+     * @param run
+     * @return
+     */
+	public static boolean fromMultiBranch(@NotNull Run run) {
+        Job wfJob = run.getParent();
+        if(!(wfJob instanceof WorkflowJob)) {
+            return false;
+        }
+
+        return (wfJob.getParent() instanceof WorkflowMultiBranchProject);
     }
 }

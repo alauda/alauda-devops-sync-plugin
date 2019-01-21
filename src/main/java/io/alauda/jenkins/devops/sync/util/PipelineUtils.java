@@ -44,6 +44,9 @@ public class PipelineUtils {
         }
 
         WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(config);
+        if(job == null) {
+            return;
+        }
 
         list.getItems().forEach(pipeline -> {
             String uid = pipeline.getMetadata().getUid();

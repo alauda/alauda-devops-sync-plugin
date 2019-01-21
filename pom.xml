@@ -35,7 +35,7 @@
     <jenkins.version>2.83</jenkins.version>
     <java.level>8</java.level>
 
-    <devops-client.version>0.2.6</devops-client.version>
+    <devops-client.version>0.2.7</devops-client.version>
     <log.level>INFO</log.level>
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
     <findbugs.failOnError>false</findbugs.failOnError>
@@ -106,6 +106,10 @@
         <enabled>false</enabled>
       </releases>
     </repository>
+    <repository>
+      <id>release</id>
+      <url>https://oss.sonatype.org/content/repositories/releases</url>
+    </repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
@@ -125,11 +129,6 @@
           <artifactId>jackson-databind</artifactId>
         </exclusion>
       </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>io.alauda</groupId>
-      <artifactId>kubernetes-model</artifactId>
-      <version>0.2.7</version>
     </dependency>
 
     <dependency>
@@ -178,20 +177,26 @@
     </dependency>
 
     <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-multibranch</artifactId>
-      <version>2.18</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-          <artifactId>workflow-support</artifactId>
-          <!-- according to https://jenkins.io/security/advisory/2018-02-05/ -->
-        </exclusion>
-        <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-          <artifactId>workflow-cps</artifactId>
-        </exclusion>
-      </exclusions>
+        <groupId>org.jenkins-ci</groupId>
+        <artifactId>annotation-indexer</artifactId>
+        <version>1.12</version>
+    </dependency>
+
+    <dependency>
+        <groupId>org.jenkins-ci.plugins.workflow</groupId>
+        <artifactId>workflow-multibranch</artifactId>
+        <version>2.18</version>
+        <exclusions>
+            <exclusion>
+                <groupId>org.jenkins-ci.plugins.workflow</groupId>
+                <artifactId>workflow-support</artifactId>
+                <!-- according to https://jenkins.io/security/advisory/2018-02-05/ -->
+            </exclusion>
+            <exclusion>
+                <groupId>org.jenkins-ci.plugins.workflow</groupId>
+                <artifactId>workflow-cps</artifactId>
+            </exclusion>
+        </exclusions>
     </dependency>
 
     <dependency>
@@ -203,7 +208,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>git</artifactId>
-      <version>3.0.0</version>
+      <version>3.4.0</version>
       <exclusions>
         <exclusion>
           <groupId>org.apache.httpcomponents</groupId>

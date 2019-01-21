@@ -46,7 +46,7 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
                 // find custom created item
                 return items.stream().noneMatch(item -> {
                     if(item instanceof WorkflowJob) {
-                        return ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class) == null;
+                        return ((WorkflowJob) item).getProperty(WorkflowJobProperty.class) == null;
                     }
                     return false;
                 });

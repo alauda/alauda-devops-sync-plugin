@@ -16,14 +16,20 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
+import hudson.model.Descriptor;
 import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
+import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.StaplerRequest;
+
+import javax.annotation.Nonnull;
 
 /**
  * Stores the Alauda DevOps Pipeline Config related project properties.
@@ -31,7 +37,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  * - Namespace - Pipeline Config name - Pipeline Config uid - Pipeline Config resource
  * version - Pipeline Config run policy
  */
-public class PipelineConfigProjectProperty extends JobProperty<Job<?, ?>> {
+public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements AlaudaJobProperty {
 
     // The build config uid this job relates to.
     private String uid;
@@ -40,26 +46,19 @@ public class PipelineConfigProjectProperty extends JobProperty<Job<?, ?>> {
     private String resourceVersion;
 
     @DataBoundConstructor
-    public PipelineConfigProjectProperty(String namespace, String name,
-                                         String uid, String resourceVersion) {
+    public WorkflowJobProperty(String namespace, String name,
+                               String uid, String resourceVersion) {
         this.namespace = namespace;
         this.name = name;
         this.uid = uid;
         this.resourceVersion = resourceVersion;
     }
 
-    public PipelineConfigProjectProperty(PipelineConfig pc) {
-        this(pc.getMetadata().getNamespace(), pc.getMetadata().getName(), pc
-                .getMetadata().getUid(), pc.getMetadata().getResourceVersion());
-    }
+    public static WorkflowJobProperty getInstance(PipelineConfig pc) {
+        ObjectMeta meta = pc.getMetadata();
 
-    public PipelineConfig getPipelineConfig() {
-        PipelineConfig pc = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs()
-                .inNamespace(namespace).withName(name).get();
-        if (pc != null && pc.getMetadata().getUid().equals(uid)) {
-            return pc;
-        }
-        return null;
+        return new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
+                meta.getUid(), meta.getResourceVersion());
     }
 
     public String getUid() {
@@ -99,9 +98,11 @@ public class PipelineConfigProjectProperty extends JobProperty<Job<?, ?>> {
         public boolean isApplicable(Class<? extends Job> jobType) {
             return WorkflowJob.class.isAssignableFrom(jobType);
         }
-    }
 
-    public boolean isValid() {
-        return StringUtils.isNotBlank(namespace) && StringUtils.isNotBlank(name) && StringUtils.isNotBlank(uid);
+        @Nonnull
+        @Override
+        public String getDisplayName() {
+            return "Alauda Pipeline job";
+        }
     }
 }
