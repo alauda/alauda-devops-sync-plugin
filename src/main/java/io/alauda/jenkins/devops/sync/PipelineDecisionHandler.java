@@ -31,6 +31,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -120,7 +121,19 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                     LOGGER.fine(() -> "Cause: " + c.getShortDescription());
                 }
 
-                PipelineToActionMapper.addCauseAction(pipeline.getMetadata().getName(), cause);
+                // TODO consider how to keep other actions which are not just causeAction
+                // TODO should we add a extension point here?
+                List<Cause> causes = new ArrayList<>(cause.getCauses());
+                if(actions != null) {
+                    for(Action action : actions) {
+                        if(action instanceof SCMRevisionAction) {
+                            causes.add((SCMRevisionAction) action);
+                            break;
+                        }
+                    }
+                }
+
+                PipelineToActionMapper.addCauseAction(pipeline.getMetadata().getName(), new CauseAction(causes));
             } else {
                 LOGGER.fine(() -> "Get null CauseAction in task : " + taskName);
             }
