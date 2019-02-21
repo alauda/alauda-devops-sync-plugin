@@ -33,10 +33,13 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineComparator;
+import io.alauda.jenkins.devops.sync.SCMRevisionAction;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
 import io.alauda.kubernetes.api.model.*;
+import jenkins.branch.BranchProjectFactory;
+import jenkins.branch.MultiBranchProject;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
@@ -452,6 +455,31 @@ public abstract class JenkinsUtils {
 
             QueueTaskFuture<WorkflowRun> queueTaskFuture = job.scheduleBuild2(0, actionArray);
             if (queueTaskFuture != null) {
+                // TODO should offer a better solution
+                // TODO should we add an extension point here?
+                if(job.getParent() instanceof MultiBranchProject) {
+                    BranchProjectFactory factory = ((MultiBranchProject) job.getParent()).getProjectFactory();
+
+                    SCMRevisionAction revisionAction = null;
+                    for(Action action : actionArray) {
+                        if(action instanceof CauseAction) {
+                            List<Cause> causes = ((CauseAction) action).getCauses();
+                            if(causes != null) {
+                                for(Cause cause : causes) {
+                                    if(cause instanceof SCMRevisionAction) {
+                                        revisionAction = (SCMRevisionAction) cause;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if(revisionAction != null && factory != null) {
+                        factory.setRevisionHash(job, revisionAction.getRevision());
+                    }
+                }
+
                 updatePipelinePhase(pipeline, QUEUED);
                 // If builds are queued too quickly, Jenkins can add the cause
                 // to the previous queued pipeline so let's add a tiny

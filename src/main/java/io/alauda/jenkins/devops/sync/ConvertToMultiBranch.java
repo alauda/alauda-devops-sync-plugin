@@ -201,7 +201,8 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
             handleCredentials(scmSource, pipelineConfig);
 
-            job.getSourcesList().add(new BranchSource(scmSource));
+            job.setSourcesList(Collections.singletonList(new BranchSource(scmSource)));
+            scmSource.setOwner(job);
         }
 
         List<PipelineTrigger> triggers = spec.getTriggers();

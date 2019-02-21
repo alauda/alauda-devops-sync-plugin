@@ -28,7 +28,7 @@
 
   <groupId>io.alauda.jenkins.plugins</groupId>
   <artifactId>alauda-devops-sync</artifactId>
-  <version>0.2.30-SNAPSHOT</version>
+  <version>0.2.31-SNAPSHOT</version>
   <packaging>hpi</packaging>
 
   <properties>
@@ -208,7 +208,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>git</artifactId>
-      <version>3.4.0</version>
+      <version>3.6.0</version>
       <exclusions>
         <exclusion>
           <groupId>org.apache.httpcomponents</groupId>
@@ -340,6 +340,12 @@
       <artifactId>pipeline-stage-step</artifactId>
       <version>2.3</version>
     </dependency>
+      <!-- direct dependency from github plugin is not a good solution, just for temporary -->
+      <dependency>
+          <groupId>org.jenkins-ci.plugins</groupId>
+          <artifactId>github-branch-source</artifactId>
+          <version>2.3.6</version>
+      </dependency>
 
     <!--
      DIRECT DEPENDENCY... should be fixed
