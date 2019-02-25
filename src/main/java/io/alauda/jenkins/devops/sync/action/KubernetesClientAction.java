@@ -3,10 +3,6 @@ package io.alauda.jenkins.devops.sync.action;
 import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.model.UnprotectedRootAction;
-import hudson.scheduler.CronTab;
-import hudson.scheduler.CronTabList;
-import hudson.scheduler.Hash;
-import hudson.scheduler.Messages;
 import hudson.util.HttpResponses;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
@@ -14,31 +10,22 @@ import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.CronUtils;
 import io.alauda.kubernetes.client.Config;
 import io.alauda.kubernetes.client.KubernetesClientException;
-import org.apache.http.Header;
 import org.apache.http.HttpRequest;
-import org.apache.tools.ant.taskdefs.condition.Http;
 import org.jenkinsci.Symbol;
-import org.kohsuke.accmod.Restricted;
-import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.export.Exported;
 import org.kohsuke.stapler.export.ExportedBean;
 
 import javax.annotation.CheckForNull;
-import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Calendar;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Vector;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Extension
@@ -66,11 +53,12 @@ public class KubernetesClientAction implements UnprotectedRootAction {
     }
 
     public HttpResponse doConnectTest(@QueryParameter String server,
-                                      @QueryParameter String credentialId) {
+                                      @QueryParameter String credentialId,
+                                      @QueryParameter boolean trustCerts) {
         Map<String, String> result = new HashMap<>();
 
         try {
-            connectTest(server, credentialId);
+            connectTest(server, credentialId, trustCerts);
 
             result.put("success", "true");
             result.put("message", "ok");
@@ -137,13 +125,14 @@ public class KubernetesClientAction implements UnprotectedRootAction {
         return HttpResponses.okJSON(result);
     }
 
-    public URL connectTest(String server, String credentialId) {
+    public URL connectTest(String server, String credentialId, boolean trustCerts) {
         AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
         if (server != null && !server.isEmpty()) {
             configBuilder.withMasterUrl(server);
         }
 
         Config config = configBuilder.build();
+        config.setTrustCerts(trustCerts);
         DefaultAlaudaDevOpsClient client = new DefaultAlaudaDevOpsClient(config);
 
         if(credentialId != null) {
