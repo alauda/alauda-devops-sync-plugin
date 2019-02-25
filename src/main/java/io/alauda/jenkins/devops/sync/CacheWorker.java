@@ -39,7 +39,7 @@ public class CacheWorker extends AsyncPeriodicWork {
 
     @Override
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
-        AlaudaDevOpsClient client = AlaudaUtils.getAlaudaClient();
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
             LOGGER.severe("Can't get AlaudaDevOpsClient when execute cacheWorker check.");
             return;

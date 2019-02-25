@@ -57,7 +57,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
     }
 
     private void init() {
-        AlaudaDevOpsClient client = AlaudaUtils.getAlaudaClient();
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
             logger.severe("Can't get AlaudaDevOpsClient when init JenkinsPipelineJobListener.");
             return;

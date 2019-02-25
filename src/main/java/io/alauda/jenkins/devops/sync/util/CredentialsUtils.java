@@ -261,18 +261,25 @@ public abstract class CredentialsUtils {
     // the user. A return value of empty string
     // implies no token is configured.
     public static String getCurrentToken() {
-        if (AlaudaSyncGlobalConfiguration.get() == null) {
-          logger.info("global plugin configuration is null");
-          return "";
+        AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
+        if (config == null) {
+            logger.info("global plugin configuration is null");
+            return "";
         }
 
-        String credentialsId = AlaudaSyncGlobalConfiguration.get().getCredentialsId();
-        if (credentialsId.equals("")) {
+        String credentialsId = config.getCredentialsId();
+        if ("".equals(credentialsId)) {
+            logger.info("no credential for alauda sync config.");
             return "";
         }
 
         String token = getToken(credentialsId);
-        return token == null ? "" : token;
+        if(token == null) {
+            logger.info("cannot get a valid token");
+            return "";
+        }
+
+        return token;
     }
 
     public static String getToken(String credentialId) {
