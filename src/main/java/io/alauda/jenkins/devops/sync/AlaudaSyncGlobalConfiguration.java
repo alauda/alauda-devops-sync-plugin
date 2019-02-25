@@ -57,6 +57,7 @@ import java.util.logging.Logger;
 public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private static final Logger LOGGER = Logger.getLogger(AlaudaSyncGlobalConfiguration.class.getName());
     private boolean enabled = true;
+    private boolean trustCerts = false;
     private String server;
     private String credentialsId = "";
     private String jenkinsService;
@@ -105,6 +106,15 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     @DataBoundSetter
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public boolean isTrustCerts() {
+        return trustCerts;
+    }
+
+    @DataBoundSetter
+    public void setTrustCerts(boolean trustCerts) {
+        this.trustCerts = trustCerts;
     }
 
     @DataBoundSetter
@@ -195,9 +205,10 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
     @SuppressWarnings("unused")
     public FormValidation doVerifyConnect(@QueryParameter String server,
-                                          @QueryParameter String credentialId) {
+                                          @QueryParameter String credentialId,
+                                          @QueryParameter Boolean trustCerts) {
         try {
-            URL url = new KubernetesClientAction().connectTest(server, credentialId);
+            URL url = new KubernetesClientAction().connectTest(server, credentialId, trustCerts);
 
             return FormValidation.ok(String.format("Connect to %s success.", url.toString()));
         } catch(KubernetesClientException e) {
