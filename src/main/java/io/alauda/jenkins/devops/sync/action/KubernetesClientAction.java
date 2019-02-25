@@ -142,7 +142,7 @@ public class KubernetesClientAction implements UnprotectedRootAction {
             }
         }
 
-        client.namespaces().list();
+        client.pods().inAnyNamespace().list();
         return client.getMasterUrl();
     }
 }

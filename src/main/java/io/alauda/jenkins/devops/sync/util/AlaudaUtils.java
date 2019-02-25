@@ -84,38 +84,38 @@ public abstract class AlaudaUtils {
         }
     }
 
-    private static final DateTimeFormatter dateFormatter = ISODateTimeFormat
-            .dateTimeNoMillis();
+    private static final DateTimeFormatter dateFormatter = ISODateTimeFormat.dateTimeNoMillis();
 
     /**
      * Initializes an {@link AlaudaDevOpsClient}
      *
-     * @param serverUrl
-     *            the optional URL of where the OpenShift cluster API server is
-     *            running
+     * @param serverUrl the optional URL of where the OpenShift cluster API server is
+     *                  running
      */
     public synchronized static void initializeAlaudaDevOpsClient(String serverUrl) {
-      AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
-      if (serverUrl != null && !serverUrl.isEmpty()) {
-          configBuilder.withMasterUrl(serverUrl);
-      }
-
-      Config config = configBuilder.build();
-      if (config != null) {
-        if (Jenkins.getInstance().getPluginManager() != null && Jenkins.getInstance().getPluginManager()
-          .getPlugin(PLUGIN_NAME) != null) {
-          config.setUserAgent(PLUGIN_NAME + "-plugin-"
-            + Jenkins.getInstance().getPluginManager()
-            .getPlugin(PLUGIN_NAME).getVersion() + "/alauda-devops-"
-            + Version.clientVersion());
+        AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
+        if (serverUrl != null && !serverUrl.isEmpty()) {
+            configBuilder.withMasterUrl(serverUrl);
         }
-        alaudaClient = new DefaultAlaudaDevOpsClient(config);
-        logger.info("Alauda client is created well.");
-      } else {
-          logger.warning("Config builder could not build a configuration for Alauda Connection");
-      }
+
+        Config config = configBuilder.build();
+        if (config != null) {
+            if (Jenkins.getInstance().getPluginManager() != null && Jenkins.getInstance().getPluginManager()
+                    .getPlugin(PLUGIN_NAME) != null) {
+                config.setUserAgent(PLUGIN_NAME + "-plugin-"
+                        + Jenkins.getInstance().getPluginManager()
+                        .getPlugin(PLUGIN_NAME).getVersion() + "/alauda-devops-"
+                        + Version.clientVersion());
+            }
+            config.setTrustCerts(true);
+            alaudaClient = new DefaultAlaudaDevOpsClient(config);
+            logger.info("Alauda client is created well.");
+        } else {
+            logger.warning("Config builder could not build a configuration for Alauda Connection");
+        }
     }
 
+    @Deprecated
     public synchronized static AlaudaDevOpsClient getAlaudaClient() {
         return alaudaClient;
     }
@@ -127,6 +127,8 @@ public abstract class AlaudaUtils {
             String token = CredentialsUtils.getCurrentToken();
             if (token != null && token.length() > 0) {
                 alaudaClient.getConfiguration().setOauthToken(token);
+            } else {
+                logger.warning("No token when get authenticated client.");
             }
         }
 

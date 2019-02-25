@@ -217,7 +217,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     }
 
     public void reloadNamespaces() {
-        this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAlaudaClient());
+        this.namespaces = AlaudaUtils.getNamespaceOrUseDefault(this.jenkinsService, AlaudaUtils.getAuthenticatedAlaudaClient());
 
         for (String namespace : namespaces) {
             ResourcesCache.getInstance().addNamespace(namespace);
