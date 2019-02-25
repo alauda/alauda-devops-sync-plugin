@@ -205,10 +205,10 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
     @SuppressWarnings("unused")
     public FormValidation doVerifyConnect(@QueryParameter String server,
-                                          @QueryParameter String credentialId,
+                                          @QueryParameter String credentialsId,
                                           @QueryParameter Boolean trustCerts) {
         try {
-            URL url = new KubernetesClientAction().connectTest(server, credentialId, trustCerts);
+            URL url = new KubernetesClientAction().connectTest(server, credentialsId, trustCerts);
 
             return FormValidation.ok(String.format("Connect to %s success.", url.toString()));
         } catch(KubernetesClientException e) {
