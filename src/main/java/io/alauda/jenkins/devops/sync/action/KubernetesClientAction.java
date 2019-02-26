@@ -8,8 +8,12 @@ import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.CronUtils;
+import io.alauda.jenkins.devops.sync.watcher.ResourcesCache;
 import io.alauda.kubernetes.client.Config;
 import io.alauda.kubernetes.client.KubernetesClientException;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONArray;
+import org.acegisecurity.AccessDeniedException;
 import org.apache.http.HttpRequest;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.HttpResponse;
@@ -26,6 +30,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.logging.Logger;
 
 @Extension
@@ -86,6 +91,19 @@ public class KubernetesClientAction implements UnprotectedRootAction {
         }
 
         return HttpResponses.errorJSON("no debug file");
+    }
+
+    public HttpResponse doAllNamespaces() {
+        try {
+            Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+        } catch (AccessDeniedException e) {
+            return HttpResponses.errorJSON("No administer");
+        }
+
+        Set<String> allNamespaces = ResourcesCache.getInstance().getNamespaces();
+        JSONArray array = new JSONArray();
+        array.addAll(allNamespaces);
+        return HttpResponses.okJSON(array);
     }
 
     /**
