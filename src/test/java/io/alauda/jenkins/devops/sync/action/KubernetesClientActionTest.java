@@ -2,14 +2,8 @@ package io.alauda.jenkins.devops.sync.action;
 
 import com.gargoylesoftware.htmlunit.Page;
 import com.gargoylesoftware.htmlunit.WebResponse;
-import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
-import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.WithoutK8s;
-import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
-import io.alauda.kubernetes.api.model.Namespace;
-import io.alauda.kubernetes.api.model.NamespaceList;
-import io.alauda.kubernetes.client.Config;
 import net.sf.json.JSONObject;
 import org.junit.Rule;
 import org.junit.Test;
@@ -25,7 +19,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.*;
 
 public class KubernetesClientActionTest {
-//    @Rule
+    @Rule
     public JenkinsK8sRule j = new JenkinsK8sRule();
 
     @Test
@@ -101,29 +95,5 @@ public class KubernetesClientActionTest {
         assertNotNull(json.getJSONObject("data").get("previous"));
         assertNotNull(json.getJSONObject("data").get("sanity_" + Locale.SIMPLIFIED_CHINESE));
         assertNotNull(json.getJSONObject("data").get("sanity_" + Locale.ENGLISH));
-    }
-
-//    @WithoutJenkins
-    @Test
-    public void test() {
-        String server = "https://192.144.176.8:6443";
-        String token = "eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImRlZmF1bHQtdG9rZW4tbTk5bHoiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZGVmYXVsdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImY2NjFlMWI5LTFhZjktMTFlOS05NGJiLTUyNTQwMDFkOWEwMCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmRlZmF1bHQifQ.Nv_C1Bzu9b0CAVUEa9_NtQ0gqAglG5xEitJTUcWDMsqEaSGMCtg4yxWbtYLa0oF-QRR-M-KtQLK9NpR1Ymw9ZVZYjZJpun9gHTxm-3J5pY-JqYEbjVDbhqgtXkA8_D46YiA6JCn7F5F8-S8yJhsXi45dkC4GwWFVG-R0-jCcxdk2F09f9KNaIxFC7uyEt5YK2OzMYeoAiwk-ToL5_natbz-4PHfJgS7NynuLlKGtUlu3lz4s6_L-IVpIXP-fYx2l_D5irFU7b_-_j-NThASNFXTv0MYHvYnapF8Vi-nHhxJAmsdy1PYrj8YIpP_ltL649W-g5qG6mhkLq4VSoxCofg";
-
-        AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
-        configBuilder.withMasterUrl(server);
-
-        Config config = configBuilder.build();
-        config.setTrustCerts(true);
-        DefaultAlaudaDevOpsClient client = new DefaultAlaudaDevOpsClient(config);
-
-        client.getConfiguration().setOauthToken(token);
-
-        NamespaceList ns = client.namespaces().list();
-        System.out.println(ns);
-        if(ns != null) {
-            for (Namespace item : ns.getItems()) {
-                System.out.println(item);
-            }
-        }
     }
 }
