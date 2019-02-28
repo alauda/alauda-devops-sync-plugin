@@ -351,7 +351,7 @@ public abstract class PipelineConfigToJobMapper {
             source.setGit(new PipelineSourceGit());
         }
 
-        source.setSourceType("GIT");
+        source.setSourceType(Constants.SOURCE_TYPE_GIT);
 
         List<RemoteConfig> repositories = gitSCM.getRepositories();
         if (repositories != null && repositories.size() > 0) {
@@ -386,7 +386,7 @@ public abstract class PipelineConfigToJobMapper {
         if (source.getSvn() == null) {
             source.setSvn(new PipelineSourceSvn());
         }
-        source.setSourceType("SVN");
+        source.setSourceType(Constants.SOURCE_TYPE_SVN);
 
         SubversionSCM.ModuleLocation[] locations = subversionSCM.getLocations();
         if (locations != null && locations.length > 0) {
@@ -402,9 +402,9 @@ public abstract class PipelineConfigToJobMapper {
 
     private static SCM createSCM(PipelineConfig pc) throws IOException {
         PipelineSource source = pc.getSpec().getSource();
-        if (AlaudaUtils.isValidGitSource(source) && (source.getSourceType().equals("GIT") || source.getSourceType().equals(""))) {
+        if (AlaudaUtils.isValidGitSource(source) && (source.getSourceType().equals(Constants.SOURCE_TYPE_GIT) || source.getSourceType().equals(""))) {
             return createGitSCM(pc, source);
-        } else if (AlaudaUtils.isValidSvnSource(source) && source.getSourceType().equals("SVN")) {
+        } else if (AlaudaUtils.isValidSvnSource(source) && source.getSourceType().equals(Constants.SOURCE_TYPE_SVN)) {
             return createSvnSCM(pc, source);
         } else {
             return null;
