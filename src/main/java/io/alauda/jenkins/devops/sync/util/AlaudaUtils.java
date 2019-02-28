@@ -500,6 +500,27 @@ public abstract class AlaudaUtils {
      * @param ref            the git ref (commit/branch/etc) for the build
      */
     public static void updateGitSourceUrl(PipelineConfig pipelineConfig, String gitUrl, String ref) {
+        PipelineSource source = getOrCreatePipelineSource(pipelineConfig);
+        PipelineSourceGit git = source.getGit();
+        if (git == null) {
+            git = new PipelineSourceGit();
+            source.setGit(git);
+        }
+        git.setUri(gitUrl);
+        git.setRef(ref);
+    }
+
+    public static void updateSvnSourceUrl(PipelineConfig pipelineConfig, String svnUrl) {
+        PipelineSource source = getOrCreatePipelineSource(pipelineConfig);
+        PipelineSourceSvn svn = source.getSvn();
+        if (svn == null) {
+            svn = new PipelineSourceSvn();
+            source.setSvn(svn);
+        }
+        svn.setUri(svnUrl);
+    }
+
+    public static PipelineSource getOrCreatePipelineSource(PipelineConfig pipelineConfig) {
         PipelineConfigSpec spec = pipelineConfig.getSpec();
         if (spec == null) {
             spec = new PipelineConfigSpec();
@@ -510,13 +531,19 @@ public abstract class AlaudaUtils {
             source = new PipelineSource();
             spec.setSource(source);
         }
-        PipelineSourceGit git = source.getGit();
-        if (git == null) {
-            git = new PipelineSourceGit();
-            source.setGit(git);
-        }
-        git.setUri(gitUrl);
-        git.setRef(ref);
+        return source;
+    }
+
+    public static boolean isValidSource(PipelineSource source) {
+        return isValidGitSource(source) || isValidSvnSource(source);
+    }
+
+    public static boolean isValidGitSource(PipelineSource source) {
+        return source != null && source.getGit() != null && source.getGit().getUri() != null;
+    }
+
+    public static boolean isValidSvnSource(PipelineSource source) {
+        return source != null && source.getSvn() != null && source.getSvn().getUri() != null;
     }
 
     public static void updatePipelinePhase(Pipeline pipeline, String phase) {
