@@ -611,6 +611,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             BadgeAction badgeAction = (BadgeAction) action;
 
             JSONObject jsonObject = new JSONObject();
+            jsonObject.put("id", badgeAction.getId());
             jsonObject.put("text", badgeAction.getText());
             jsonObject.put("displayName", badgeAction.getDisplayName());
             jsonObject.put("iconPath", badgeAction.getIconPath());
