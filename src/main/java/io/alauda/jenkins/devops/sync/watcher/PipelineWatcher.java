@@ -384,42 +384,54 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
         innerDeleteEventToJenkinsJobRun(pipeline);
     }
 
-  /**
-   * Reconciles Jenkins job runs and Alauda DevOps pipelines
-   *
-   * Deletes all job runs that do not have an associated build in Alauda DevOps
-   */
-  private static synchronized void reconcileRunsAndPipelines() {
-    logger.info("Reconciling job runs and pipelines");
+    /**
+     * Reconciles Jenkins job runs and Alauda DevOps pipelines
+     * <p>
+     * Deletes all job runs that do not have an associated build in Alauda DevOps
+     */
+    private static synchronized void reconcileRunsAndPipelines() {
+        logger.info("Reconciling job runs and pipelines");
 
-    List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
+        List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
 
-    for (WorkflowJob job : jobs) {
-      WorkflowJobProperty pcpp = job.getProperty(WorkflowJobProperty.class);
-      if (pcpp == null) {
-        // If we encounter a job without a BuildConfig, skip the reconciliation logic
-        continue;
-      }
-      PipelineList pipelineList = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
-        .inNamespace(pcpp.getNamespace()).withLabel(Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcpp.getName()).list();
+        for (WorkflowJob job : jobs) {
+            WorkflowJobProperty pcpp = job.getProperty(WorkflowJobProperty.class);
+            if (pcpp == null) {
+                // If we encounter a job without a BuildConfig, skip the reconciliation logic
+                continue;
+            }
 
-      logger.info("Checking runs for PipelineConfig " + pcpp.getNamespace() + "/" + pcpp.getName());
+            // all workflow jobs will have this property even they're created by manual
+            if(StringUtils.isBlank(pcpp.getUid())) {
+                try {
+                    //
+                    job.removeProperty(pcpp);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                continue;
+            }
 
-      for (WorkflowRun run : job.getBuilds()) {
-        boolean found = false;
-        JenkinsPipelineCause cause = run.getCause(JenkinsPipelineCause.class);
-        for (Pipeline build : pipelineList.getItems()) {
-          if (cause != null && cause.getUid().equals(build.getMetadata().getUid())) {
-            found = true;
-            break;
-          }
+            PipelineList pipelineList = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
+                    .inNamespace(pcpp.getNamespace()).withLabel(Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcpp.getName()).list();
+
+            logger.info("Checking runs for PipelineConfig " + pcpp.getNamespace() + "/" + pcpp.getName());
+
+            for (WorkflowRun run : job.getBuilds()) {
+                boolean found = false;
+                JenkinsPipelineCause cause = run.getCause(JenkinsPipelineCause.class);
+                for (Pipeline build : pipelineList.getItems()) {
+                    if (cause != null && cause.getUid().equals(build.getMetadata().getUid())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    JenkinsUtils.deleteRun(run);
+                }
+            }
         }
-        if (!found) {
-          JenkinsUtils.deleteRun(run);
-        }
-      }
     }
-  }
 
     @Override
     public final String getName() {

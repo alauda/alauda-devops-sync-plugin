@@ -53,7 +53,7 @@ public class CacheWorker extends AsyncPeriodicWork {
         }
 
         JenkinsBindingList bindingList = client.jenkinsBindings().inAnyNamespace().list();
-        List<JenkinsBinding> bindings = null;;
+        List<JenkinsBinding> bindings;
         if(bindingList == null || (bindings = bindingList.getItems()) == null) {
             return;
         }
