@@ -82,7 +82,9 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                         .pipelineConfigs().inNamespace(namespace)
                         .withName(name).get();
             } catch (KubernetesClientException e) {
-                LOGGER.warning(() -> e.getMessage() + "; cause: " + e.getCause().getMessage());
+                Throwable cause = e.getCause();
+
+                LOGGER.warning(() -> e.getMessage() + "; cause: " + (cause != null ? cause.getMessage() : cause));
             }
 
             if (config == null) {

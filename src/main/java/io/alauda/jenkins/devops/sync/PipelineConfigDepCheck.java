@@ -12,6 +12,7 @@ import io.alauda.jenkins.devops.sync.watcher.ResourcesCache;
 import io.alauda.kubernetes.api.model.Condition;
 import io.alauda.kubernetes.api.model.Namespace;
 import io.alauda.kubernetes.api.model.PipelineConfigList;
+import io.alauda.kubernetes.client.KubernetesClientException;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
@@ -42,12 +43,16 @@ public class PipelineConfigDepCheck implements Callable<Boolean> {
             List<Condition> conditions = new ArrayList<>();
             PipelineConfigUtils.dependencyCheck(pipelineConfig, conditions);
 
-            client.pipelineConfigs().inNamespace(namespace)
-                    .withName(pipelineConfig.getMetadata().getName())
-                    .edit().editStatus().withConditions(conditions)
-                    .withPhase(conditions.size() == 0 ? PipelineConfigPhase.READY : PipelineConfigPhase.ERROR)
-                    .withMessage(conditions.size() == 0 ? "" : ErrorMessages.PLUGIN_ERROR)
-                    .endStatus().done();
+            try {
+                client.pipelineConfigs().inNamespace(namespace)
+                        .withName(pipelineConfig.getMetadata().getName())
+                        .edit().editStatus().withConditions(conditions)
+                        .withPhase(conditions.size() == 0 ? PipelineConfigPhase.READY : PipelineConfigPhase.ERROR)
+                        .withMessage(conditions.size() == 0 ? "" : ErrorMessages.PLUGIN_ERROR)
+                        .endStatus().done();
+            } catch (KubernetesClientException e) {
+                e.printStackTrace();
+            }
         });
     }
 
