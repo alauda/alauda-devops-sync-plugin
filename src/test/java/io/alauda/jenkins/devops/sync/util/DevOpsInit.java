@@ -295,13 +295,13 @@ public class DevOpsInit {
                 .done();
     }
 
-    public Project createProject(AlaudaDevOpsClient client) {
-        DoneableProject project = client.projects().createNew()
+    public Namespace createProject(AlaudaDevOpsClient client) {
+        DoneableNamespace namespace = client.namespaces().createNew()
                 .withNewMetadata()
                 .withLabels(Collections.singletonMap(TEST_FLAG, TEST_FLAG_VALUE))
-                .withGenerateName("project-test-")
+                .withGenerateName("namespace-test-")
                 .endMetadata();
-        return project.done();
+        return namespace.done();
     }
 
     public ServiceAccount createServiceAccounts(AlaudaDevOpsClient client) {
@@ -338,7 +338,7 @@ public class DevOpsInit {
 
     public void close() throws IOException {
         if(namespace != null) {
-            getClient().projects().withName(namespace).delete();
+            getClient().namespaces().withName(namespace).delete();
         }
 
         if(jenkinsName != null) {
@@ -351,10 +351,10 @@ public class DevOpsInit {
     private void cleanExpireResources() {
         final String formatTxt = "yyyy-MM-dd'T'HH:mm:ss'Z'";
         final SimpleDateFormat format = new SimpleDateFormat(formatTxt);
-        final ProjectList projects = getClient().projects().list();
+        final NamespaceList projects = getClient().namespaces().list();
         if(projects != null && projects.getItems() != null) {
-            List<Project> items = projects.getItems();
-            for(Project project : items) {
+            List<Namespace> items = projects.getItems();
+            for(Namespace project : items) {
                 if(!hasTestLabel(project)) {
                     continue;
                 }
@@ -373,14 +373,14 @@ public class DevOpsInit {
                 }
 
                 if(expire) {
-                    getClient().projects().delete(project);
+                    getClient().namespaces().delete(project);
                 }
             }
         }
     }
 
-    private boolean hasTestLabel(Project project) {
-        Map<String, String> labels = project.getMetadata().getLabels();
+    private boolean hasTestLabel(Namespace namespace) {
+        Map<String, String> labels = namespace.getMetadata().getLabels();
         if(labels == null) {
             return false;
         }

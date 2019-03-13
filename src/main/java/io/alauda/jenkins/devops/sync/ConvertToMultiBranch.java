@@ -95,7 +95,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
         boolean newJob = job == null;
         if (newJob) {
-            parent = AlaudaUtils.getFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
+            parent = AlaudaUtils.getOrCreateFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
             job = new WorkflowMultiBranchProject(parent, jobName);
             job.addProperty(new MultiBranchProperty(namespace, name, uid, resourceVer));
 
