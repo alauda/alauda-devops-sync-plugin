@@ -241,8 +241,8 @@ public abstract class AlaudaUtils {
      * @param namespace namespace
      * @return item
      */
-    public static ItemGroup getFullNameParent(Jenkins activeJenkins,
-            String fullName, String namespace) {
+    public static ItemGroup getOrCreateFullNameParent(Jenkins activeJenkins, String fullName, String namespace)
+            throws IOException {
         int idx = fullName.lastIndexOf('/');
         if (idx > 0) {
             String parentFullName = fullName.substring(0, idx);
@@ -251,71 +251,49 @@ public abstract class AlaudaUtils {
                 Folder folder = ((Folder) parent);
                 AlaudaFolderProperty alaPro = folder.getProperties().get(AlaudaFolderProperty.class);
                 if(alaPro == null) {
-                    try {
-                        folder.addProperty(new AlaudaFolderProperty());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    folder.addProperty(new AlaudaFolderProperty());
                 } else {
                     alaPro.setDirty(false);
                 }
 
-                try {
-                    folder.setIcon(new AlaudaFolderIcon());
-                    folder.save();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                folder.setIcon(new AlaudaFolderIcon());
+                folder.save();
 
                 return folder;
-            } else if (parentFullName.equals(namespace)) {
-
-                // lets lazily create a new folder for this namespace parent
+            } else if (parent == null && parentFullName.equals(namespace)) {
                 Folder folder = new Folder(activeJenkins, namespace);
-                try {
-                    folder.setDescription(FOLDER_DESCRIPTION + namespace);
-                    folder.addProperty(new AlaudaFolderProperty());
-                    folder.setIcon(new AlaudaFolderIcon());
-                } catch (IOException e) {
-                    // ignore
-                }
+                folder.setDescription(FOLDER_DESCRIPTION + namespace);
+                folder.addProperty(new AlaudaFolderProperty());
+                folder.setIcon(new AlaudaFolderIcon());
                 BulkChange bk = new BulkChange(folder);
-                InputStream jobStream = new StringInputStream(
-                        new XStream2().toXML(folder));
-                try {
-                    activeJenkins.createProjectFromXML(namespace, jobStream)
-                            .save();
-                } catch (IOException e) {
-                    logger.warning("Failed to create the Folder: " + namespace);
-                }
-                try {
-                    bk.commit();
-                } catch (IOException e) {
-                    logger.warning("Failed to commit toe BulkChange for the Folder: "
-                            + namespace);
-                }
+                InputStream jobStream = new StringInputStream(new XStream2().toXML(folder));
+
+                activeJenkins.createProjectFromXML(namespace, jobStream).save();
+                bk.commit();
+
                 // lets look it up again to be sure
                 parent = activeJenkins.getItemByFullName(namespace);
                 if (parent instanceof ItemGroup) {
                     return (ItemGroup) parent;
                 }
+            } else {
+                throw new IllegalArgumentException(String.format("cannot create folder %s", parentFullName));
             }
         }
         return activeJenkins;
     }
 
-  /**
-   * Finds the Jenkins job display name for the given {@link PipelineConfig}.
-   *
-   * @param pc
-   *            the PipelineConfig
-   * @return the jenkins job display name for the given PipelineConfig
-   */
-  public static String jenkinsJobDisplayName(PipelineConfig pc) {
-    String namespace = pc.getMetadata().getNamespace();
-    String name = pc.getMetadata().getName();
-    return jenkinsJobDisplayName(namespace, name);
-  }
+    /**
+     * Finds the Jenkins job display name for the given {@link PipelineConfig}.
+     *
+     * @param pc the PipelineConfig
+     * @return the jenkins job display name for the given PipelineConfig
+     */
+    public static String jenkinsJobDisplayName(PipelineConfig pc) {
+        String namespace = pc.getMetadata().getNamespace();
+        String name = pc.getMetadata().getName();
+        return jenkinsJobDisplayName(namespace, name);
+    }
 
     /**
      * Creates the Jenkins Job display name for the given pipelineConfigName

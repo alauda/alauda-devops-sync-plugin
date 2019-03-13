@@ -26,6 +26,7 @@ import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigConvert;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.util.*;
 import io.alauda.kubernetes.api.model.*;
@@ -107,7 +108,8 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             PipelineConfigList pipelineConfigs = null;
             try {
                 logger.info("listing PipelineConfigs resources");
-                pipelineConfigs = AlaudaUtils.getAuthenticatedAlaudaClient().pipelineConfigs().inNamespace(namespace).list();
+                pipelineConfigs = AlaudaUtils.getAuthenticatedAlaudaClient()
+                        .pipelineConfigs().inNamespace(namespace).list();
                 onInitialPipelineConfigs(pipelineConfigs);
                 logger.info("handled PipelineConfigs resources");
             } catch (Exception e) {
@@ -265,11 +267,23 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             synchronized (pipelineConfig.getMetadata().getUid().intern()) {
                 ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, Exception>() {
                     @Override
-                    public Void call() throws Exception {
+                    public Void call() {
                         ExtensionList<PipelineConfigConvert> convertList = Jenkins.getInstance().getExtensionList(PipelineConfigConvert.class);
                         Optional<PipelineConfigConvert> optional = convertList.stream().filter(convert -> convert.accept(pipelineConfig)).findFirst();
                         if(optional.isPresent()) {
-                            optional.get().convert(pipelineConfig);
+                            PipelineConfigConvert convert = optional.get();
+
+                            try {
+                                convert.convert(pipelineConfig);
+                            } catch (Exception e) {
+                                Condition condition = new Condition();
+                                condition.setReason(ErrorMessages.FAIL_TO_CREATE);
+                                condition.setMessage(e.getMessage());
+                                pipelineConfig.getStatus().getConditions().add(condition);
+
+                                convert.updatePipelineConfigPhase(pipelineConfig);
+                                e.printStackTrace();
+                            }
                         } else {
                             logger.warning("Can't handle this kind of PipelineConfig." + NamespaceName.create(pipelineConfig));
                         }
