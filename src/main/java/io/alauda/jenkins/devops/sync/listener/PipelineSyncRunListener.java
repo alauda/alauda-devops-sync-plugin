@@ -542,7 +542,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         long started = getStartTime(run);
         String startTime = null;
         String completionTime = null;
-        String updatedTime = getCurrentTimestamp();
+        String updatedTime = AlaudaUtils.getCurrentTimestamp();
         if (started > 0) {
             startTime = formatTimestamp(started);
             long duration = getDuration(run);
