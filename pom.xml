@@ -35,7 +35,7 @@
     <jenkins.version>2.83</jenkins.version>
     <java.level>8</java.level>
 
-    <devops-client.version>0.2.8-SNAPSHOT</devops-client.version>
+    <devops-client.version>0.2.8</devops-client.version>
     <log.level>INFO</log.level>
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
     <findbugs.failOnError>false</findbugs.failOnError>
