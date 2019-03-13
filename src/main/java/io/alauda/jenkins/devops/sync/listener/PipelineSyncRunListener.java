@@ -76,7 +76,7 @@ import static java.util.logging.Level.*;
 
 /**
  * Listens to Jenkins Job build {@link Run} start and stop then ensure there's a
- * suitable {Build} object in OpenShift thats updated correctly with the
+ * suitable {Build} object thats updated correctly with the
  * current status, logsURL and metrics
  */
 @Extension

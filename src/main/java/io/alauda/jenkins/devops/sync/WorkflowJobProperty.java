@@ -16,18 +16,13 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
-import hudson.model.Descriptor;
 import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
-import net.sf.json.JSONObject;
-import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
 
