@@ -12,6 +12,7 @@
 * Bump kubernetes-client version to 0.2.8.
     Set the default value of resourceVersion to 0
 * Fix the project's name occupied by other job type instead of a folder
+* Clean up unused files
 
 ## 0.2.8
 
