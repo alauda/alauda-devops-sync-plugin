@@ -2,6 +2,8 @@
 
 ## 0.2.34 (not released yet)
 
+* [#73](https://github.com/alauda/alauda-devops-sync-plugin/pull/73)
+    Fix missed badge id
 * Fix infinite loop in PipelineConfigDepCheck, ignore update exception
 * [#71](https://github.com/alauda/alauda-devops-sync-plugin/issues/71)
     Fix mission workflow job build history items
