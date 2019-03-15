@@ -13,6 +13,7 @@
     Set the default value of resourceVersion to 0
 * Fix the project's name occupied by other job type instead of a folder
 * Clean up unused files
+* Don't push git tag, this behaviour will depend on mvn
 
 ## 0.2.8
 
