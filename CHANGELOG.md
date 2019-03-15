@@ -14,6 +14,8 @@
 * Fix the project's name occupied by other job type instead of a folder
 * Clean up unused files
 * Don't push git tag, this behaviour will depend on mvn
+* Fix the folder cannot be deleted when the namespace was deleted.
+    It'll occur when the Jenkins is offline. 
 
 ## 0.2.8
 
