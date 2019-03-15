@@ -5,8 +5,6 @@
 def GIT_BRANCH
 def GIT_COMMIT
 def FOLDER = "."
-def CURRENT_VERSION
-def code_data
 def DEBUG = false
 def deployment
 def RELEASE_VERSION
@@ -55,69 +53,52 @@ pipeline {
 					pom = readMavenPom file: 'pom.xml'
 					//RELEASE_VERSION = pom.properties['revision'] + pom.properties['sha1'] + pom.properties['changelist']
 					RELEASE_VERSION = pom.version
-					RELEASE_BUILD = "${RELEASE_VERSION}.${env.BUILD_NUMBER}"
-					if (GIT_BRANCH != "master") {
-						def branch = GIT_BRANCH.replace("/","-").replace("_","-")
-						RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
-					}
-
-					sh 'echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties'
-					sh 'echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties'
 				}
 				// installing golang coverage and report tools
 				sh "go get -u github.com/alauda/gitversion"
 				script {
-					if (GIT_BRANCH == "master") {
+					if (GIT_BRANCH != "master") {
+						def branch = GIT_BRANCH.replace("/","-").replace("_","-")
+						RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
+					} else (GIT_BRANCH == "master") {
 						sh "gitversion patch ${RELEASE_VERSION} > patch"
 						RELEASE_BUILD = readFile("patch").trim()
 					}
-					echo "release ${RELEASE_VERSION} - release build ${RELEASE_BUILD}"
+
+                    sh '''
+					    echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties
+                        echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties
+					    echo "version=RELEASE_VERSION" >> src/main/resources/debug.properties
+					    cat src/main/resources/debug.properties
+                    '''
 				}
 			}
 		}
-		stage('CI'){
-			failFast true
-			parallel {
-				stage('Build') {
-					steps {
-						script {
-							sh """
-                                mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
-                            """
-
-                            archiveArtifacts 'target/*.hpi'
-						}
-					}
-				}
-			}
-		}
-
-		// after build it should start deploying
-		stage('Promoting') {
-			// limit this stage to master only
-			when {
-				expression { GIT_BRANCH == "master" }
-			}
-			steps {
-				script {
-					// adding tag to the current commit
-					withCredentials([usernamePassword(credentialsId: TAG_CREDENTIALS, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
-						sh "git tag -l | xargs git tag -d" // clean local tags
-						sh """
-                        git config --global user.email "alaudabot@alauda.io"
-                        git config --global user.name "Alauda Bot"
+        stage('Build') {
+            when {
+                anyOf {
+                    changeset '**/*.java'
+                    changeset '**/*.xml'
+                    changeset '**/*.jelly'
+                    changeset '**/*.properties'
+                    changeset '**/*.png'
+                }
+            }
+            steps {
+                script {
+                    sh """
+                        mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
                     """
-						def repo = "https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${OWNER}/${REPOSITORY}.git"
-						sh "git fetch --tags ${repo}" // retrieve all tags
-						sh("git tag -a ${RELEASE_BUILD} -m 'auto add release tag by jenkins'")
-						sh("git push ${repo} --tags")
-					}
-				}
-			}
-		}
 
+                    archiveArtifacts 'target/*.hpi'
+                }
+            }
+        }
 		// sonar scan
 		stage('Sonar') {
+		    when {
+                changeset '**/*.java'
+		    }
 			steps {
 				script {
 					deploy.scan(
