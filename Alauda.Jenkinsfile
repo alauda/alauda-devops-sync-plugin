@@ -77,11 +77,11 @@ pipeline {
         stage('Build') {
             when {
                 anyOf {
-                    changeset '**/*.java'
-                    changeset '**/*.xml'
-                    changeset '**/*.jelly'
-                    changeset '**/*.properties'
-                    changeset '**/*.png'
+                    changeset '**/**/*.java'
+                    changeset '**/**/*.xml'
+                    changeset '**/**/*.jelly'
+                    changeset '**/**/*.properties'
+                    changeset '**/**/*.png'
                 }
             }
             steps {
@@ -97,7 +97,7 @@ pipeline {
 		// sonar scan
 		stage('Sonar') {
 		    when {
-                changeset '**/*.java'
+                changeset '**/**/*.java'
 		    }
 			steps {
 				script {
