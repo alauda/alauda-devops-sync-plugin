@@ -10,3 +10,6 @@ restart:
 
 run:
 	./scripts/run.sh
+
+upload:
+	./scripts/upload.sh
