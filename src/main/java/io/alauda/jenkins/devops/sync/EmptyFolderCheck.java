@@ -45,18 +45,10 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
             folders.stream().filter(folder -> folder.getProperties().stream().anyMatch(
                     pro -> {
                         String folderName = folder.getName();
-                        if(pro instanceof AlaudaFolderProperty){
-                            if(((AlaudaFolderProperty) pro).isDirty()) {
-                                return true;
-                            } else {
-                                if(allNamespaces != null && noneMatch(allNamespaces, folderName)) {
-                                    return true;
-                                } else if(noJenkinsBinding(folderName)) {
-                                    return true;
-                                }
-                            }
-                        }
-                        return false;
+                        return (pro instanceof AlaudaFolderProperty &&
+                                (((AlaudaFolderProperty) pro).isDirty() || // delay to remove folder
+                                        (allNamespaces != null && noneMatch(allNamespaces, folderName)) || // target namespace doesn't exists anymore
+                                        noJenkinsBinding(folderName)));  // namespaces exists but no binding
                     }
             )).filter(folder -> {
                 Collection<TopLevelItem> items = folder.getItems();
