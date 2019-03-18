@@ -16,6 +16,7 @@
 * Don't push git tag, this behaviour will depend on mvn
 * Fix the folder cannot be deleted when the namespace was deleted.
     It'll occur when the Jenkins is offline. 
+* Add scripts to auto upload then restart Jenkins
 
 ## 0.2.8
 
