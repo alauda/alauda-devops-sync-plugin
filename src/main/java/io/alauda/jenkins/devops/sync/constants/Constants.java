@@ -47,6 +47,8 @@ public final class Constants {
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE = "alauda.io/pull-request-title";
 
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY = "alauda.io/jenkins-instance-identity";
+
     /** secret keys */
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";
