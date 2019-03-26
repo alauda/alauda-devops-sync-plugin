@@ -67,6 +67,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private String server;
     private String credentialsId = "";
     private String jenkinsService;
+    private String errorMsg;
     private String jobNamePattern;
     private String skipOrganizationPrefix;
     private String skipBranchSuffix;
@@ -148,6 +149,15 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     @DataBoundSetter
     public void setJenkinsService(String jenkinsService) {
         this.jenkinsService = jenkinsService != null ? jenkinsService.trim() : null;
+    }
+
+    public String getErrorMsg() {
+        return errorMsg;
+    }
+
+    @DataBoundSetter
+    public void setErrorMsg(String errorMsg) {
+        this.errorMsg = errorMsg;
     }
 
     public String getJobNamePattern() {
@@ -280,7 +290,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
             }
 
             // make sure that we just sync with only one server
-            if(jenkinsInstanceCheck(client)) {
+            if(!jenkinsInstanceCheck(client)) {
                 this.enabled = false;
                 LOGGER.warning("Cannot get the client, sync plugin startup failed.");
                 return;
@@ -327,7 +337,8 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private boolean jenkinsInstanceCheck(@NotNull AlaudaDevOpsClient client) {
         io.alauda.kubernetes.api.model.Jenkins jenkinsInstance = client.jenkins().withName(jenkinsService).get();
         if(jenkinsInstance == null) {
-            LOGGER.log(Level.WARNING, String.format("Target jenkins service %s don't exists.", jenkinsService));
+            errorMsg = String.format("Target jenkins service %s don't exists.", jenkinsService);
+            LOGGER.log(Level.WARNING, errorMsg);
             return false;
         }
 
@@ -340,11 +351,13 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
                     .addToAnnotations(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY, currentFingerprint)
                     .endMetadata().done();
         }else if(!StringUtils.equals(currentFingerprint, fingerprint)){
-            LOGGER.log(Level.WARNING, String.format("Fingerprint from target Jenkins service %s " +
-                    "does not match with current Jenkins %s.", fingerprint, currentFingerprint));
+            errorMsg = String.format("Fingerprint from target Jenkins service %s " +
+                    "does not match with current Jenkins %s.", fingerprint, currentFingerprint);
+            LOGGER.log(Level.WARNING, errorMsg);
             return false;
         }
 
+        errorMsg = "";
         return true;
     }
 

@@ -1,6 +1,11 @@
 # ChangeLog
 
-## 0.2.34 (not released yet)
+## 0.2.35 (not released yet)
+
+* Make sure that one Jenkins instance can only sync with one 
+    JenkinsService which in kubernetes cluster
+
+## 0.2.34
 
 * [#73](https://github.com/alauda/alauda-devops-sync-plugin/pull/73)
     Fix missed badge id

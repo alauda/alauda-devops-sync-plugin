@@ -18,6 +18,7 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
     public static final String ID = "AlaudaSyncSetting";
     private String syncServiceName;
     private boolean syncEnable;
+    private String message;
 
     static AlaudaSyncSettingMonitor get(Jenkins j) {
         return (AlaudaSyncSettingMonitor) j.getAdministrativeMonitor(ID);
@@ -39,6 +40,7 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
             return true;
         }
 
+        message = config.getErrorMsg();
         syncEnable = config.isEnabled();
         syncServiceName = config.getJenkinsService();
 
@@ -61,5 +63,9 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
 
     public boolean isSyncEnable() {
         return syncEnable;
+    }
+
+    public String getMessage() {
+        return message;
     }
 }
