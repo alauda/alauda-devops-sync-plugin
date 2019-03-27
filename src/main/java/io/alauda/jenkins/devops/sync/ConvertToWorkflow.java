@@ -174,9 +174,10 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         spec.getStrategy().getJenkins().setJenkinsfile(formattedJenkinsfile);
 
         PipelineConfig result = client.pipelineConfigs().inNamespace(namespace)
-                .withName(name).edit()
-                .withNewSpecLike(spec).endSpec()
-                .done();
+                .withName(name).edit().editSpec().editStrategy().editJenkins()
+                .withJenkinsfile(formattedJenkinsfile)
+                .endJenkins().endStrategy().endSpec().done();
+
 
         logger.info(String.format("Format PipelineConfig's jenkinsfile %s, name: %s",
                 result.getSpec().getStrategy().getJenkins().getJenkinsfile(), result.getMetadata().getName()));
