@@ -133,7 +133,7 @@
     <dependency>
       <groupId>io.alauda</groupId>
       <artifactId>kubernetes-model</artifactId>
-      <version>0.2.10-SNAPSHOT</version>
+      <version>0.2.10</version>
     </dependency>
 
     <dependency>
