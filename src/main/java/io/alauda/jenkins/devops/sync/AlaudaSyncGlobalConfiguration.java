@@ -23,6 +23,7 @@ import hudson.security.ACL;
 import hudson.triggers.SafeTimerTask;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
+import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.action.KubernetesClientAction;
 import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
@@ -31,6 +32,7 @@ import io.alauda.kubernetes.client.KubernetesClientException;
 import jenkins.model.GlobalConfiguration;
 import jenkins.model.GlobalConfigurationCategory;
 import jenkins.model.Jenkins;
+import jenkins.model.identity.IdentityRootAction;
 import jenkins.util.Timer;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
@@ -41,13 +43,17 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
+import javax.validation.constraints.NotNull;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY;
 
 /**
  * @author suren
@@ -61,6 +67,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private String server;
     private String credentialsId = "";
     private String jenkinsService;
+    private String errorMsg;
     private String jobNamePattern;
     private String skipOrganizationPrefix;
     private String skipBranchSuffix;
@@ -142,6 +149,15 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     @DataBoundSetter
     public void setJenkinsService(String jenkinsService) {
         this.jenkinsService = jenkinsService != null ? jenkinsService.trim() : null;
+    }
+
+    public String getErrorMsg() {
+        return errorMsg;
+    }
+
+    @DataBoundSetter
+    public void setErrorMsg(String errorMsg) {
+        this.errorMsg = errorMsg;
     }
 
     public String getJobNamePattern() {
@@ -251,8 +267,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     * Only call when the plugin configuration is really changed.
     */
     public void configChange() throws KubernetesClientException {
-        ResourcesCache.getInstance().setJenkinsService(jenkinsService);
-
         if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
             this.stopWatchersAndClient();
             LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
@@ -264,8 +278,22 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         try {
             stopWatchersAndClient();
 
-            if(AlaudaUtils.getAlaudaClient() == null) {
+            AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+            if(client == null) {
                 AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
+                client = AlaudaUtils.getAuthenticatedAlaudaClient();
+            }
+
+            if(client == null) {
+                LOGGER.warning("Cannot get the client, sync plugin startup failed.");
+                return;
+            }
+
+            // make sure that we just sync with only one server
+            if(!jenkinsInstanceCheck(client)) {
+                this.enabled = false;
+                LOGGER.warning("Cannot get the client, sync plugin startup failed.");
+                return;
             }
 
             reloadNamespaces();
@@ -299,6 +327,38 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
             throw e;
         }
+    }
+
+    /**
+     * Check target k8s jenkins service whether match with current Jenkins
+     * @param client k8s client instance
+     * @return whether target k8s jenkinsService equals with current Jenkins instance
+     */
+    private boolean jenkinsInstanceCheck(@NotNull AlaudaDevOpsClient client) {
+        io.alauda.kubernetes.api.model.Jenkins jenkinsInstance = client.jenkins().withName(jenkinsService).get();
+        if(jenkinsInstance == null) {
+            errorMsg = String.format("Target jenkins service %s don't exists.", jenkinsService);
+            LOGGER.log(Level.WARNING, errorMsg);
+            return false;
+        }
+
+        final String currentFingerprint = new IdentityRootAction().getFingerprint();
+        Map<String, String> annotations = jenkinsInstance.getMetadata().getAnnotations();
+        String fingerprint;
+        if(annotations == null || (fingerprint = annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY)) == null) {
+            client.jenkins().withName(jenkinsService)
+                    .edit().editMetadata()
+                    .addToAnnotations(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY, currentFingerprint)
+                    .endMetadata().done();
+        }else if(!StringUtils.equals(currentFingerprint, fingerprint)){
+            errorMsg = String.format("Fingerprint from target Jenkins service %s " +
+                    "does not match with current Jenkins %s.", fingerprint, currentFingerprint);
+            LOGGER.log(Level.WARNING, errorMsg);
+            return false;
+        }
+
+        errorMsg = "";
+        return true;
     }
 
     public void startWatchers() {

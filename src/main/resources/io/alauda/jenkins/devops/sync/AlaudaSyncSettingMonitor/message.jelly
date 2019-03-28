@@ -29,6 +29,7 @@ THE SOFTWARE.
       <f:submit name="yes" value="${%Go to Configure}"/>
       <f:submit name="no" value="${%Dismiss}"/>
     </form>
-    ${%AlaudaSync setting is invalid.} >> ${%ServiceName:} ${it.syncServiceName} >> ${%Sync Enable:} ${it.syncEnable}
+    <div>${%AlaudaSync setting is invalid.} >> ${%ServiceName:} ${it.syncServiceName} >> ${%Sync Enable:} ${it.syncEnable}</div>
+    <div>${it.message}</div>
   </div>
 </j:jelly>

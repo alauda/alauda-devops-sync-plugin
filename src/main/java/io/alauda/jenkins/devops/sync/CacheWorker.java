@@ -132,6 +132,11 @@ public class CacheWorker extends AsyncPeriodicWork {
         }
 
         PipelineConfigWatcher watcher = AlaudaSyncGlobalConfiguration.get().getPipelineConfigWatcher();
+        if(watcher == null) {
+            LOGGER.warning("Cannot get PipelineConfigWatcher, skip to checkJob.");
+            return;
+        }
+
         if(notExists) {
             watcher.eventReceived(Watcher.Action.ADDED, pc);
         } else if(needModfiy) {
