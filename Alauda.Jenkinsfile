@@ -1,4 +1,5 @@
 // https://jenkins.io/doc/book/pipeline/syntax/
+// Multi-branch discovery pattern: PR-.*
 @Library('alauda-cicd') _
 
 // global variables for pipeline
@@ -60,7 +61,7 @@ pipeline {
 					if (GIT_BRANCH != "master") {
 						def branch = GIT_BRANCH.replace("/","-").replace("_","-")
 						RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
-					} else (GIT_BRANCH == "master") {
+					} else {
 						sh "gitversion patch ${RELEASE_VERSION} > patch"
 						RELEASE_BUILD = readFile("patch").trim()
 					}
