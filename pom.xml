@@ -393,7 +393,6 @@
       <artifactId>json</artifactId>
       <version>${org.json.version}</version>
     </dependency>
-
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-basic-steps</artifactId>
