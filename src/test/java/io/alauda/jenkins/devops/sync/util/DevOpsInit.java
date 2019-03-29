@@ -258,16 +258,18 @@ public class DevOpsInit {
                 .withNamespace(namespace).endMetadata()
                 .withNewSpec()
                 .withNewJenkins().withName(jenkinsName).endJenkins()
-                .withNewAccount().withNewSecret()
-                .withApiTokenKey("a").withName(secretName)
-                .withUsernameKey("a").endSecret().endAccount()
+//                .withNewAccount()
+//                .withNewSecret()
+//                .withApiTokenKey("a").withName(secretName)
+//                .withUsernameKey("a").endSecret().endAccount()
                 .endSpec()
                 .done();
     }
 
     public Jenkins createJenkins(AlaudaDevOpsClient client) {
+        String fakeUrl = "http://abc-"+System.nanoTime()+".com";
         JenkinsSpec jenkinsSpec = new JenkinsSpecBuilder()
-                .withNewHttp("http://abc-"+System.nanoTime()+".com")
+                .withNewHttp(fakeUrl, fakeUrl)
                 .build();
 
         return client.jenkins().createNew().withNewMetadata()

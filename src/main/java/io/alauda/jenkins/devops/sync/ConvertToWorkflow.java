@@ -16,7 +16,6 @@ import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.kubernetes.api.model.Condition;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.PipelineConfigSpec;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
@@ -162,24 +161,22 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         String formattedJenkinsfile;
         try {
             formattedJenkinsfile = JenkinsUtils.formatJenkinsfile(jenkinsfile);
-        } catch (Exception ignore) {
+        } catch (IOException e) {
+            // format error, could be pipeline syntax error
             return;
         }
+
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         ObjectMeta metadata = pipelineConfig.getMetadata();
         String namespace = metadata.getNamespace();
         String name = metadata.getName();
 
-        PipelineConfigSpec spec = pipelineConfig.getSpec();
-        spec.getStrategy().getJenkins().setJenkinsfile(formattedJenkinsfile);
-
-        PipelineConfig result = client.pipelineConfigs().inNamespace(namespace)
+        client.pipelineConfigs().inNamespace(namespace)
                 .withName(name).edit().editSpec().editStrategy().editJenkins()
                 .withJenkinsfile(formattedJenkinsfile)
                 .endJenkins().endStrategy().endSpec().done();
 
 
-        logger.info(String.format("Format PipelineConfig's jenkinsfile %s, name: %s",
-                result.getSpec().getStrategy().getJenkins().getJenkinsfile(), result.getMetadata().getName()));
+        logger.fine(String.format("Format PipelineConfig's jenkinsfile %s, name: %s", formattedJenkinsfile, name));
     }
 }
