@@ -87,7 +87,9 @@ pipeline {
                     changeset '**/**/*.jelly'
                     changeset '**/**/*.properties'
                     changeset '**/**/*.png'
-                    forceReBuild
+                    expression {
+                        return params.forceReBuild
+                    }
                 }
             }
             steps {
