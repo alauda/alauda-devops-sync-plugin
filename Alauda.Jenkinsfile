@@ -25,6 +25,10 @@ pipeline {
 		disableConcurrentBuilds()
 	}
 
+	parameters {
+	    booleanParam defaultValue: false, description: 'Rebuild and archive artifacts if this flag is true.', name: 'forceReBuild'
+    }
+
 	//(optional) 环境变量
 	environment {
 		// for building an scanning
@@ -83,6 +87,7 @@ pipeline {
                     changeset '**/**/*.jelly'
                     changeset '**/**/*.properties'
                     changeset '**/**/*.png'
+                    forceReBuild
                 }
             }
             steps {
