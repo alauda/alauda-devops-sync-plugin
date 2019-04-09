@@ -49,6 +49,9 @@ public final class Constants {
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY = "alauda.io/jenkins-instance-identity";
 
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_INPUT_REQUESTS = "alauda.io/jenkins-input-requests";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_INPUT_RESPONSES = "alauda.io/jenkins-input-responses";
+
     /** secret keys */
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";

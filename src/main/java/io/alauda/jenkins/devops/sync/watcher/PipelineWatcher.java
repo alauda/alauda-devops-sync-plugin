@@ -33,6 +33,8 @@ import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
+import net.sf.json.JSONArray;
+import net.sf.json.JSONException;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -42,6 +44,7 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_INPUT_RESPONSES;
 import static java.util.logging.Level.SEVERE;
 
 /**
@@ -254,6 +257,25 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
             // see if any pre-BC cached builds can now be flushed
             flushPipelinesWithNoPCList();
         }
+//
+//        // handle the annotations
+//        Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
+//        if(annotations == null || !annotations.containsKey(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_INPUT_RESPONSES)) {
+//            return;
+//        }
+//
+//        String inputResponseJsonText = annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_INPUT_RESPONSES);
+//        if(StringUtils.isEmpty(inputResponseJsonText)) {
+//            return;
+//        }
+//
+//        try {
+//            JSONArray inputResponse = JSONArray.fromObject(inputResponseJsonText);
+//
+////            inputResponse.get
+//        } catch (JSONException e) {
+//            logger.warning(String.format("Cannot parse json array text: %s", inputResponseJsonText));
+//        }
     }
 
     public static synchronized boolean addEventToJenkinsJobRun(Pipeline pipeline)
