@@ -3,6 +3,7 @@ package io.alauda.jenkins.devops.sync.util;
 import hudson.model.TopLevelItem;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
+import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
@@ -34,11 +35,15 @@ public class PipelineConfigToJobMap {
         }
 
         jobs.stream().filter(job -> {
-            WorkflowJobProperty property = job.getProperty(WorkflowJobProperty.class);
+            WorkflowJobProperty property = WorkflowJobUtils.getAlaudaProperty(job);
 
             return (property != null && isNotBlank(property.getUid()));
         }).forEach(job -> {
-            String uid = job.getProperty(WorkflowJobProperty.class).getUid();
+            WorkflowJobProperty property = job.getProperty(WorkflowJobProperty.class);
+            if(property == null) {
+                property = job.getProperty(PipelineConfigProjectProperty.class);
+            }
+            String uid = property.getUid();
             pipelineConfigToJobMap.put(uid, job);
         });
 
