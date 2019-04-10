@@ -269,7 +269,7 @@ public class DevOpsInit {
     public Jenkins createJenkins(AlaudaDevOpsClient client) {
         String fakeUrl = "http://abc-"+System.nanoTime()+".com";
         JenkinsSpec jenkinsSpec = new JenkinsSpecBuilder()
-                .withNewHttp(fakeUrl, fakeUrl)
+                .withNewHttp(fakeUrl)
                 .build();
 
         return client.jenkins().createNew().withNewMetadata()

@@ -9,6 +9,7 @@ public class InputRequest {
     private String submitter;
     private List<InputRequestParam> params;
     private String status;
+    private String baseURI;
 
     public String getId() {
         return id;
@@ -56,5 +57,13 @@ public class InputRequest {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getBaseURI() {
+        return baseURI;
+    }
+
+    public void setBaseURI(String baseURI) {
+        this.baseURI = baseURI;
     }
 }

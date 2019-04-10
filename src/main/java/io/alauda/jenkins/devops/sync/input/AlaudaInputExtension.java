@@ -54,8 +54,7 @@ public class AlaudaInputExtension implements InputExtension {
         String namespace = targetPipeline.getMetadata().getNamespace();
         String name = targetPipeline.getMetadata().getName();
 
-        String buildID = run.getId();
-        JSONArray jsonArray = getAndAddRequestJson(targetPipeline, input, buildID);
+        JSONArray jsonArray = getAndAddRequestJson(targetPipeline, input, run);
         updatePipeline(namespace, name, jsonArray.toString());
     }
 
@@ -153,14 +152,17 @@ public class AlaudaInputExtension implements InputExtension {
         return jsonArray;
     }
 
-    private JSONArray getAndAddRequestJson(Pipeline targetPipeline, InputStep input, String buildID) {
+    private JSONArray getAndAddRequestJson(Pipeline targetPipeline, InputStep input, Run run) {
         JSONArray jsonArray = getRequestJson(targetPipeline);
+        String buildID = run.getId();
+        String baseURI = run.getUrl();
 
         Iterator<ParamValueParser> paramValueParserIt = Jenkins.getInstance()
                 .getExtensionList(ParamValueParser.class).iterator();
 
         InputRequest inputRequest = InputStepConvert.convert(input, paramValueParserIt);
         inputRequest.setBuildID(buildID);
+        inputRequest.setBaseURI(baseURI);
         jsonArray.add(inputRequest);
 
         return jsonArray;
