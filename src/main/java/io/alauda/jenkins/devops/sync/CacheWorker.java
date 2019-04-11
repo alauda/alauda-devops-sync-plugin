@@ -105,6 +105,9 @@ public class CacheWorker extends AsyncPeriodicWork {
                 AlaudaJobProperty property = null;
                 if(item instanceof WorkflowJob) {
                     property = ((WorkflowJob) item).getProperty(WorkflowJobProperty.class);
+                    if(property == null) {
+                        property = ((WorkflowJob) item).getProperty(PipelineConfigProjectProperty.class);
+                    }
                 } if(item instanceof WorkflowMultiBranchProject) {
                     property = ((WorkflowMultiBranchProject) item).getProperties().get(MultiBranchProperty.class);
                 } else {

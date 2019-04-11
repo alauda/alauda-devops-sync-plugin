@@ -13,6 +13,7 @@ import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
+import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.alauda.jenkins.devops.sync.watcher.PipelineConfigWatcher;
 import io.alauda.kubernetes.api.model.DoneablePipelineConfig;
 import io.alauda.kubernetes.api.model.Namespace;
@@ -120,8 +121,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
      * and PipelineConfig name
      */
     private WorkflowJobProperty pipelineConfigProjectForJob(WorkflowJob job) {
-        WorkflowJobProperty property = job.getProperty(WorkflowJobProperty.class);
-
+        WorkflowJobProperty property = WorkflowJobUtils.getAlaudaProperty(job);
         if (property != null) {
             if (StringUtils.isNotBlank(property.getNamespace()) && StringUtils.isNotBlank(property.getName())) {
                 logger.info("Found WorkflowJobProperty for namespace: " + property.getNamespace() + " name: " + property.getName());
