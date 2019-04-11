@@ -16,9 +16,6 @@
 
 -->
 <?jelly escape-by-default='true'?>
-<!--
-  This view is used to render the installed plugins page.
--->
 <div>
   Sync your Alauda DevOps PipelineConfigs with Jenkins jobs.
 </div>

@@ -39,7 +39,7 @@ public class CacheWorker extends AsyncPeriodicWork {
 
     @Override
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
-        AlaudaDevOpsClient client = AlaudaUtils.getAlaudaClient();
+        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
             LOGGER.severe("Can't get AlaudaDevOpsClient when execute cacheWorker check.");
             return;
@@ -53,7 +53,7 @@ public class CacheWorker extends AsyncPeriodicWork {
         }
 
         JenkinsBindingList bindingList = client.jenkinsBindings().inAnyNamespace().list();
-        List<JenkinsBinding> bindings = null;;
+        List<JenkinsBinding> bindings;
         if(bindingList == null || (bindings = bindingList.getItems()) == null) {
             return;
         }
@@ -135,6 +135,11 @@ public class CacheWorker extends AsyncPeriodicWork {
         }
 
         PipelineConfigWatcher watcher = AlaudaSyncGlobalConfiguration.get().getPipelineConfigWatcher();
+        if(watcher == null) {
+            LOGGER.warning("Cannot get PipelineConfigWatcher, skip to checkJob.");
+            return;
+        }
+
         if(notExists) {
             watcher.eventReceived(Watcher.Action.ADDED, pc);
         } else if(needModfiy) {

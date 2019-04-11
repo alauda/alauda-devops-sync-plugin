@@ -47,6 +47,8 @@ public final class Constants {
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE = "alauda.io/pull-request-title";
 
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY = "alauda.io/jenkins-instance-identity";
+
     /** secret keys */
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";
@@ -109,4 +111,7 @@ public final class Constants {
     public static final String BITBUCKET_ORIGIN_PR_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.OriginPullRequestDiscoveryTrait";
     public static final String BITBUCKET_FORK_PR_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait";
     public static final String BITBUCKET_FORK_PR_TRUST_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait$TrustTeamForks";
+
+    public static final String SOURCE_TYPE_SVN = "SVN";
+    public static final String SOURCE_TYPE_GIT = "GIT";
 }

@@ -16,7 +16,6 @@
 package io.alauda.jenkins.devops.sync;
 
 import io.alauda.jenkins.devops.sync.watcher.AbstractWatcher;
-import io.alauda.jenkins.devops.sync.watcher.BaseWatcher;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import io.alauda.kubernetes.client.Watcher;
 
@@ -61,8 +60,11 @@ public class WatcherCallback<T> implements Watcher<T> {
             reWatch();
         } else if(isReWatching()) {
             // close by user
-            future.cancel(true);
-            future = null;
+            try {
+                future.cancel(true);
+            } finally {
+                future = null;
+            }
         }
     }
 

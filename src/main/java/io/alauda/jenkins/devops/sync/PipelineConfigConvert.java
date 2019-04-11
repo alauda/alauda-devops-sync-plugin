@@ -41,6 +41,7 @@ public interface PipelineConfigConvert<T extends TopLevelItem> extends Extension
         List<Condition> conditions = status.getConditions();
         if (conditions.size() > 0) {
             conditions.forEach(condition -> {
+                condition.setLastAttempt(AlaudaUtils.getCurrentTimestamp());
                 statusBuilder.addNewConditionLike(condition).endCondition();
             });
 

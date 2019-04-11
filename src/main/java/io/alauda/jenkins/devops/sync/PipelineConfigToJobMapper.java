@@ -22,6 +22,7 @@ import hudson.plugins.git.SubmoduleConfig;
 import hudson.plugins.git.UserRemoteConfig;
 import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.scm.SCM;
+import hudson.scm.SubversionSCM;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
@@ -87,32 +88,12 @@ public abstract class PipelineConfigToJobMapper {
 
         if (StringUtils.isBlank(jenkinsfile)) {
             // Is this a Jenkinsfile from Git SCM?
-            if (source != null && isValidSource(source)) { // check null just for sonar rules
+            if (AlaudaUtils.isValidSource(source)) { // check null just for sonar rules
                 if (jenkinsfilePath == null) {
                     jenkinsfilePath = DEFAULT_JENKINS_FILEPATH;
                 }
 
-                PipelineSourceGit gitSource = source.getGit();
-                String branchRef = gitSource.getRef();
-                List<BranchSpec> branchSpecs = Collections.emptyList();
-                if (isNotBlank(branchRef)) {
-                    branchSpecs = Collections.singletonList(new BranchSpec(branchRef));
-                }
-
-                String credentialsId = null;
-                try {
-                    credentialsId = updateSourceCredentials(pc);
-                } catch (InvalidSecretException e) {
-                    Condition condition = new Condition();
-                    condition.setReason(ErrorMessages.INVALID_CREDENTIAL);
-                    condition.setMessage(e.getMessage());
-                    pc.getStatus().getConditions().add(condition);
-                }
-
-                // if credentialsID is null, go with an SCM where anonymous has to be sufficient
-                List<UserRemoteConfig> configs = Collections.singletonList(new UserRemoteConfig(gitSource.getUri(), null, null, credentialsId));
-
-                GitSCM scm = new GitSCM(configs, branchSpecs, false, Collections.<SubmoduleConfig>emptyList(), null, null, Collections.<GitSCMExtension>emptyList());
+                SCM scm = createSCM(pc);
                 return new CpsScmFlowDefinition(scm, jenkinsfilePath);
             } else {
                 Condition condition = new Condition();
@@ -128,9 +109,6 @@ public abstract class PipelineConfigToJobMapper {
         }
     }
 
-    private static boolean isValidSource(PipelineSource source) {
-        return (source != null && source.getGit() != null && source.getGit().getUri() != null);
-    }
 
     /**
      * Find PipelineTrigger according to the type
@@ -247,7 +225,7 @@ public abstract class PipelineConfigToJobMapper {
             String scriptPath = cpsScmFlowDefinition.getScriptPath();
             if (scriptPath != null && scriptPath.trim().length() > 0) {
                 boolean rc = false;
-                PipelineSource source = getOrCreatePipelineSource(spec);
+                PipelineSource source = AlaudaUtils.getOrCreatePipelineSource(pipelineConfig);
 
                 if (!scriptPath.equals(pipelineStrategyJenkins.getJenkinsfilePath())) {
                     LOGGER.log(Level.FINE, "updating PipelineConfig " + namespaceName + " jenkinsfile path to " + scriptPath + " from ");
@@ -258,6 +236,10 @@ public abstract class PipelineConfigToJobMapper {
                 SCM scm = cpsScmFlowDefinition.getScm();
                 if (scm instanceof GitSCM) {
                     populateFromGitSCM(pipelineConfig, source, (GitSCM) scm, null);
+                    LOGGER.log(Level.FINE, "updating bc " + namespaceName);
+                    rc = true;
+                } else if(scm instanceof SubversionSCM) {
+                    populateFromSvnSCM(pipelineConfig, source, (SubversionSCM) scm);
                     LOGGER.log(Level.FINE, "updating bc " + namespaceName);
                     rc = true;
                 } else {
@@ -289,7 +271,7 @@ public abstract class PipelineConfigToJobMapper {
             if (branch != null) {
                 String ref = branch.getName();
                 SCM scm = branch.getScm();
-                PipelineSource source = getOrCreatePipelineSource(spec);
+                PipelineSource source = AlaudaUtils.getOrCreatePipelineSource(pipelineConfig);
                 if (scm instanceof GitSCM) {
                     if (populateFromGitSCM(pipelineConfig, source, (GitSCM) scm, ref)) {
                         if (StringUtils.isEmpty(pipelineStrategyJenkins.getJenkinsfilePath())) {
@@ -369,6 +351,8 @@ public abstract class PipelineConfigToJobMapper {
             source.setGit(new PipelineSourceGit());
         }
 
+        source.setSourceType(Constants.SOURCE_TYPE_GIT);
+
         List<RemoteConfig> repositories = gitSCM.getRepositories();
         if (repositories != null && repositories.size() > 0) {
             RemoteConfig remoteConfig = repositories.get(0);
@@ -398,12 +382,71 @@ public abstract class PipelineConfigToJobMapper {
         return false;
     }
 
-    private static PipelineSource getOrCreatePipelineSource(PipelineConfigSpec spec) {
-        PipelineSource source = spec.getSource();
-        if (source == null) {
-            source = new PipelineSource();
-            spec.setSource(source);
+    private static boolean populateFromSvnSCM(PipelineConfig pipelineConfig, PipelineSource source, SubversionSCM subversionSCM) {
+        if (source.getSvn() == null) {
+            source.setSvn(new PipelineSourceSvn());
         }
-        return source;
+        source.setSourceType(Constants.SOURCE_TYPE_SVN);
+
+        SubversionSCM.ModuleLocation[] locations = subversionSCM.getLocations();
+        if (locations != null && locations.length > 0) {
+            SubversionSCM.ModuleLocation location = locations[0];
+            String url = location.getURL();
+
+            AlaudaUtils.updateSvnSourceUrl(pipelineConfig, url);
+            return true;
+        }
+
+        return false;
+    }
+
+    private static SCM createSCM(PipelineConfig pc) throws IOException {
+        PipelineSource source = pc.getSpec().getSource();
+        if (AlaudaUtils.isValidGitSource(source) && (source.getSourceType().equals(Constants.SOURCE_TYPE_GIT) || source.getSourceType().equals(""))) {
+            return createGitSCM(pc, source);
+        } else if (AlaudaUtils.isValidSvnSource(source) && source.getSourceType().equals(Constants.SOURCE_TYPE_SVN)) {
+            return createSvnSCM(pc, source);
+        } else {
+            return null;
+        }
+    }
+
+
+
+    private static GitSCM createGitSCM(PipelineConfig pc, PipelineSource source) throws IOException {
+        PipelineSourceGit gitSource = source.getGit();
+        String branchRef = gitSource.getRef();
+        List<BranchSpec> branchSpecs = Collections.emptyList();
+        if (isNotBlank(branchRef)) {
+            branchSpecs = Collections.singletonList(new BranchSpec(branchRef));
+        }
+
+        String credentialId = getAndUpdateCredential(pc);
+
+        // if credentialsID is null, go with an SCM where anonymous has to be sufficient
+        List<UserRemoteConfig> configs = Collections.singletonList(new UserRemoteConfig(gitSource.getUri(), null, null, credentialId));
+
+        return new GitSCM(configs, branchSpecs, false, Collections.<SubmoduleConfig>emptyList(), null, null, Collections.<GitSCMExtension>emptyList());
+    }
+
+    private static SubversionSCM createSvnSCM(PipelineConfig pc, PipelineSource source) throws IOException {
+        PipelineSourceSvn svnSource = source.getSvn();
+        String credentialId = getAndUpdateCredential(pc);
+
+        return new SubversionSCM(svnSource.getUri(), credentialId, ".");
+    }
+
+
+    private static String getAndUpdateCredential(PipelineConfig pc) throws IOException {
+        String credentialId = null;
+        try {
+            credentialId = updateSourceCredentials(pc);
+        } catch (InvalidSecretException e) {
+            Condition condition = new Condition();
+            condition.setReason(ErrorMessages.INVALID_CREDENTIAL);
+            condition.setMessage(e.getMessage());
+            pc.getStatus().getConditions().add(condition);
+        }
+        return credentialId;
     }
 }

@@ -28,14 +28,14 @@
 
   <groupId>io.alauda.jenkins.plugins</groupId>
   <artifactId>alauda-devops-sync</artifactId>
-  <version>0.2.31-SNAPSHOT</version>
+  <version>0.2.35-SNAPSHOT</version>
   <packaging>hpi</packaging>
 
   <properties>
     <jenkins.version>2.83</jenkins.version>
     <java.level>8</java.level>
 
-    <devops-client.version>0.2.7</devops-client.version>
+    <devops-client.version>0.2.9</devops-client.version>
     <log.level>INFO</log.level>
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
     <findbugs.failOnError>false</findbugs.failOnError>
@@ -130,6 +130,11 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <dependency>
+      <groupId>io.alauda</groupId>
+      <artifactId>kubernetes-model</artifactId>
+      <version>0.2.11-SNAPSHOT</version>
+    </dependency>
 
     <dependency>
        <groupId>io.jenkins.blueocean</groupId>
@@ -175,6 +180,11 @@
        <artifactId>credentials</artifactId>
        <version>2.1.16</version>
     </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>subversion</artifactId>
+      <version>2.12.1</version>
+    </dependency>
 
     <dependency>
         <groupId>org.jenkins-ci</groupId>
@@ -208,7 +218,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>git</artifactId>
-      <version>3.4.0</version>
+      <version>3.6.0</version>
       <exclusions>
         <exclusion>
           <groupId>org.apache.httpcomponents</groupId>
@@ -340,6 +350,12 @@
       <artifactId>pipeline-stage-step</artifactId>
       <version>2.3</version>
     </dependency>
+      <!-- direct dependency from github plugin is not a good solution, just for temporary -->
+      <dependency>
+          <groupId>org.jenkins-ci.plugins</groupId>
+          <artifactId>github-branch-source</artifactId>
+          <version>2.3.6</version>
+      </dependency>
 
     <!--
      DIRECT DEPENDENCY... should be fixed

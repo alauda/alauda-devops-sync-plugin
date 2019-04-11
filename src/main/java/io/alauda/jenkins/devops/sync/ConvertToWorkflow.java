@@ -8,7 +8,6 @@ import hudson.model.ParameterDefinition;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
-import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.constants.PipelineRunPolicy;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
@@ -62,7 +61,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
 
         boolean newJob = job == null;
         if (newJob) {
-            parent = AlaudaUtils.getFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
+            parent = AlaudaUtils.getOrCreateFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
             job = new WorkflowJob(parent, jobName);
             job.addProperty(WorkflowJobProperty.getInstance(pipelineConfig));
         } else {
@@ -182,9 +181,10 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         spec.getStrategy().getJenkins().setJenkinsfile(formattedJenkinsfile);
 
         PipelineConfig result = client.pipelineConfigs().inNamespace(namespace)
-                .withName(name).edit()
-                .withNewSpecLike(spec).endSpec()
-                .done();
+                .withName(name).edit().editSpec().editStrategy().editJenkins()
+                .withJenkinsfile(formattedJenkinsfile)
+                .endJenkins().endStrategy().endSpec().done();
+
 
         logger.info(String.format("Format PipelineConfig's jenkinsfile %s, name: %s",
                 result.getSpec().getStrategy().getJenkins().getJenkinsfile(), result.getMetadata().getName()));

@@ -76,7 +76,7 @@ import static java.util.logging.Level.*;
 
 /**
  * Listens to Jenkins Job build {@link Run} start and stop then ensure there's a
- * suitable {Build} object in OpenShift thats updated correctly with the
+ * suitable {Build} object thats updated correctly with the
  * current status, logsURL and metrics
  */
 @Extension
@@ -542,7 +542,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         long started = getStartTime(run);
         String startTime = null;
         String completionTime = null;
-        String updatedTime = getCurrentTimestamp();
+        String updatedTime = AlaudaUtils.getCurrentTimestamp();
         if (started > 0) {
             startTime = formatTimestamp(started);
             long duration = getDuration(run);
@@ -611,6 +611,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             BadgeAction badgeAction = (BadgeAction) action;
 
             JSONObject jsonObject = new JSONObject();
+            jsonObject.put("id", badgeAction.getId());
             jsonObject.put("text", badgeAction.getText());
             jsonObject.put("displayName", badgeAction.getDisplayName());
             jsonObject.put("iconPath", badgeAction.getIconPath());
