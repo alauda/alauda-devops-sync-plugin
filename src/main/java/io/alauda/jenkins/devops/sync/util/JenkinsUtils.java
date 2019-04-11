@@ -668,7 +668,7 @@ public abstract class JenkinsUtils {
 	}
 
     public static void maybeScheduleNext(WorkflowJob job) {
-        WorkflowJobProperty pcp = job.getProperty(WorkflowJobProperty.class);
+        WorkflowJobProperty pcp = WorkflowJobUtils.getAlaudaProperty(job);
         if (pcp == null) {
             return;
         }

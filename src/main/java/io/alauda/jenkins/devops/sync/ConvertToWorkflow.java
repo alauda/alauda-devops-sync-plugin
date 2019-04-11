@@ -68,8 +68,15 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         } else {
             WorkflowJobProperty wfJobProperty = job.getProperty(WorkflowJobProperty.class);
             if(wfJobProperty == null) {
-                logger.warning("Missing the AlaudaWorkflowJobProperty.");
-                return null;
+                logger.warning("Missing the AlaudaWorkflowJobProperty, try to find a old property.");
+
+                PipelineConfigProjectProperty pcpp = job.getProperty(PipelineConfigProjectProperty.class);
+                if(pcpp == null) {
+                    logger.warning("No old property PipelineConfigProjectProperty.");
+                    return null;
+                }
+
+                wfJobProperty = pcpp;
             }
 
             if(isSameJob(pipelineConfig, wfJobProperty)){

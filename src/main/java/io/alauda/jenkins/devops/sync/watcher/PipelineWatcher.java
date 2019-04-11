@@ -28,6 +28,7 @@ import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
+import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Watcher;
 import jenkins.model.Jenkins;
@@ -221,8 +222,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
                 }
                 continue;
             }
-            WorkflowJobProperty bcp = job
-                    .getProperty(WorkflowJobProperty.class);
+            WorkflowJobProperty bcp = WorkflowJobUtils.getAlaudaProperty(job);
             if (bcp == null) {
                 List<Pipeline> pipelines = pipelineConfigPipelines.getValue();
                 for (Pipeline pipe : pipelines) {
@@ -395,7 +395,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
 
     for (WorkflowJob job : jobs) {
-      WorkflowJobProperty pcpp = job.getProperty(WorkflowJobProperty.class);
+      WorkflowJobProperty pcpp = WorkflowJobUtils.getAlaudaProperty(job);
       if (pcpp == null) {
         // If we encounter a job without a BuildConfig, skip the reconciliation logic
         continue;
