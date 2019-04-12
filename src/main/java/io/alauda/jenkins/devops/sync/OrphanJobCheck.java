@@ -8,6 +8,7 @@ import hudson.model.TaskListener;
 import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.alauda.jenkins.devops.sync.watcher.ResourcesCache;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import jenkins.model.Jenkins;
@@ -59,12 +60,10 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                     return false;
                 }
 
-                WorkflowJobProperty pro =
-                        ((WorkflowJob) item).getProperty(WorkflowJobProperty.class);
+                WorkflowJobProperty pro = WorkflowJobUtils.getAlaudaProperty((WorkflowJob) item);
                 return pro != null && pro.isValid();
             }).forEach(item ->{
-                WorkflowJobProperty pro =
-                        ((WorkflowJob) item).getProperty(WorkflowJobProperty.class);
+                WorkflowJobProperty pro = WorkflowJobUtils.getAlaudaProperty((WorkflowJob) item);
 
                 String ns = pro.getNamespace();
                 String name = pro.getName();

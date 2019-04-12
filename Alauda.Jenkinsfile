@@ -1,4 +1,5 @@
 // https://jenkins.io/doc/book/pipeline/syntax/
+// Multi-branch discovery pattern: PR-.*
 @Library('alauda-cicd') _
 
 // global variables for pipeline
@@ -23,6 +24,10 @@ pipeline {
 		// 不允许并行执行
 		disableConcurrentBuilds()
 	}
+
+	parameters {
+	    booleanParam defaultValue: false, description: 'Rebuild and archive artifacts if this flag is true.', name: 'forceReBuild'
+    }
 
 	//(optional) 环境变量
 	environment {
@@ -60,7 +65,7 @@ pipeline {
 					if (GIT_BRANCH != "master") {
 						def branch = GIT_BRANCH.replace("/","-").replace("_","-")
 						RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
-					} else (GIT_BRANCH == "master") {
+					} else {
 						sh "gitversion patch ${RELEASE_VERSION} > patch"
 						RELEASE_BUILD = readFile("patch").trim()
 					}
@@ -82,6 +87,9 @@ pipeline {
                     changeset '**/**/*.jelly'
                     changeset '**/**/*.properties'
                     changeset '**/**/*.png'
+                    expression {
+                        return params.forceReBuild
+                    }
                 }
             }
             steps {
