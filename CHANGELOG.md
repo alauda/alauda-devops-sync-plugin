@@ -1,6 +1,10 @@
 # ChangeLog
 
-## 0.2.35 (not released yet)
+## 0.2.36 (not released yet)
+
+* Using input extension point implement to record input request list
+
+## 0.2.35
 
 * Bump kubernetes-client version to 0.2.9.
     Set the default value of resourceVersion to 0
