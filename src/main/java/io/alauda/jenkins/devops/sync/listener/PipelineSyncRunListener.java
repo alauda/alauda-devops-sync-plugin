@@ -59,7 +59,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -341,46 +340,186 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             return;
         }
 
-        String namespace = cause.getNamespace();
-        String rootUrl = ""; // TODO should remove this, AlaudaUtils.getJenkinsURL(client, namespace);
-        String buildUrl = joinPaths(rootUrl, run.getUrl());
-        String logsUrl = joinPaths(buildUrl, "/consoleText");
-        String logsConsoleUrl = joinPaths(buildUrl, "/console");
+        Map<String, BlueRunResult> blueRunResults = new HashMap<>();
+        PipelineJson pipeJson = new PipelineJson();
+        Map<String, PipelineStage> stageMap = new HashMap<>();
 
-        String viewLogUrl;
-        String stagesUrl;
-        String stagesLogUrl;
-        String stepsUrl;
-        String stepsLogUrl;
-        String changeTitle = "";
+        try {
+            if (blueRun != null && blueRun.getNodes() != null) {
+                Iterator<BluePipelineNode> iter = blueRun.getNodes().iterator();
+                PipelineStage pipeStage;
+                while (iter.hasNext()) {
+                    BluePipelineNode node = iter.next();
+                    if (node != null) {
+                        BlueRunResult result = node.getResult();
+                        BlueRun.BlueRunState state = node.getStateObj();
+
+                        pipeStage = new PipelineStage(node.getId(), node.getDisplayName(), state != null ? state.name() : Constants.JOB_STATUS_NOT_BUILT, result != null ? result.name() : Constants.JOB_STATUS_UNKNOWN, node.getStartTimeString(), node.getDurationInMillis(), 0L, node.getEdges());
+                        stageMap.put(node.getDisplayName(), pipeStage);
+                        pipeJson.addStage(pipeStage);
+
+
+                        blueRunResults.put(node.getDisplayName(), node.getResult());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.log(WARNING, "Failed to fetch stages from blue ocean API. " + e, e);
+        }
+
+        if (!wfRunExt.get_links().self.href.matches("^https?://.*$")) {
+            wfRunExt.get_links().self.setHref(wfRunExt.get_links().self.href);
+        }
+        int newNumStages = wfRunExt.getStages().size();
+        int newNumFlowNodes = 0;
+        List<StageNodeExt> validStageList = new ArrayList<>();
+        List<BlueJsonStage> blueStages = new ArrayList<>();
+        for (StageNodeExt stage : wfRunExt.getStages()) {
+            // the StatusExt.getStatus() cannot be trusted for declarative
+            // pipeline;
+            // for example, skipped steps/stages will be marked as complete;
+            // we leverage the blue ocean state machine to determine this
+            BlueRunResult result = blueRunResults.get(stage.getName());
+            if (result != null && result == BlueRunResult.NOT_BUILT) {
+                logger.info("skipping stage " + stage.getName() + " for the status JSON for pipeline run " + run.getDisplayName() + " because it was not executed (most likely because of a failure in another stage)");
+                continue;
+            }
+            validStageList.add(stage);
+
+            FlowNodeExt.FlowNodeLinks links = stage.get_links();
+            if (!links.self.href.matches("^https?://.*$")) {
+                links.self.setHref(links.self.href);
+            }
+            if (links.getLog() != null && !links.getLog().href.matches("^https?://.*$")) {
+                links.getLog().setHref(links.getLog().href);
+            }
+            newNumFlowNodes = newNumFlowNodes + stage.getStageFlowNodes().size();
+            for (AtomFlowNodeExt node : stage.getStageFlowNodes()) {
+                FlowNodeExt.FlowNodeLinks nodeLinks = node.get_links();
+                if (!nodeLinks.self.href.matches("^https?://.*$")) {
+                    nodeLinks.self.setHref(nodeLinks.self.href);
+                }
+                if (nodeLinks.getLog() != null && !nodeLinks.getLog().href.matches("^https?://.*$")) {
+                    nodeLinks.getLog().setHref(nodeLinks.getLog().href);
+                }
+            }
+
+            StatusExt status = stage.getStatus();
+            if (status != null) {
+                PipelineStage pipeStage = stageMap.get(stage.getName());
+                if (pipeStage != null) {
+                    pipeStage.pause_duration_millis = stage.getPauseDurationMillis();
+                }
+            }
+        }
+        // override stages in case declarative has fooled base pipeline support
+        wfRunExt.setStages(validStageList);
+
+        boolean needToUpdate = this.shouldUpdatePipeline(cause, newNumStages, newNumFlowNodes, wfRunExt.getStatus());
+        if (!needToUpdate) {
+            return;
+        }
+
+        String json = null;
+        try {
+            json = new ObjectMapper().writeValueAsString(wfRunExt);
+        } catch (JsonProcessingException e) {
+            logger.log(SEVERE, "Failed to serialize workflow run. " + e, e);
+        }
+
+        String phase = runToPipelinePhase(run);
+        long started = getStartTime(run);
+        String startTime = null;
+        String completionTime = null;
+        String updatedTime = AlaudaUtils.getCurrentTimestamp();
+        if (started > 0) {
+            startTime = formatTimestamp(started);
+            long duration = getDuration(run);
+            if (duration > 0) {
+                completionTime = formatTimestamp(started + duration);
+            }
+        }
+
+        logger.log(INFO, "Patching pipeline {0}/{1}: setting phase to {2}", new Object[]{cause.getNamespace(), cause.getName(), phase});
+        Pipeline pipeline = client.pipelines().inNamespace(cause.getNamespace()).withName(cause.getName()).get();
+        if (pipeline == null) {
+            cause.setSynced(false);
+            logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
+            return;
+        }
+
+        Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
+
+        String blueJson = toBlueJson(pipeJson);
+        annotations.putAll(jenkinsURLHandle(run, cause, json, blueJson));
+        pipeline.getMetadata().setAnnotations(annotations);
+
+        badgeHandle(run, annotations);
+
+        // status
+        PipelineStatus status = createPipelineStatus(pipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
+        pipeline.setStatus(status);
+
+        try {
+            String namespace = cause.getNamespace();
+            Pipeline result = client
+                    .pipelines().inNamespace(namespace)
+                    .withName(pipeline.getMetadata().getName())
+                    .patch(pipeline);
+            logger.fine("updated pipeline: " + result);
+        } catch (Exception e) {
+            cause.setSynced(false);
+            throw e;
+        }
+
+        cause.setNumFlowNodes(newNumFlowNodes);
+        cause.setNumStages(newNumStages);
+        cause.setLastUpdateToAlaudaDevOps(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
+    }
+
+    private static final String BLUE_REST_PRE = "/blue/rest/organizations/jenkins/pipelines";
+    private static final String BLUE_MULTI_BRANCH_PRE = BLUE_REST_PRE + "/%s/pipelines/%s/branches/%s/runs/%d";
+    private static final String BLUE_NORMAL_PRE = BLUE_REST_PRE + "/%s/pipelines/%s/runs/%d";
+
+    private Map<String, String> jenkinsURLHandle(@NotNull Run run, JenkinsPipelineCause cause, String json, String blueJson) {
+        Map<String, String> annotations = new HashMap<>();
+
+        final String viewLogUrl;
+        final String stagesUrl;
+        final String stagesLogUrl;
+        final String stepsUrl;
+        final String stepsLogUrl;
+        final String testUrl;
+        final String changeTitle;
         if(JenkinsUtils.fromMultiBranch(run)) {
             WorkflowJob wfJob = (WorkflowJob) run.getParent();
             WorkflowMultiBranchProject multiWfJob = (WorkflowMultiBranchProject) wfJob.getParent();
-            viewLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/steps/%%d/log/",
+            viewLogUrl = String.format(BLUE_MULTI_BRANCH_PRE + "/nodes/%%d/steps/%%d/log/",
                     cause.getNamespace(),
                     multiWfJob.getName(),
                     wfJob.getName(),
                     run.number);
-
-            stagesUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/",
+            stagesUrl = String.format(BLUE_MULTI_BRANCH_PRE + "/nodes/",
                     cause.getNamespace(),
                     multiWfJob.getName(),
                     wfJob.getName(),
                     run.number);
-
-            stagesLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/log/",
+            stagesLogUrl = String.format(BLUE_MULTI_BRANCH_PRE + "/nodes/%%d/log/",
                     cause.getNamespace(),
                     multiWfJob.getName(),
                     wfJob.getName(),
                     run.number);
-
-            stepsLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/log/",
+            stepsLogUrl = String.format(BLUE_MULTI_BRANCH_PRE + "/nodes/%%d/log/",
                     cause.getNamespace(),
                     multiWfJob.getName(),
                     wfJob.getName(),
                     run.number);
-
-            stepsUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/steps/",
+            stepsUrl = String.format(BLUE_MULTI_BRANCH_PRE + "/nodes/%%d/steps/",
+                    cause.getNamespace(),
+                    multiWfJob.getName(),
+                    wfJob.getName(),
+                    run.number);
+            testUrl = String.format(BLUE_MULTI_BRANCH_PRE + "/tests",
                     cause.getNamespace(),
                     multiWfJob.getName(),
                     wfJob.getName(),
@@ -389,37 +528,56 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             Object changeTitleObj = run.getEnvVars().get("CHANGE_TITLE");
             if(changeTitleObj != null) {
                 changeTitle = changeTitleObj.toString();
+            } else {
+                changeTitle = "";
             }
         } else {
             Job wfJob = run.getParent();
-
-            viewLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/%%d/steps/%%d/log/",
+            viewLogUrl = String.format(BLUE_NORMAL_PRE + "/nodes/%%d/steps/%%d/log/",
                     cause.getNamespace(),
                     wfJob.getName(),
                     run.number);
-
-            stagesLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/%%d/log/",
+            stagesLogUrl = String.format(BLUE_NORMAL_PRE + "/nodes/%%d/log/",
                     cause.getNamespace(),
                     wfJob.getName(),
                     run.number);
-
-            stagesUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/",
+            stagesUrl = String.format(BLUE_NORMAL_PRE + "/nodes/",
                     cause.getNamespace(),
                     wfJob.getName(),
                     run.number);
-
-            stepsLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/%%d/log/",
+            stepsLogUrl = String.format(BLUE_NORMAL_PRE + "/nodes/%%d/log/",
                     cause.getNamespace(),
                     wfJob.getName(),
                     run.number);
-
-            stepsUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/runs/%d/nodes/%%d/steps/",
+            stepsUrl = String.format(BLUE_NORMAL_PRE + "/nodes/%%d/steps/",
                     cause.getNamespace(),
                     wfJob.getName(),
                     run.number);
+            testUrl = String.format(BLUE_NORMAL_PRE + "/tests",
+                    cause.getNamespace(),
+                    wfJob.getName(),
+                    run.number);
+            changeTitle = "";
         }
 
-        String progressiveLogUrl = joinPaths(buildUrl, "/logText/progressiveText");
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE, changeTitle);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG, viewLogUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES, stagesUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG, stagesLogUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS, stepsUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG, stepsLogUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_TEST_URL, testUrl);
+
+        final String buildUrl = run.getUrl();
+        final String logsUrl = joinPaths(buildUrl, "/consoleText");
+        final String logsConsoleUrl = joinPaths(buildUrl, "/console");
+        final String progressiveLogUrl = joinPaths(buildUrl, "/logText/progressiveText");
+
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI, buildUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL, logsUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL, logsConsoleUrl);
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG, progressiveLogUrl);
+
         String logsBlueOceanUrl = null;
         try {
             // there are utility functions in the blueocean-dashboard plugin
@@ -449,154 +607,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         } catch (Throwable t) {
             if (logger.isLoggable(Level.FINE)) logger.log(Level.FINE, "upsertPipeline", t);
         }
+        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL, logsBlueOceanUrl);
 
-        Map<String, BlueRunResult> blueRunResults = new HashMap<>();
-        PipelineJson pipeJson = new PipelineJson();
-        Map<String, PipelineStage> stageMap = new HashMap<>();
-
-        try {
-            if (blueRun != null && blueRun.getNodes() != null) {
-                Iterator<BluePipelineNode> iter = blueRun.getNodes().iterator();
-                PipelineStage pipeStage;
-                while (iter.hasNext()) {
-                    BluePipelineNode node = iter.next();
-                    if (node != null) {
-                        BlueRunResult result = node.getResult();
-                        BlueRun.BlueRunState state = node.getStateObj();
-
-                        pipeStage = new PipelineStage(node.getId(), node.getDisplayName(), state != null ? state.name() : Constants.JOB_STATUS_NOT_BUILT, result != null ? result.name() : Constants.JOB_STATUS_UNKNOWN, node.getStartTimeString(), node.getDurationInMillis(), 0L, node.getEdges());
-                        stageMap.put(node.getDisplayName(), pipeStage);
-                        pipeJson.addStage(pipeStage);
-
-
-                        blueRunResults.put(node.getDisplayName(), node.getResult());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            logger.log(WARNING, "Failed to fetch stages from blue ocean API. " + e, e);
-        }
-
-        if (!wfRunExt.get_links().self.href.matches("^https?://.*$")) {
-            wfRunExt.get_links().self.setHref(joinPaths(rootUrl, wfRunExt.get_links().self.href));
-        }
-        int newNumStages = wfRunExt.getStages().size();
-        int newNumFlowNodes = 0;
-        List<StageNodeExt> validStageList = new ArrayList<>();
-        List<BlueJsonStage> blueStages = new ArrayList<>();
-        for (StageNodeExt stage : wfRunExt.getStages()) {
-            // the StatusExt.getStatus() cannot be trusted for declarative
-            // pipeline;
-            // for example, skipped steps/stages will be marked as complete;
-            // we leverage the blue ocean state machine to determine this
-            BlueRunResult result = blueRunResults.get(stage.getName());
-            if (result != null && result == BlueRunResult.NOT_BUILT) {
-                logger.info("skipping stage " + stage.getName() + " for the status JSON for pipeline run " + run.getDisplayName() + " because it was not executed (most likely because of a failure in another stage)");
-                continue;
-            }
-            validStageList.add(stage);
-
-            FlowNodeExt.FlowNodeLinks links = stage.get_links();
-            if (!links.self.href.matches("^https?://.*$")) {
-                links.self.setHref(joinPaths(rootUrl, links.self.href));
-            }
-            if (links.getLog() != null && !links.getLog().href.matches("^https?://.*$")) {
-                links.getLog().setHref(joinPaths(rootUrl, links.getLog().href));
-            }
-            newNumFlowNodes = newNumFlowNodes + stage.getStageFlowNodes().size();
-            for (AtomFlowNodeExt node : stage.getStageFlowNodes()) {
-                FlowNodeExt.FlowNodeLinks nodeLinks = node.get_links();
-                if (!nodeLinks.self.href.matches("^https?://.*$")) {
-                    nodeLinks.self.setHref(joinPaths(rootUrl, nodeLinks.self.href));
-                }
-                if (nodeLinks.getLog() != null && !nodeLinks.getLog().href.matches("^https?://.*$")) {
-                    nodeLinks.getLog().setHref(joinPaths(rootUrl, nodeLinks.getLog().href));
-                }
-            }
-
-            StatusExt status = stage.getStatus();
-            if (status != null) {
-                PipelineStage pipeStage = stageMap.get(stage.getName());
-                if (pipeStage != null) {
-                    pipeStage.pause_duration_millis = stage.getPauseDurationMillis();
-                }
-            }
-        }
-        // override stages in case declarative has fooled base pipeline support
-        wfRunExt.setStages(validStageList);
-
-        boolean needToUpdate = this.shouldUpdatePipeline(cause, newNumStages, newNumFlowNodes, wfRunExt.getStatus());
-        if (!needToUpdate) {
-            return;
-        }
-
-        String json = null;
-        try {
-            json = new ObjectMapper().writeValueAsString(wfRunExt);
-        } catch (JsonProcessingException e) {
-            logger.log(SEVERE, "Failed to serialize workflow run. " + e, e);
-        }
-
-
-        String phase = runToPipelinePhase(run);
-        long started = getStartTime(run);
-        String startTime = null;
-        String completionTime = null;
-        String updatedTime = AlaudaUtils.getCurrentTimestamp();
-        if (started > 0) {
-            startTime = formatTimestamp(started);
-            long duration = getDuration(run);
-            if (duration > 0) {
-                completionTime = formatTimestamp(started + duration);
-            }
-        }
-
-        logger.log(INFO, "Patching pipeline {0}/{1}: setting phase to {2}", new Object[]{cause.getNamespace(), cause.getName(), phase});
-        Pipeline pipeline = client.pipelines().inNamespace(cause.getNamespace()).withName(cause.getName()).get();
-        if (pipeline == null) {
-            cause.setSynced(false);
-            logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
-            return;
-        }
-
-        String blueJson = toBlueJson(pipeJson);
-
-        Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON, json);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON, blueJson);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI, buildUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL, logsUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL, logsConsoleUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL, logsBlueOceanUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG, viewLogUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES, stagesUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG, stagesLogUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS, stepsUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG, stepsLogUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG, progressiveLogUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE, changeTitle);
-        pipeline.getMetadata().setAnnotations(annotations);
 
-        badgeHandle(run, annotations);
-
-        // status
-        PipelineStatus status = createPipelineStatus(pipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
-        pipeline.setStatus(status);
-
-        try {
-            Pipeline result = client
-                    .pipelines().inNamespace(namespace)
-                    .withName(pipeline.getMetadata().getName())
-                    .patch(pipeline);
-            logger.fine("updated pipeline: " + result);
-        } catch (Exception e) {
-            cause.setSynced(false);
-            throw e;
-        }
-
-        cause.setNumFlowNodes(newNumFlowNodes);
-        cause.setNumStages(newNumStages);
-        cause.setLastUpdateToAlaudaDevOps(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
+        return annotations;
     }
 
     private void badgeHandle(@NotNull Run run, Map<String, String> annotations) {

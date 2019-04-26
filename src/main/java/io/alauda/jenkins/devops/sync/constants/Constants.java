@@ -35,6 +35,7 @@ public final class Constants {
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS = "alauda.io/jenkins-steps";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG = "alauda.io/jenkins-view-log";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG = "alauda.io/jenkins-progressive-log";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_TEST_URL = "alauda.io/jenkins-test-url";
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON = "alauda.io/jenkins-pending-input-actions-json";
 
