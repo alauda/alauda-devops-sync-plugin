@@ -1,6 +1,6 @@
 package io.alauda.jenkins.devops.sync.var;
 
-import com.alibaba.fastjson.JSON;
+import net.sf.json.JSONObject;
 import hudson.model.ParametersAction;
 import hudson.model.Run;
 import hudson.model.Job;
@@ -10,6 +10,7 @@ import org.jenkinsci.plugins.workflow.cps.CpsScript;
 import org.jenkinsci.plugins.workflow.cps.GlobalVariable;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
+
 
 import javax.annotation.Nonnull;
 import javax.xml.soap.SAAJResult;
@@ -37,13 +38,11 @@ import java.util.Map;
         if(parent instanceof WorkflowJob){
             WorkflowJobProperty property = parent.getProperty(WorkflowJobProperty.class);
             if (property==null){
-                Map data = JSON.parseObject("{}");
-                return new AlaudaContext("","",data,false);
+                return new AlaudaContext("","",null,false);
             }
             String namespace = property.getNamespace();
             String name = property.getName();
-
-            Map data = JSON.parseObject(property.getContextAnnotation());
+            Map data = JSONObject.fromObject(property.getContextAnnotation());
             return new AlaudaContext(name,namespace,data,true);
         }
         throw new IllegalStateException("not intance of WorkflowJob");

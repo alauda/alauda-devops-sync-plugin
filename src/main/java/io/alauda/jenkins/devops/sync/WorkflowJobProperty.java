@@ -15,7 +15,6 @@
  */
 package io.alauda.jenkins.devops.sync;
 
-import com.alibaba.fastjson.JSON;
 import hudson.Extension;
 import hudson.model.Job;
 import hudson.model.JobProperty;
@@ -26,6 +25,7 @@ import io.alauda.kubernetes.api.model.PipelineConfig;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+import net.sf.json.JSONObject;
 
 
 
@@ -60,14 +60,14 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
     public static WorkflowJobProperty getInstance(PipelineConfig pc) {
         ObjectMeta meta = pc.getMetadata();
         Map<String, String> Annotation = meta.getAnnotations();
-        for(String key:Annotation.keySet()){
-            if(!key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)){
-                Annotation.remove(key);
+        if(Annotation!=null){
+            for(String key:Annotation.keySet()){
+                if(!key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)){
+                    Annotation.remove(key);
+                }
             }
         }
-        String contextAnnotation = JSON.toJSONString(Annotation);
-
-
+        String contextAnnotation = JSONObject.fromObject(Annotation).toString();
         return new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
                 meta.getUid(), meta.getResourceVersion(), contextAnnotation);
     }

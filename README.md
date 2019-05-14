@@ -23,7 +23,7 @@ Upload from remote Jenkins server, like:
 `./script/upload.sh http://jenkins.com/job/a/lastSuccessfulBuild/artifact/target/target.hpi`
 
 
-### Usage
+### DSL Usage
 
 You can get name、namespace and annotation of the pipelineconfig through alaudaContext
 

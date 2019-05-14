@@ -6,9 +6,8 @@ import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.Whitelisted;
 
 /**
  *
- * return the annotation、name and namespace of the pipelineconfig
+ * Return the annotation、name and namespace of the pipelineconfig
  */
-
 public class AlaudaContext{
     private String namespace;
     private String name;
@@ -34,9 +33,13 @@ public class AlaudaContext{
 
     @Whitelisted
     public String getItem(String key){
-        String result = data.get(Annotations.ALAUDA_PIPELINE_CONTEXT+key);
-        if(result != null){
-            return result;
+        if(data != null){
+            String result = data.get(Annotations.ALAUDA_PIPELINE_CONTEXT+key);
+            if(result != null){
+                return result;
+            }else{
+                return "";
+            }
         }
         return "";
     }
