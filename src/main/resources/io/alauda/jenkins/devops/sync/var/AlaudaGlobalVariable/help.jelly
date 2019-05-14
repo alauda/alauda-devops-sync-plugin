@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+    <p>
+     Get the pipeline namespace and project or subproject. Example:
+    </p>
+
+    <p>
+        get the Namespace where the pipeline in
+    </p>
+    <pre><code> alaudaContext.GetNamespace()    </code></pre>
+
+    <p>
+       get pipeline name
+    </p>
+    <pre><code> alaudaContext.GetName()    </code></pre>
+
+    <p>
+        get the project name where the pipeline in
+    </p>
+    <pre><code> alaudaContext.getItem("project")    </code></pre>
+
+    <p>
+       If your Alauda platform is ACE, you can get the subproject
+    </p>
+    <pre><code> alaudaContext.getItem("subproject")    </code></pre>
+
+    <p>
+       If you want konw if your jenkins pipeline support this feature you can use
+    </p>
+    <pre><code> alaudaContext.isSupport()    </code></pre>
+
+    <p>
+    Note:
+    If you want add some other variable, first you should add an annotation in your pipelineconfig, and the annotation should be 『alauda.io/pipelinecontext.yourkey』
+    and then you can get the value through alaudaContext.getItem("yourkey")
+
+    </p>
+
+</j:jelly>

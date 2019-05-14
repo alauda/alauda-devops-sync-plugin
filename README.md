@@ -21,3 +21,11 @@ Upload from local, like:
 Upload from remote Jenkins server, like:
 
 `./script/upload.sh http://jenkins.com/job/a/lastSuccessfulBuild/artifact/target/target.hpi`
+
+
+### DSL Usage
+
+You can get name、namespace and annotation of the pipelineconfig through alaudaContext
+
+If you want to know how to use it, you can install this plugin in your Jenkins, and Open
+http://yourjenkins/pipeline-syntax/globals.  you will find alaudaContext section in this page and it will help you 

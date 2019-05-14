@@ -19,12 +19,18 @@ import hudson.Extension;
 import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
+import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import net.sf.json.JSONObject;
+
+
 
 import javax.annotation.Nonnull;
+import java.util.Map;
 
 /**
  * Stores the Alauda DevOps Pipeline Config related project properties.
@@ -39,21 +45,39 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
     private String namespace;
     private String name;
     private String resourceVersion;
+    private String contextAnnotation;
 
     @DataBoundConstructor
     public WorkflowJobProperty(String namespace, String name,
-                               String uid, String resourceVersion) {
+                               String uid, String resourceVersion, String contextAnnotation) {
         this.namespace = namespace;
         this.name = name;
         this.uid = uid;
         this.resourceVersion = resourceVersion;
+        this.contextAnnotation = contextAnnotation;
     }
 
     public static WorkflowJobProperty getInstance(PipelineConfig pc) {
         ObjectMeta meta = pc.getMetadata();
-
+        Map<String, String> Annotation = meta.getAnnotations();
+        if(Annotation!=null){
+            for(String key:Annotation.keySet()){
+                if(!key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)){
+                    Annotation.remove(key);
+                }
+            }
+        }
+        String contextAnnotation = JSONObject.fromObject(Annotation).toString();
         return new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
-                meta.getUid(), meta.getResourceVersion());
+                meta.getUid(), meta.getResourceVersion(), contextAnnotation);
+    }
+
+    public String getContextAnnotation() {
+        return contextAnnotation;
+    }
+
+    public void setContextAnnotation(String contextAnnotation) {
+        this.contextAnnotation = contextAnnotation;
     }
 
     public String getUid() {
