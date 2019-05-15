@@ -30,6 +30,7 @@ import net.sf.json.JSONObject;
 
 
 import javax.annotation.Nonnull;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -60,14 +61,16 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
     public static WorkflowJobProperty getInstance(PipelineConfig pc) {
         ObjectMeta meta = pc.getMetadata();
         Map<String, String> Annotation = meta.getAnnotations();
+        String contextAnnotation = "{}";
         if(Annotation!=null){
+            Map<String,String> annotationreuslt = new HashMap<>();
             for(String key:Annotation.keySet()){
-                if(!key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)){
-                    Annotation.remove(key);
+                if(key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)){
+                    annotationreuslt.put(key, Annotation.get(key));
                 }
             }
+            contextAnnotation = JSONObject.fromObject(annotationreuslt).toString();
         }
-        String contextAnnotation = JSONObject.fromObject(Annotation).toString();
         return new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
                 meta.getUid(), meta.getResourceVersion(), contextAnnotation);
     }
