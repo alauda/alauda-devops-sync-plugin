@@ -1,6 +1,5 @@
 package io.alauda.jenkins.devops.sync.util;
 
-import com.cloudbees.hudson.plugins.folder.Folder;
 import com.cloudbees.jenkins.plugins.sshcredentials.impl.BasicSSHUserPrivateKey;
 import com.cloudbees.plugins.credentials.*;
 import com.cloudbees.plugins.credentials.domains.Domain;
@@ -12,7 +11,7 @@ import hudson.remoting.Base64;
 import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
-import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
+import io.alauda.jenkins.devops.sync.core.UnsupportedSecretException;
 import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.model.Jenkins;
@@ -109,9 +108,9 @@ public abstract class CredentialsUtils {
      * @param pipelineConfig
      * @return
      * @throws IOException
-     * @throws InvalidSecretException
+     * @throws UnsupportedSecretException
      */
-    public static synchronized String updateSourceCredentials(final PipelineConfig pipelineConfig) throws IOException {
+    public static synchronized String updateSourceCredentials(final PipelineConfig pipelineConfig) throws IOException, UnsupportedSecretException {
         final Secret sourceSecret = getSourceCredentials(pipelineConfig);
         final String credID;
         if (sourceSecret != null) {
@@ -158,8 +157,13 @@ public abstract class CredentialsUtils {
         if (secret != null) {
             ObjectMeta metadata = secret.getMetadata();
             if (metadata != null) {
-                return upsertCredential(secret, metadata.getNamespace(),
-                        metadata.getName());
+                try {
+                    return upsertCredential(secret, metadata.getNamespace(),
+                            metadata.getName());
+                } catch (UnsupportedSecretException e) {
+                    logger.warning(String.format("Unable to sync secret %s/%s, reason %s",
+                            metadata.getNamespace(), metadata.getName(), e.getMessage()));
+                }
             }
         }
         return null;
@@ -172,17 +176,14 @@ public abstract class CredentialsUtils {
      * @param secretName secret name
      * @return credential id
      * @throws IOException in case io exception
-     * @throws InvalidSecretException if get a not support secret
+     * @throws UnsupportedSecretException if get a not support secret
      */
     @NotNull
     public static String upsertCredential(final Secret secret, final String namespace, final String secretName)
-            throws IOException {
+            throws IOException, UnsupportedSecretException {
         final String id = secretName(namespace, secretName);
         if (secret != null) {
             Credentials credentials = secretToCredentials(secret);
-            if (credentials == null) {
-                throw new InvalidSecretException(secret.getKind());
-            }
 
             Credentials existingCredentials = lookupCredentials(namespace, id);
             final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
@@ -194,12 +195,12 @@ public abstract class CredentialsUtils {
 
                 if (existingCredentials != null) {
                     store.updateCredentials(Domain.global(), existingCredentials, credentials);
-                    logger.info("Updated credential " + id + " from Secret "
+                    logger.fine("Updated credential " + id + " from Secret "
                             + NamespaceName.create(secret) + " with revision: "
                             + secret.getMetadata().getResourceVersion());
                 } else {
                     store.addCredentials(Domain.global(), credentials);
-                    logger.info("Created credential " + id + " from Secret "
+                    logger.fine("Created credential " + id + " from Secret "
                             + NamespaceName.create(secret) + " with revision: "
                             + secret.getMetadata().getResourceVersion());
                 }
@@ -227,7 +228,7 @@ public abstract class CredentialsUtils {
                     // if so, we will not prevent deletion, but at least note
                     // things
                     // for potential diagnostics
-                    StringBuffer sb = new StringBuffer();
+                    StringBuilder sb = new StringBuilder();
                     for (String job : fp.getJobs())
                         sb.append(job).append(" ");
                     logger.info("About to delete credential " + id
@@ -269,7 +270,7 @@ public abstract class CredentialsUtils {
 
         String credentialsId = config.getCredentialsId();
         if ("".equals(credentialsId)) {
-            logger.info("no credential for alauda sync config.");
+            logger.fine("no credential for alauda sync config.");
             return "";
         }
 
@@ -353,7 +354,7 @@ public abstract class CredentialsUtils {
         return namespace + "-" + name;
     }
 
-    private static Credentials secretToCredentials(Secret secret) {
+    private static Credentials secretToCredentials(Secret secret) throws UnsupportedSecretException {
         String namespace = secret.getMetadata().getNamespace();
         String name = secret.getMetadata().getName();
         final Map<String, String> data = secret.getData();
@@ -394,8 +395,7 @@ public abstract class CredentialsUtils {
                 String clientSecret = secret.getData().get(ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKEN);
                 return newOauth2Credentials(secretName, accessTokenKey, clientSecret);
             default:
-                logger.log(Level.WARNING, "Unknown secret type: " + secret.getType());
-                return null;
+                throw new UnsupportedSecretException(secret.getType());
         }
     }
 
@@ -425,10 +425,10 @@ public abstract class CredentialsUtils {
             logger.log(Level.WARNING, "Invalid secret data, secretName: " +
                 secretName + " usernameData is null: " + (usernameData == null)
                 + " usernameData is empty: " + 
-                (usernameData != null ? usernameData.length() == 0 : false) + 
+                (usernameData != null && usernameData.length() == 0) +
                 " passwordData is null: " + (passwordData == null) + 
                 " passwordData is empty: " + 
-                (passwordData != null ? passwordData.length() == 0 : false));
+                (passwordData != null && passwordData.length() == 0));
             return null;
             
         }

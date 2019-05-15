@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,7 +118,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     public synchronized void eventReceived(Watcher.Action action, Pipeline pipeline) {
         String pipelineName = pipeline.getMetadata().getName();
 
-        logger.info(() -> "Pipeline event: " + action + " - pipeline " + pipelineName);
+        logger.fine(() -> "Pipeline event: " + action + " - pipeline " + pipelineName);
 
         if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline)) {
             logger.warning(() -> "Pipeline " + pipelineName  + " is not Alauda pipeline strategy.");
@@ -161,7 +161,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
 
     public synchronized static void onInitialPipelines(PipelineList pipelineList) {
         List<Pipeline> items = pipelineList.getItems();
-        Collections.sort(items, new PipelineNumComparator());
+        items.sort(new PipelineNumComparator());
 
         // We need to sort the builds into their build configs so we can
         // handle build run policies correctly.
@@ -195,11 +195,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
                 }
                 pipelineConfigMap.put(configMapKey, pc);
             }
-            List<Pipeline> pcPipelines = pipelineConfigBuildMap.get(pc);
-            if (pcPipelines == null) {
-                pcPipelines = new ArrayList<>();
-                pipelineConfigBuildMap.put(pc, pcPipelines);
-            }
+            List<Pipeline> pcPipelines = pipelineConfigBuildMap.computeIfAbsent(pc, k -> new ArrayList<>());
             pcPipelines.add(pipe);
         }
 
@@ -239,10 +235,13 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
     }
 
     private static void modifyEventToJenkinsJobRun(Pipeline pipeline) {
+        String pipelineNamespace = pipeline.getMetadata().getNamespace();
+        String pipelineName = pipeline.getMetadata().getName();
+
         PipelineStatus status = pipeline.getStatus();
-        logger.info("Modified pipeline "+pipeline.getMetadata().getName());
+        logger.info(String.format("Modified pipeline %s/%s" + pipelineNamespace, pipelineName));
         if (status != null && AlaudaUtils.isCancellable(status) && AlaudaUtils.isCancelled(status)) {
-          logger.info("Pipeline was cancelled "+pipeline.getMetadata().getName());
+          logger.info(String.format("Pipeline %s/%s was cancelled", pipelineNamespace, pipelineName));
             WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
             if (job != null) {
                 JenkinsUtils.cancelPipeline(job, pipeline);
@@ -250,7 +249,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
                 removePipelineFromNoPCList(pipeline);
             }
         } else {
-          logger.info("Pipeline changed... flusing pipelines... "+pipeline.getMetadata().getName());
+          logger.info(String.format("Pipeline changed... flusing pipelines... %s/%s", pipelineNamespace, pipelineName));
             // see if any pre-BC cached builds can now be flushed
             flushPipelinesWithNoPCList();
         }
@@ -258,19 +257,22 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
 
     public static synchronized boolean addEventToJenkinsJobRun(Pipeline pipeline)
             throws IOException {
+        String pipelineName = pipeline.getMetadata().getName();
+        String pipelineNamespace = pipeline.getMetadata().getNamespace();
+
         // should have been caught upstack, but just in case since public method
         if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline))
             return false;
         PipelineStatus status = pipeline.getStatus();
         if (status != null) {
-            logger.info("Pipeline Status is not null: "+status);
+            logger.info(String.format("Pipeline %s/%s Status is not null: %s", pipelineNamespace, pipelineName, status));
             if (AlaudaUtils.isCancelled(status)) {
-              logger.info("Pipeline Status is Cancelled... updating pipeline: "+status);
+              logger.info(String.format("Pipeline %s/%s Status is Cancelled... updating pipeline: %s", pipelineNamespace, pipelineName, status));
                 AlaudaUtils.updatePipelinePhase(pipeline, PipelinePhases.CANCELLED);
                 return false;
             }
             if (!AlaudaUtils.isNew(status)) {
-              logger.info("Pipeline is not new... cancelling... "+status);
+              logger.info(String.format("Pipeline %s/%s is not new... cancelling... %s", pipelineName, pipelineNamespace, status));
                 return false;
             }
         }
@@ -278,12 +280,11 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
         WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
         logger.info("Pipeline got job... "+job);
         if (job != null) {
-            logger.info("Pipeline job will trigger... "+job+" pipeline: "+pipeline.getMetadata().getName());
+            logger.info(String.format("Pipeline job will trigger... %s pipeline: %s/%s", job.getName(), pipelineNamespace, pipelineName));
             return JenkinsUtils.triggerJob(job, pipeline);
         }
 
-        logger.info("skipping watch event for pipeline "
-                + pipeline.getMetadata().getName() + " no job at this time");
+        logger.info(String.format("skipping watch event for pipeline %s/%s no job at this time", pipelineNamespace, pipelineName));
         addPipelineToNoPCList(pipeline);
         return false;
     }
@@ -310,7 +311,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
         clearNoPCList();
         for (Pipeline pipeline : clone) {
             WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-            logger.info("Pipeline flush: "+pipeline.getMetadata().getName()+" - job: "+job);
+            logger.fine("Pipeline flush: "+pipeline.getMetadata().getName()+" - job: "+job);
             if (job != null) {
                 try {
                     logger.info("triggering job run for previously skipped pipeline "

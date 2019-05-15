@@ -127,8 +127,6 @@ public abstract class AlaudaUtils {
             String token = CredentialsUtils.getCurrentToken();
             if (token != null && token.length() > 0) {
                 alaudaClient.getConfiguration().setOauthToken(token);
-            } else {
-                logger.warning("No token when get authenticated client.");
             }
         }
 

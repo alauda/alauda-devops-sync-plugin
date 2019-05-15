@@ -35,7 +35,7 @@ public class NamespaceWatcher extends AbstractWatcher implements BaseWatcher {
         Namespace ns = ((Namespace) resource);
         String folderName = ns.getMetadata().getName();
 
-        logger.info(String.format("namespace [%s] watcher receive delete event.", folderName));
+        logger.fine(String.format("namespace [%s] watcher receive delete event.", folderName));
         try {
             // TODO should be fix later
             ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, Exception>() {

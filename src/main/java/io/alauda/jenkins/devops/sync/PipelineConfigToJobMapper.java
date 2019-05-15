@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
-import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
+import io.alauda.jenkins.devops.sync.core.UnsupportedSecretException;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
@@ -154,11 +154,7 @@ public abstract class PipelineConfigToJobMapper {
             Optional<PipelineTrigger> triggerOptional = pipelineConfigTriggers.stream().filter(trigger ->
                     PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType())).findFirst();
 
-            if(triggerOptional.isPresent()) {
-                cronTrigger = triggerOptional.get();
-            } else {
-                cronTrigger = null;
-            }
+            cronTrigger = triggerOptional.orElse(null);
         }
 
         triggers.forEach((desc, trigger) -> {
@@ -441,7 +437,7 @@ public abstract class PipelineConfigToJobMapper {
         String credentialId = null;
         try {
             credentialId = updateSourceCredentials(pc);
-        } catch (InvalidSecretException e) {
+        } catch (UnsupportedSecretException e) {
             Condition condition = new Condition();
             condition.setReason(ErrorMessages.INVALID_CREDENTIAL);
             condition.setMessage(e.getMessage());

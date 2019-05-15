@@ -3,7 +3,7 @@ package io.alauda.jenkins.devops.sync.util;
 import hudson.remoting.Base64;
 import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.WithoutK8s;
-import io.alauda.jenkins.devops.sync.core.InvalidSecretException;
+import io.alauda.jenkins.devops.sync.core.UnsupportedSecretException;
 import io.alauda.kubernetes.api.model.Secret;
 import io.alauda.kubernetes.api.model.SecretBuilder;
 import org.junit.Rule;
@@ -43,7 +43,7 @@ public class CredentialsUtilsTest {
                     .withName("name").withNamespace("ns").endMetadata().build();
             CredentialsUtils.upsertCredential(secret);
         }catch (Exception e) {
-            assertEquals(InvalidSecretException.class, e.getClass());
+            assertEquals(UnsupportedSecretException.class, e.getClass());
         }
 
         try {
@@ -51,7 +51,7 @@ public class CredentialsUtilsTest {
                     .withName("name").withNamespace("ns").endMetadata().build();
             CredentialsUtils.upsertCredential(secret);
         }catch (Exception e) {
-            assertEquals(InvalidSecretException.class, e.getClass());
+            assertEquals(UnsupportedSecretException.class, e.getClass());
         }
 
         {

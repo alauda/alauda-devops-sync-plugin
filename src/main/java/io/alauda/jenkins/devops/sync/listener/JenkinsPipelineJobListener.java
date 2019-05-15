@@ -67,7 +67,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onCreated(Item item) {
-        if (!AlaudaSyncGlobalConfiguration.get().isEnabled()) {
+        if (!AlaudaSyncGlobalConfiguration.get().isValid()) {
             return;
         }
 
@@ -81,7 +81,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onUpdated(Item item) {
-        if (!AlaudaSyncGlobalConfiguration.get().isEnabled()) {
+        if (!AlaudaSyncGlobalConfiguration.get().isValid()) {
             return;
         }
 
@@ -95,7 +95,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onDeleted(Item item) {
-        if (!AlaudaSyncGlobalConfiguration.get().isEnabled()) {
+        if (!AlaudaSyncGlobalConfiguration.get().isValid()) {
             logger.info("no configuration... onDelete ignored...");
             return;
         }

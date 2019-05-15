@@ -67,7 +67,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private String server;
     private String credentialsId = "";
     private String jenkinsService;
-    private String errorMsg;
+    private transient String errorMsg;
     private String jobNamePattern;
     private String skipOrganizationPrefix;
     private String skipBranchSuffix;
@@ -80,6 +80,8 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private transient SecretWatcher secretWatcher;
     private transient JenkinsBindingWatcher jenkinsBindingWatcher;
     private transient NamespaceWatcher namespaceWatcher;
+    private transient SyncStatus syncStatus = SyncStatus.OK;
+
 
     public AlaudaSyncGlobalConfiguration() {
         this.load();
@@ -107,7 +109,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     }
 
     public boolean isValid() {
-        return isEnabled() && !"".equals(getJenkinsService());
+        return isEnabled() && !"".equals(getJenkinsService()) && syncStatus.equals(SyncStatus.OK);
     }
 
     @DataBoundSetter
@@ -267,17 +269,24 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     * Only call when the plugin configuration is really changed.
     */
     public void configChange() throws KubernetesClientException {
-        if (!this.enabled || StringUtils.isBlank(jenkinsService)) {
-            this.stopWatchersAndClient();
-            LOGGER.warning("Plugin is disabled, all watchers will be stoped.");
+        this.stopWatchersAndClient();
+
+        if (!this.enabled) {
+            errorMsg = "Plugin is disabled, all watchers will be stopped.";
+            LOGGER.warning(errorMsg);
+            return;
+        }
+
+        if (StringUtils.isBlank(jenkinsService)) {
+            this.syncStatus = SyncStatus.ERROR;
+            errorMsg = "Jenkins service name is empty, cannot sync with api server";
+            LOGGER.warning(errorMsg);
             return;
         }
 
         ResourcesCache.getInstance().setJenkinsService(jenkinsService);
 
         try {
-            stopWatchersAndClient();
-
             AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
             if(client == null) {
                 AlaudaUtils.initializeAlaudaDevOpsClient(this.server);
@@ -286,13 +295,14 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
             if(client == null) {
                 LOGGER.warning("Cannot get the client, sync plugin startup failed.");
+                this.syncStatus = SyncStatus.ERROR;
                 return;
             }
 
             // make sure that we just sync with only one server
             if(!jenkinsInstanceCheck(client)) {
-                this.enabled = false;
-                LOGGER.warning("Cannot get the client, sync plugin startup failed.");
+                LOGGER.warning(String.format("Jenkins instance check failed %s, sync plugin startup failed.", errorMsg));
+                this.syncStatus = SyncStatus.ERROR;
                 return;
             }
 
@@ -308,6 +318,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
                         LOGGER.fine("Jenkins init level: " + initLevel.toString());
                         if (initLevel == InitMilestone.COMPLETED) {
                             startWatchers();
+                            AlaudaSyncGlobalConfiguration.this.syncStatus = SyncStatus.OK;
                             return;
                         }
 
@@ -324,6 +335,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
             } else {
                 LOGGER.log(Level.SEVERE, "Failed to configure Alauda Jenkins Sync Plugin: " + e);
             }
+            this.syncStatus = SyncStatus.ERROR;
 
             throw e;
         }
@@ -362,21 +374,37 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     }
 
     public void startWatchers() {
+
+        if (jenkinsBindingWatcher != null) {
+            jenkinsBindingWatcher.stop();
+        }
         this.jenkinsBindingWatcher = new JenkinsBindingWatcher();
         this.jenkinsBindingWatcher.watch();
 
+        if (pipelineWatcher != null) {
+            pipelineWatcher.stop();
+        }
         this.pipelineWatcher = new PipelineWatcher();
         this.pipelineWatcher.watch();
         this.pipelineWatcher.init(namespaces);
 
+        if (pipelineConfigWatcher != null) {
+            pipelineConfigWatcher.stop();
+        }
         this.pipelineConfigWatcher = new PipelineConfigWatcher();
         this.pipelineConfigWatcher.watch();
         this.pipelineConfigWatcher.init(namespaces);
 
+        if (secretWatcher != null) {
+            secretWatcher.stop();
+        }
         this.secretWatcher = new SecretWatcher();
         this.secretWatcher.watch();
         this.secretWatcher.init(namespaces);
 
+        if (namespaceWatcher != null) {
+            namespaceWatcher.stop();
+        }
         namespaceWatcher = new NamespaceWatcher();
         namespaceWatcher.watch();
     }
@@ -448,5 +476,9 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         stopWatchers();
 
         AlaudaUtils.shutdownAlaudaClient();
+    }
+
+    public enum SyncStatus {
+        ERROR, OK
     }
 }

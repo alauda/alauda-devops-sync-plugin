@@ -38,7 +38,7 @@ public class JenkinsBindingWatcher extends AbstractWatcher implements BaseWatche
     public <T> void eventReceived(Watcher.Action action, T resource) {
         JenkinsBinding jenkinsBinding = (JenkinsBinding) resource;
 
-        LOGGER.info("JenkinsBindingWatcher receive action : " + action + "; resource : "
+        LOGGER.fine("JenkinsBindingWatcher receive action : " + action + "; resource : "
                 + jenkinsBinding.getMetadata().getName());
 
         switch (action) {
@@ -92,7 +92,7 @@ public class JenkinsBindingWatcher extends AbstractWatcher implements BaseWatche
             return;
         }
 
-        LOGGER.info("Find JenkinsBinding " + items.size());
+        LOGGER.fine("Find JenkinsBinding " + items.size());
 
         for(JenkinsBinding binding : items) {
             ResourcesCache.getInstance().addJenkinsBinding(binding);
