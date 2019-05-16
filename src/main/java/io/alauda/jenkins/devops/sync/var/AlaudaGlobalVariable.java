@@ -42,7 +42,11 @@ import java.util.Map;
             }
             String namespace = property.getNamespace();
             String name = property.getName();
-            Map data = JSONObject.fromObject(property.getContextAnnotation());
+            String contextannotation = property.getContextAnnotation();
+            Map data = null;
+            if(contextannotation != null){
+                data = JSONObject.fromObject(contextannotation);
+            }
             return new AlaudaContext(name,namespace,data,true);
         }
         throw new IllegalStateException("not intance of WorkflowJob");
