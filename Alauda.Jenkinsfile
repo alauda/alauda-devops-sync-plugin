@@ -27,6 +27,7 @@ pipeline {
 
 	parameters {
 	    booleanParam defaultValue: false, description: 'Rebuild and archive artifacts if this flag is true.', name: 'forceReBuild'
+	    booleanParam defaultValue: false, description: 'Force execute sonar scan if this flag is true.', name: 'forceSonarScan'
     }
 
 	//(optional) 环境变量
@@ -105,7 +106,12 @@ pipeline {
 		// sonar scan
 		stage('Sonar') {
 		    when {
-                changeset '**/**/*.java'
+                anyOf {
+                    changeset '**/**/*.java'
+                    expression {
+                        return params.forceSonarScan
+                    }
+                }
 		    }
 			steps {
 				script {
