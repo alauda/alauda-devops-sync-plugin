@@ -239,7 +239,7 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
         String pipelineName = pipeline.getMetadata().getName();
 
         PipelineStatus status = pipeline.getStatus();
-        logger.info(String.format("Modified pipeline %s/%s" + pipelineNamespace, pipelineName));
+        logger.info(String.format("Modified pipeline %s/%s" , pipelineNamespace, pipelineName));
         if (status != null && AlaudaUtils.isCancellable(status) && AlaudaUtils.isCancelled(status)) {
           logger.info(String.format("Pipeline %s/%s was cancelled", pipelineNamespace, pipelineName));
             WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
