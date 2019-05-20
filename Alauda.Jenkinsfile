@@ -60,23 +60,25 @@ pipeline {
 					//RELEASE_VERSION = pom.properties['revision'] + pom.properties['sha1'] + pom.properties['changelist']
 					RELEASE_VERSION = pom.version
 				}
-				// installing golang coverage and report tools
-				sh "go get -u github.com/alauda/gitversion"
-				script {
-					if (GIT_BRANCH != "master") {
-						def branch = GIT_BRANCH.replace("/","-").replace("_","-")
-						RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
-					} else {
-						sh "gitversion patch ${RELEASE_VERSION} > patch"
-						RELEASE_BUILD = readFile("patch").trim()
-					}
+				container('golang'){
+                    // installing golang coverage and report tools
+                    sh "go get -u github.com/alauda/gitversion"
+                    script {
+                        if (GIT_BRANCH != "master") {
+                            def branch = GIT_BRANCH.replace("/","-").replace("_","-")
+                            RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
+                        } else {
+                            sh "gitversion patch ${RELEASE_VERSION} > patch"
+                            RELEASE_BUILD = readFile("patch").trim()
+                        }
 
-                    sh '''
-					    echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties
-                        echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties
-					    echo "version=RELEASE_VERSION" >> src/main/resources/debug.properties
-					    cat src/main/resources/debug.properties
-                    '''
+                        sh '''
+                            echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties
+                            echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties
+                            echo "version=RELEASE_VERSION" >> src/main/resources/debug.properties
+                            cat src/main/resources/debug.properties
+                        '''
+                    }
 				}
 			}
 		}
