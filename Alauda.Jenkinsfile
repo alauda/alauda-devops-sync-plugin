@@ -14,7 +14,7 @@ pipeline {
 	// 运行node条件
 	// 为了扩容jenkins的功能一般情况会分开一些功能到不同的node上面
 	// 这样每个node作用比较清晰，并可以并行处理更多的任务量
-	agent { label 'java' }
+	agent { label 'golang && java' }
 
 	// (optional) 流水线全局设置
 	options {
