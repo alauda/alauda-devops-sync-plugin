@@ -19,9 +19,9 @@ fi
 
 source $(dirname "${BASH_SOURCE[0]}")/env.sh
 
-issuer=$(curl -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/crumbIssuer/api/json -s -o /dev/null -w %{http_code})
+issuer=$(curl -k -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/crumbIssuer/api/json -s -o /dev/null -w %{http_code})
 if [ "$issuer" == "200" ]; then
-    export issuer=$(curl -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/crumbIssuer/api/json -s)
+    export issuer=$(curl -k -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/crumbIssuer/api/json -s)
     issuer=$(python -c "import json;import os;issuer=os.getenv('issuer');issuer=json.loads(issuer);print issuer['crumb']")
 else
     issuer=""
@@ -35,18 +35,18 @@ if [ "$#" == "1" ]; then
     if [[ "$1" =~ ^http.* ]]; then
         echo "going to download plugin from remote: $1"
 
-        remote_issuer=$(curl -u $REMOTE_USER:$REMOTE_TOKEN $REMOTE_URL/crumbIssuer/api/json -s -o /dev/null -w %{http_code})
+        remote_issuer=$(curl -k -u $REMOTE_USER:$REMOTE_TOKEN $REMOTE_URL/crumbIssuer/api/json -s -o /dev/null -w %{http_code})
         if [ "$remote_issuer" == "200" ]; then
-            export remote_issuer=$(curl -u $REMOTE_USER:$REMOTE_TOKEN $REMOTE_URL/crumbIssuer/api/json -s)
+            export remote_issuer=$(curl -k -u $REMOTE_USER:$REMOTE_TOKEN $REMOTE_URL/crumbIssuer/api/json -s)
             remote_issuer=$(python -c "import json;import os;issuer=os.getenv('remote_issuer');issuer=json.loads(issuer);print issuer['crumb']")
         else
             remote_issuer=""
         fi
-        curl -u $REMOTE_USER:$REMOTE_TOKEN $1 --header "Jenkins-Crumb: $remote_issuer" -o $target_file
+        curl -k -u $REMOTE_USER:$REMOTE_TOKEN $1 --header "Jenkins-Crumb: $remote_issuer" -o $target_file
     else
         echo "not a correct url: $1"
     fi
 fi
 
-curl -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/pluginManager/uploadPlugin -F "name=@$target_file" --header "Jenkins-Crumb: $issuer"
-curl -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/restart -X POST --header "Jenkins-Crumb: $issuer"
+curl -k -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/pluginManager/uploadPlugin -F "name=@$target_file" --header "Jenkins-Crumb: $issuer"
+curl -k -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/restart -X POST --header "Jenkins-Crumb: $issuer"
