@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -182,7 +182,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 pollRun(run);
 
                 runsToPoll.remove(run);
-                logger.info("onCompleted " + run.getUrl());
+                logger.fine("onCompleted " + run.getUrl());
                 JenkinsUtils.maybeScheduleNext(((WorkflowRun) run).getParent());
             } catch (TimeoutException e) {
                 e.printStackTrace();
@@ -211,12 +211,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             }
 
             int buildNum = run.getNumber();
-            logger.info("Delete `Pipeline` result is: " + result + "; name is: " + pipelineName + "; buildNum is: " + buildNum);
+            logger.fine("Delete `Pipeline` result is: " + result + "; name is: " + pipelineName + "; buildNum is: " + buildNum);
         }
 
         runsToPoll.remove(run);
 
-        logger.info("onDeleted " + run.getUrl());
+        logger.fine("onDeleted " + run.getUrl());
     }
 
     @Override
@@ -226,10 +226,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 pollRun(run);
 
                 runsToPoll.remove(run);
-                logger.info("onFinalized " + run.getUrl());
-            } catch (TimeoutException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
+                logger.fine("onFinalized " + run.getUrl());
+            } catch (TimeoutException | InterruptedException e) {
                 e.printStackTrace();
             }
         }
@@ -248,11 +246,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                     default:
                         runsToPoll.remove(run);
                 }
-            } catch (KubernetesClientException e) {
-                e.printStackTrace();
-            } catch (TimeoutException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
+            } catch (KubernetesClientException | TimeoutException | InterruptedException e) {
                 e.printStackTrace();
             }
         }
@@ -490,7 +484,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             // for example, skipped steps/stages will be marked as complete;
             // we leverage the blue ocean state machine to determine this
             BlueRunResult result = blueRunResults.get(stage.getName());
-            if (result != null && result == BlueRunResult.NOT_BUILT) {
+            if (result == BlueRunResult.NOT_BUILT) {
                 logger.info("skipping stage " + stage.getName() + " for the status JSON for pipeline run " + run.getDisplayName() + " because it was not executed (most likely because of a failure in another stage)");
                 continue;
             }

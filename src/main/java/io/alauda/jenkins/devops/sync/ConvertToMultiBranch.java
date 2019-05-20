@@ -7,6 +7,7 @@ import hudson.Extension;
 import hudson.model.ItemGroup;
 import hudson.util.XStream2;
 import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.jenkins.devops.sync.core.UnsupportedSecretException;
 import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
@@ -274,12 +275,12 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
     // TODO should create a PR to unit the interface
     private void handleCredentials(@NotNull SCMSource source, @NotNull PipelineConfig pipelineConfig) throws IOException {
-        String credentialId = CredentialsUtils.updateSourceCredentials(pipelineConfig);
-
+        String credentialId;
         try {
+            credentialId = CredentialsUtils.updateSourceCredentials(pipelineConfig);
             Method method = source.getClass().getMethod("setCredentialsId", String.class);
             method.invoke(source, credentialId);
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        } catch (UnsupportedSecretException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             logger.severe(String.format("Can't setting credentials, source class is %s", source.getClass()));
         }

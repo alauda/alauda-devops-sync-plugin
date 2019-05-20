@@ -33,6 +33,10 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
     @Override
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
+        if (!AlaudaSyncGlobalConfiguration.get().isValid()) {
+            return;
+        }
+
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
             LOGGER.severe("AlaudaDevOpsClient is null, skip scan orphan items.");
@@ -91,9 +95,7 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                 item.delete();
 
                 LOGGER.info(String.format("Remove orphan item [%s].", item.getFullName()));
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
+            } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
         });
