@@ -97,9 +97,11 @@ pipeline {
             }
             steps {
                 script {
-                    sh """
-                        mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
-                    """
+                    container('java'){
+                        sh """
+                            mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
+                        """
+                    }
 
                     archiveArtifacts 'target/*.hpi'
                 }
