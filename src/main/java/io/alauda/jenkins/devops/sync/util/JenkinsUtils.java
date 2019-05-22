@@ -36,6 +36,7 @@ import io.alauda.jenkins.devops.sync.PipelineComparator;
 import io.alauda.jenkins.devops.sync.SCMRevisionAction;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
+import io.alauda.jenkins.devops.sync.core.UnsupportedSecretException;
 import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.branch.BranchProjectFactory;
@@ -393,7 +394,13 @@ public abstract class JenkinsUtils {
         synchronized (pipelineConfig.getMetadata().getUid().intern()) {
           LOGGER.info(() -> "pipeline config source credentials: "+pipelineConfig.getMetadata().getName());
 
-            updateSourceCredentials(pipelineConfig);
+            try {
+                updateSourceCredentials(pipelineConfig);
+            } catch (UnsupportedSecretException e) {
+                LOGGER.warning(String.format("Unable to update credentials %s/%s for job %s, reason %s",
+                        pipelineConfig.getSpec().getSource().getSecret().getNamespace(),
+                        pipelineConfig.getSpec().getSource().getSecret().getName(), pipelineName, e.getMessage()));
+            }
 
             // We need to ensure that we do not remove
             // existing Causes from a Run since other

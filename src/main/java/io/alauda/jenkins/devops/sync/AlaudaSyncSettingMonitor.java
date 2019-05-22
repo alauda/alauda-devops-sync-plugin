@@ -4,6 +4,7 @@ import hudson.Extension;
 import hudson.model.AdministrativeMonitor;
 import hudson.util.HttpResponses;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.StaplerRequest;
@@ -36,7 +37,7 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
     @Override
     public boolean isActivated() {
         AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
-        if(config == null) {
+        if (config == null) {
             return true;
         }
 
@@ -44,7 +45,7 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
         syncEnable = config.isEnabled();
         syncServiceName = config.getJenkinsService();
 
-        return syncServiceName == null || "".equals(syncServiceName.trim()) || !syncEnable;
+        return !config.isValid();
     }
 
     @RequirePOST

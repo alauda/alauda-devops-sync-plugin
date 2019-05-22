@@ -25,17 +25,17 @@ import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.kubernetes.api.model.ObjectMeta;
 import io.alauda.kubernetes.api.model.Secret;
 import io.alauda.kubernetes.api.model.SecretList;
-import io.alauda.kubernetes.client.Watch;
 import io.alauda.kubernetes.client.Watcher;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static java.util.logging.Level.SEVERE;
-import static java.util.logging.Level.FINE;
-import static java.util.logging.Level.WARNING;
+import static java.util.logging.Level.*;
 
 /**
  * Watches {@link Secret} objects in Kubernetes and syncs then to Credentials in
@@ -92,7 +92,7 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
             return;
         }
 
-        namespaceSet = new HashSet(Arrays.asList(namespaces));
+        namespaceSet = new HashSet<>(Arrays.asList(namespaces));
         namespaceSet.add(AlaudaSyncGlobalConfiguration.get().getSharedNamespace());
 
         secrets.getItems().stream().filter((item)->{
@@ -113,8 +113,7 @@ public class SecretWatcher extends AbstractWatcher implements BaseWatcher {
 
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
     public synchronized void eventReceived(Watcher.Action action, Secret secret) {
-        logger.log(FINE, "Got secret event", action);
-        logger.log(FINE, "Got secret object", secret);
+        logger.fine(String.format("Secret event %s - Secret %s", action, secret));
         if (!validSecret(secret)) {
             logger.log(WARNING, "Got invalid secret object", secret);
             return;

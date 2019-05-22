@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -107,11 +107,9 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
             logger.info("Looking for pipeline configs in namespace " + namespace);
             PipelineConfigList pipelineConfigs = null;
             try {
-                logger.info("listing PipelineConfigs resources");
                 pipelineConfigs = AlaudaUtils.getAuthenticatedAlaudaClient()
                         .pipelineConfigs().inNamespace(namespace).list();
                 onInitialPipelineConfigs(pipelineConfigs);
-                logger.info("handled PipelineConfigs resources");
             } catch (Exception e) {
                 logger.log(SEVERE, "Failed to load PipelineConfigs: " + e, e);
             }
@@ -143,7 +141,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
     public synchronized void eventReceived(Watcher.Action action, PipelineConfig pipelineConfig) {
         ObjectMeta meta = pipelineConfig.getMetadata();
         String pipelineName = meta.getName();
-        logger.info("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
+        logger.fine("PipelineConfigWatcher receive event: " + action + "; name: " + pipelineName);
 
         boolean bindingToCurrentJenkins = false;
         if (action == Watcher.Action.DELETED) {
@@ -220,7 +218,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                                 PipelineList pipelineList = JenkinsUtils.filterNew(AlaudaUtils.getAuthenticatedAlaudaClient().pipelines().inNamespace(pipelineConfig.getMetadata().getNamespace())
                                         .withLabel(Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, meta.getName()).list());
                                 if (pipelineList.getItems().size() > 0) {
-                                    logger.info("pipeline backup query for " + meta.getName() + " found new pipelines");
+                                    logger.fine("pipeline backup query for " + meta.getName() + " found new pipelines");
                                     PipelineWatcher.onInitialPipelines(pipelineList);
                                 }
                             }
@@ -250,7 +248,7 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
         String pipelineConfigPhase = null;
         if (pipelineConfigStatus == null || !PipelineConfigPhase.SYNCING.equals(
                 (pipelineConfigPhase = pipelineConfig.getStatus().getPhase()))) {
-            logger.info(String.format("Do nothing, PipelineConfig [%s], phase [%s].",
+            logger.fine(String.format("Do nothing, PipelineConfig [%s], phase [%s].",
                     pipelineConfig.getMetadata().getName(), pipelineConfigPhase));
             return;
         }

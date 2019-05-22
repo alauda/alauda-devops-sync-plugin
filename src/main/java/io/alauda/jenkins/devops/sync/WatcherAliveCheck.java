@@ -26,7 +26,7 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
         AlaudaSyncGlobalConfiguration sync = AlaudaSyncGlobalConfiguration.get();
         boolean invalid = !sync.isValid();
         if(invalid) {
-            LOGGER.warning("Sync is invalid.");
+            sync.configChange();
             return;
         }
 

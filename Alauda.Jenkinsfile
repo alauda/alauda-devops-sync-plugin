@@ -14,7 +14,7 @@ pipeline {
 	// 运行node条件
 	// 为了扩容jenkins的功能一般情况会分开一些功能到不同的node上面
 	// 这样每个node作用比较清晰，并可以并行处理更多的任务量
-	agent { label 'all && java' }
+	agent { label 'golang && java' }
 
 	// (optional) 流水线全局设置
 	options {
@@ -27,6 +27,7 @@ pipeline {
 
 	parameters {
 	    booleanParam defaultValue: false, description: 'Rebuild and archive artifacts if this flag is true.', name: 'forceReBuild'
+	    booleanParam defaultValue: false, description: 'Force execute sonar scan if this flag is true.', name: 'forceSonarScan'
     }
 
 	//(optional) 环境变量
@@ -59,23 +60,25 @@ pipeline {
 					//RELEASE_VERSION = pom.properties['revision'] + pom.properties['sha1'] + pom.properties['changelist']
 					RELEASE_VERSION = pom.version
 				}
-				// installing golang coverage and report tools
-				sh "go get -u github.com/alauda/gitversion"
-				script {
-					if (GIT_BRANCH != "master") {
-						def branch = GIT_BRANCH.replace("/","-").replace("_","-")
-						RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
-					} else {
-						sh "gitversion patch ${RELEASE_VERSION} > patch"
-						RELEASE_BUILD = readFile("patch").trim()
-					}
+				container('golang'){
+                    // installing golang coverage and report tools
+                    sh "go get -u github.com/alauda/gitversion"
+                    script {
+                        if (GIT_BRANCH != "master") {
+                            def branch = GIT_BRANCH.replace("/","-").replace("_","-")
+                            RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
+                        } else {
+                            sh "gitversion patch ${RELEASE_VERSION} > patch"
+                            RELEASE_BUILD = readFile("patch").trim()
+                        }
 
-                    sh '''
-					    echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties
-                        echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties
-					    echo "version=RELEASE_VERSION" >> src/main/resources/debug.properties
-					    cat src/main/resources/debug.properties
-                    '''
+                        sh '''
+                            echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties
+                            echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties
+                            echo "version=RELEASE_VERSION" >> src/main/resources/debug.properties
+                            cat src/main/resources/debug.properties
+                        '''
+                    }
 				}
 			}
 		}
@@ -94,9 +97,11 @@ pipeline {
             }
             steps {
                 script {
-                    sh """
-                        mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
-                    """
+                    container('java'){
+                        sh """
+                            mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
+                        """
+                    }
 
                     archiveArtifacts 'target/*.hpi'
                 }
@@ -105,7 +110,12 @@ pipeline {
 		// sonar scan
 		stage('Sonar') {
 		    when {
-                changeset '**/**/*.java'
+                anyOf {
+                    changeset '**/**/*.java'
+                    expression {
+                        return params.forceSonarScan
+                    }
+                }
 		    }
 			steps {
 				script {

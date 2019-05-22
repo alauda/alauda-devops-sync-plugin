@@ -35,9 +35,7 @@ public class AlaudaSyncPlugin extends Plugin {
                     if(result != null && result) {
                         break;
                     }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (ExecutionException e) {
+                } catch (InterruptedException | ExecutionException e) {
                     e.printStackTrace();
                 }
 
