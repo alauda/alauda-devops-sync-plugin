@@ -1,6 +1,8 @@
 # ChangeLog
 
-## 0.2.37 (not released yet)
+## 0.2.38 (not released yet)
+
+## 0.2.37
 
 * Fix pipeline stages syncing when pipeline status is NOT_EXECUTED
 
