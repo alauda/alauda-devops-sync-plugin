@@ -1,6 +1,13 @@
 # ChangeLog
 
-## 0.2.35 (not released yet)
+## 0.2.37 (not released yet)
+
+* Fix pipeline stages syncing when pipeline status is NOT_EXECUTED
+
+## 0.2.36
+
+
+## 0.2.35 
 
 * Bump kubernetes-client version to 0.2.9.
     Set the default value of resourceVersion to 0
