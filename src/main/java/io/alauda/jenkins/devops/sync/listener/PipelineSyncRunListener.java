@@ -242,6 +242,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 switch(status) {
                     case IN_PROGRESS:
                     case PAUSED_PENDING_INPUT:
+                    case NOT_EXECUTED:
                         continue;
                     default:
                         runsToPoll.remove(run);
