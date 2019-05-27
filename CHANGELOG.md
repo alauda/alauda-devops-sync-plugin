@@ -2,6 +2,8 @@
 
 ## 0.2.38 (not released yet)
 
+* Add default clone option behaviours
+
 ## 0.2.37
 
 * Fix pipeline stages syncing when pipeline status is NOT_EXECUTED
