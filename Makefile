@@ -13,3 +13,5 @@ run:
 
 upload:
 	./scripts/upload.sh
+
+pu: package upload

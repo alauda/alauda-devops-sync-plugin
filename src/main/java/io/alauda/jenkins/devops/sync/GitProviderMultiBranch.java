@@ -2,7 +2,9 @@ package io.alauda.jenkins.devops.sync;
 
 import hudson.ExtensionPoint;
 import hudson.PluginManager;
+import hudson.plugins.git.extensions.impl.CloneOption;
 import jenkins.model.Jenkins;
+import jenkins.plugins.git.traits.CloneOptionTrait;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMSourceTrait;
 
@@ -28,4 +30,21 @@ public interface GitProviderMultiBranch extends ExtensionPoint {
     SCMSourceTrait getOriginPRTrait(int code);
 
     SCMSourceTrait getForkPRTrait(int code);
+
+    /**
+     * clone option trait for this branch
+     * @return CloneOption trait<br/>
+     * Default behaviours are below:<br/>
+     * shallow: true<br/>
+     * noTags: false<br/>
+     * reference: null<br/>
+     * timeout: null<br/>
+     * honorRefspec: true<br/>
+     */
+    default CloneOptionTrait getCloneTrait() {
+        CloneOption cloneOption = new CloneOption(true, false,null, null);
+        cloneOption.setHonorRefspec(true);
+
+        return new CloneOptionTrait(cloneOption);
+    };
 }
