@@ -260,6 +260,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             traits.add(gitProvider.getBranchDiscoverTrait(1));
             traits.add(gitProvider.getOriginPRTrait(1));
             traits.add(gitProvider.getForkPRTrait(1));
+            traits.add(gitProvider.getCloneTrait());
         } else {
             traits.add(new BranchDiscoveryTrait());
         }
