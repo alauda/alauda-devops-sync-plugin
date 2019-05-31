@@ -53,7 +53,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         }
 
         if(triggerFromJenkins(actions)) {
-            // in case of triggered by users
+            // in case of triggered by users or triggers
             WorkflowJob workflowJob = (WorkflowJob) p;
             String taskName = p.getName();
 
@@ -141,9 +141,6 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             } else {
                 LOGGER.fine(() -> "Get null CauseAction in task : " + taskName);
             }
-
-            // we already create k8s resource, and waiting next round
-//            return false;
         }
 
         return true;
