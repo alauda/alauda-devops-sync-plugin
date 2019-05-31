@@ -37,11 +37,14 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.updatePipelinePhase;
 import static java.util.logging.Level.SEVERE;
 
 /**
@@ -114,6 +117,11 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
       return JenkinsUtils.filterNew(list);
     }
 
+    private boolean isCreateByJenkins(@NotNull Pipeline pipeline) {
+        Map<String, String> labels = pipeline.getMetadata().getLabels();
+        return (labels != null && Constants.ALAUDA_SYNC_PLUGIN.equals(labels.get(Constants.PIPELINE_CREATED_BY)));
+    }
+
     @SuppressFBWarnings("SF_SWITCH_NO_DEFAULT")
     public synchronized void eventReceived(Watcher.Action action, Pipeline pipeline) {
         String pipelineName = pipeline.getMetadata().getName();
@@ -133,6 +141,12 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
         try {
             switch (action) {
             case ADDED:
+                if(isCreateByJenkins(pipeline)) {
+                    updatePipelinePhase(pipeline, QUEUED);
+                    logger.fine(() -> "Pipeline created by Jenkins. It should be triggered, skip create event.");
+                    return;
+                }
+
                 addEventToJenkinsJobRun(pipeline);
                 break;
             case MODIFIED:

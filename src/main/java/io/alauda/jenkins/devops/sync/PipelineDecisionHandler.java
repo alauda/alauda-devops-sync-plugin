@@ -108,6 +108,8 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                 return false;
             }
 
+            actions.add(new CauseAction(new JenkinsPipelineCause(pipeline, config.getMetadata().getUid())));
+
             ParametersAction params = dumpParams(actions);
             if (params != null) {
                 LOGGER.fine(() -> "ParametersAction: " + params.toString());
@@ -141,7 +143,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             }
 
             // we already create k8s resource, and waiting next round
-            return false;
+//            return false;
         }
 
         return true;

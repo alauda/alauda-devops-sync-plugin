@@ -189,6 +189,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        } else {
+            logger.fine(() -> "this build is not WorkflowRun, " + run);
         }
     }
 
@@ -322,18 +324,44 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         return null;
     }
 
-    private void upsertPipeline(Run run, RunExt wfRunExt, BlueRun blueRun) throws TimeoutException, InterruptedException {
-        if(run == null) {
-            return;
+    /**
+     * All job build caused by Alauda which will hold JenkinsPipelineCause
+     * @param run job build
+     * @return JenkinsPipelineCause
+     */
+    private JenkinsPipelineCause findAlaudaCause(@NotNull Run run) {
+        List<CauseAction> causeActions = run.getActions(CauseAction.class);
+        if(causeActions == null) {
+            return null;
         }
 
+        JenkinsPipelineCause jenkinsPipelineCause = null;
+        for(CauseAction action : causeActions) {
+            Optional<Cause> causeOption = action.getCauses().stream().filter(cause -> cause instanceof JenkinsPipelineCause).findFirst();
+            if(causeOption != null && causeOption.isPresent()) {
+                jenkinsPipelineCause = (JenkinsPipelineCause) causeOption.get();
+                break;
+            }
+        }
+
+        return jenkinsPipelineCause;
+    }
+
+    private void upsertPipeline(@NotNull Run run, RunExt wfRunExt, BlueRun blueRun) throws TimeoutException, InterruptedException {
         final AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
         if(client == null) {
             return;
         }
-        JenkinsPipelineCause cause = (JenkinsPipelineCause) run.getCause(JenkinsPipelineCause.class);
-        if (cause == null) {
-            return;
+
+        List<Cause> causes = run.getCauses();
+        if(causes != null) {
+            causes.forEach(causeItem -> {
+                logger.fine(() -> "run " + run + " caused by " + causeItem);
+            });
+        }
+        JenkinsPipelineCause cause = findAlaudaCause(run);
+        if(cause == null) {
+            logger.warning("run " + run + " do not have JenkinsPipelineCause");
         }
 
         String namespace = cause.getNamespace();
@@ -522,6 +550,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         boolean needToUpdate = this.shouldUpdatePipeline(cause, newNumStages, newNumFlowNodes, wfRunExt.getStatus());
         if (!needToUpdate) {
+            logger.fine("run " + run + " do not need to update.");
             return;
         }
 
@@ -743,7 +772,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
      * @return true if the should poll the status of this build run
      */
     private boolean shouldPollRun(Run run) {
-        return run instanceof WorkflowRun && run.getCause(JenkinsPipelineCause.class) != null &&
+        return run instanceof WorkflowRun && //run.getCause(JenkinsPipelineCause.class) != null &&
                 AlaudaSyncGlobalConfiguration.get().isEnabled();
     }
 
