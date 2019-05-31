@@ -536,7 +536,7 @@ public abstract class JenkinsUtils {
 
 	private static WorkflowRun getRun(WorkflowJob job, String pipelineUid) {
 		for (WorkflowRun run : job.getBuilds()) {
-			JenkinsPipelineCause cause = run.getCause(JenkinsPipelineCause.class);
+			JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
 			if (cause != null && cause.getUid().equals(pipelineUid)) {
 				return run;
 			}
@@ -578,18 +578,6 @@ public abstract class JenkinsUtils {
 			return true;
 		}
 		return false;
-	}
-
-	private static void cancelNotYetStartedPipeliness(WorkflowJob job, String pcUid) {
-		cancelQueuedBuilds(job, pcUid);
-		for (WorkflowRun run : job.getBuilds()) {
-			if (run != null && run.hasntStartedYet()) {
-				JenkinsPipelineCause cause = run.getCause(JenkinsPipelineCause.class);
-				if (cause != null && cause.getPipelineConfigUid().equals(pcUid)) {
-					terminateRun(run);
-				}
-			}
-		}
 	}
 
 	private static void terminateRun(final WorkflowRun run) {
@@ -639,16 +627,16 @@ public abstract class JenkinsUtils {
         LOGGER.info(() -> "cancelling queued pipeline by uuid: "+pcUid);
 		Queue pipelineQueue = Jenkins.getInstance().getQueue();
 		for (Queue.Item item : pipelineQueue.getItems()) {
-			for (Cause cause : item.getCauses()) {
-				if (cause instanceof JenkinsPipelineCause) {
-					JenkinsPipelineCause pipelineCause = (JenkinsPipelineCause) cause;
-					if (pipelineCause.getPipelineConfigUid().equals(pcUid)) {
-						Pipeline pipeline = new PipelineBuilder().withNewMetadata().withNamespace(pipelineCause.getNamespace())
-								.withName(pipelineCause.getName()).and().build();
-						cancelQueuedPipeline(job, pipeline);
-					}
-				}
-			}
+            JenkinsPipelineCause pipelineCause = PipelineUtils.findAlaudaCause(item);
+            if(pipelineCause == null) {
+                continue;
+            }
+
+            if (pipelineCause.getPipelineConfigUid().equals(pcUid)) {
+                Pipeline pipeline = new PipelineBuilder().withNewMetadata().withNamespace(pipelineCause.getNamespace())
+                        .withName(pipelineCause.getName()).and().build();
+                cancelQueuedPipeline(job, pipeline);
+            }
 		}
 	}
 

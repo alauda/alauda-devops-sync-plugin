@@ -19,7 +19,6 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.security.ACL;
 import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.PipelineNumComparator;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.WatcherCallback;
@@ -31,11 +30,9 @@ import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Watcher;
-import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
@@ -109,8 +106,6 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
                 logger.log(Level.SEVERE, "Failed to load initial Builds: " + e, e);
             }
         }
-
-        reconcileRunsAndPipelines();
     }
 
     private PipelineList filterNew(PipelineList list) {
@@ -397,55 +392,6 @@ public class PipelineWatcher extends AbstractWatcher implements BaseWatcher {
         // otherwise, if something odd is up and there is no parent BC, just
         // clean up
         innerDeleteEventToJenkinsJobRun(pipeline);
-    }
-
-    /**
-     * Reconciles Jenkins job runs and Alauda DevOps pipelines
-     * <p>
-     * Deletes all job runs that do not have an associated build in Alauda DevOps
-     */
-    private static synchronized void reconcileRunsAndPipelines() {
-        logger.info("Reconciling job runs and pipelines");
-
-        List<WorkflowJob> jobs = Jenkins.getInstance().getAllItems(WorkflowJob.class);
-
-        for (WorkflowJob job : jobs) {
-            WorkflowJobProperty pcpp = WorkflowJobUtils.getAlaudaProperty(job);
-            if (pcpp == null) {
-                // If we encounter a job without a BuildConfig, skip the reconciliation logic
-                continue;
-            }
-
-            // all workflow jobs will have this property even they're created by manual
-            if(StringUtils.isBlank(pcpp.getUid())) {
-                try {
-                    //
-                    job.removeProperty(pcpp);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                continue;
-            }
-
-            PipelineList pipelineList = AlaudaUtils.getAuthenticatedAlaudaClient().pipelines()
-                    .inNamespace(pcpp.getNamespace()).withLabel(Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcpp.getName()).list();
-
-            logger.info("Checking runs for PipelineConfig " + pcpp.getNamespace() + "/" + pcpp.getName());
-
-            for (WorkflowRun run : job.getBuilds()) {
-                boolean found = false;
-                JenkinsPipelineCause cause = run.getCause(JenkinsPipelineCause.class);
-                for (Pipeline build : pipelineList.getItems()) {
-                    if (cause != null && cause.getUid().equals(build.getMetadata().getUid())) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    JenkinsUtils.deleteRun(run);
-                }
-            }
-        }
     }
 
     @Override

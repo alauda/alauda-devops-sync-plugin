@@ -166,7 +166,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 return false;
             }
 
-            JenkinsPipelineCause cause = (JenkinsPipelineCause) run.getCause(JenkinsPipelineCause.class);
+            JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
             if(cause == null) {
                 return false;
             }
@@ -200,7 +200,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             return;
         }
 
-        JenkinsPipelineCause cause = (JenkinsPipelineCause) run.getCause(JenkinsPipelineCause.class);
+        JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
         if (cause != null) {
             String namespace = cause.getNamespace();
             String pipelineName = cause.getName();
@@ -324,29 +324,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         return null;
     }
 
-    /**
-     * All job build caused by Alauda which will hold JenkinsPipelineCause
-     * @param run job build
-     * @return JenkinsPipelineCause
-     */
-    private JenkinsPipelineCause findAlaudaCause(@NotNull Run run) {
-        List<CauseAction> causeActions = run.getActions(CauseAction.class);
-        if(causeActions == null) {
-            return null;
-        }
-
-        JenkinsPipelineCause jenkinsPipelineCause = null;
-        for(CauseAction action : causeActions) {
-            Optional<Cause> causeOption = action.getCauses().stream().filter(cause -> cause instanceof JenkinsPipelineCause).findFirst();
-            if(causeOption != null && causeOption.isPresent()) {
-                jenkinsPipelineCause = (JenkinsPipelineCause) causeOption.get();
-                break;
-            }
-        }
-
-        return jenkinsPipelineCause;
-    }
-
     private void upsertPipeline(@NotNull Run run, RunExt wfRunExt, BlueRun blueRun) throws TimeoutException, InterruptedException {
         final AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
         if(client == null) {
@@ -359,7 +336,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 logger.fine(() -> "run " + run + " caused by " + causeItem);
             });
         }
-        JenkinsPipelineCause cause = findAlaudaCause(run);
+        JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
         if(cause == null) {
             logger.warning("run " + run + " do not have JenkinsPipelineCause");
         }
