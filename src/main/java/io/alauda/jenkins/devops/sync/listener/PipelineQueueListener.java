@@ -16,11 +16,11 @@
 package io.alauda.jenkins.devops.sync.listener;
 
 import hudson.Extension;
-import hudson.model.Cause;
 import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 
 import java.util.List;
 import java.util.logging.Logger;
@@ -38,19 +38,7 @@ public class PipelineQueueListener extends QueueListener {
             return;
         }
 
-        JenkinsPipelineCause pipelineCause = null;
-        List<Cause> causes = leftItem.getCauses();
-        if (causes != null) {
-            for (Cause cause : causes) {
-                if (!(cause instanceof JenkinsPipelineCause)) {
-                    continue;
-                }
-
-                pipelineCause = (JenkinsPipelineCause) cause;
-            }
-        }
-
-        String itemUrl = leftItem.getUrl();
+        JenkinsPipelineCause pipelineCause = PipelineUtils.findAlaudaCause(leftItem);
         if (pipelineCause != null) {
             String namespace = pipelineCause.getNamespace();
             String name = pipelineCause.getName();
@@ -65,6 +53,7 @@ public class PipelineQueueListener extends QueueListener {
 
             logger.info("Item " + leftItem + " already sync with alauda'resource.");
         } else {
+            String itemUrl = leftItem.getUrl();
             logger.warning("Can not found JenkinsPipelineCause, item url: " + itemUrl);
         }
     }

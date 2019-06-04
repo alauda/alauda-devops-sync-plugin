@@ -9,6 +9,7 @@ import hudson.model.ParametersAction;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.branch.Branch;
 import jenkins.scm.api.SCMHead;
@@ -128,6 +129,10 @@ public abstract class PipelineGenerator {
             pipelineSpec.setParameters(parameters);
         }
 
+        // mark this pipeline created by Jenkins
+        Map<String, String> labels = new HashMap<>();
+        labels.put(Constants.PIPELINE_CREATED_BY, Constants.ALAUDA_SYNC_PLUGIN);
+
         String namespace = config.getMetadata().getNamespace();
 
         // update pipeline to k8s
@@ -136,6 +141,7 @@ public abstract class PipelineGenerator {
             .inNamespace(namespace)
             .createNew()
             .withNewMetadata().addToAnnotations(annotations)
+            .addToLabels(labels)
             .withName(config.getMetadata().getName())
             .withNamespace(namespace)
             .endMetadata()

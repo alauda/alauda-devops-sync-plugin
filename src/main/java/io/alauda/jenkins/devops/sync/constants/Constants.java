@@ -20,6 +20,8 @@ public final class Constants {
 
     public static final String ROOT_URL = "http://localhost:8080/";
 
+    public static final String ALAUDA_SYNC_PLUGIN = "sync.plugin.alauda.io";
+
     public static final String ALAUDA_DEVOPS_DEFAULT_NAMESPACE = "default";
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER = "alauda.io/pipeline.number";
@@ -82,6 +84,8 @@ public final class Constants {
     public static final String PIPELINE_RUN_POLICY_SERIAL = "Serial";
     public static final String PIPELINE_RUN_POLICY_PARALLEL = "Parallel";
     public static final String PIPELINE_RUN_POLICY_DEFAULT = PIPELINE_RUN_POLICY_SERIAL;
+
+    public static final String PIPELINE_CREATED_BY = "created_by";
 
     public static final String FOLDER_DESCRIPTION = "Folder for the Alauda DevOps project: ";
 

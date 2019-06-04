@@ -1,6 +1,10 @@
 # ChangeLog
 
-## 0.2.38 (not released yet)
+## 0.2.39 (not released yet)
+
+* [DEVOPS-1379] Fix the build trigger issues
+
+## 0.2.38
 
 * Add default clone option behaviours
 
