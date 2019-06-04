@@ -1,5 +1,8 @@
 package io.alauda.jenkins.devops.sync.util;
 
+import hudson.model.Actionable;
+import hudson.model.Cause;
+import hudson.model.CauseAction;
 import hudson.model.Result;
 import hudson.model.Run;
 import hudson.util.RunList;
@@ -13,11 +16,39 @@ import io.alauda.kubernetes.api.model.PipelineList;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG;
 
 public class PipelineUtils {
+    /**
+     * All job build caused by Alauda which will hold JenkinsPipelineCause
+     * @param actionable actionable object
+     * @return JenkinsPipelineCause
+     */
+    public static JenkinsPipelineCause findAlaudaCause(Actionable actionable) {
+        if(actionable == null) {
+            return null;
+        }
+        List<CauseAction> causeActions = actionable.getActions(CauseAction.class);
+        if(causeActions == null) {
+            return null;
+        }
+
+        JenkinsPipelineCause jenkinsPipelineCause = null;
+        for(CauseAction action : causeActions) {
+            Optional<Cause> causeOption = action.getCauses().stream().filter(cause -> cause instanceof JenkinsPipelineCause).findFirst();
+            if(causeOption != null && causeOption.isPresent()) {
+                jenkinsPipelineCause = (JenkinsPipelineCause) causeOption.get();
+                break;
+            }
+        }
+
+        return jenkinsPipelineCause;
+    }
+
     public static boolean delete(String namespace, String name) {
         AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
         if(client == null) {
@@ -51,8 +82,7 @@ public class PipelineUtils {
         list.getItems().forEach(pipeline -> {
             String uid = pipeline.getMetadata().getUid();
             RunList<WorkflowRun> runList = job.getBuilds().filter(run -> {
-                JenkinsPipelineCause cause = run.getCause(JenkinsPipelineCause.class);
-
+                JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
 
                 return cause != null && cause.getUid().equals(uid);// && phase.equals(pipeline.getStatus().getPhase());
             });//.isEmpty();
