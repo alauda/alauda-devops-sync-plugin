@@ -339,6 +339,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
         if(cause == null) {
             logger.warning("run " + run + " do not have JenkinsPipelineCause");
+            return;
         }
 
         String namespace = cause.getNamespace();
@@ -356,7 +357,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         if(JenkinsUtils.fromMultiBranch(run)) {
             WorkflowJob wfJob = (WorkflowJob) run.getParent();
             WorkflowMultiBranchProject multiWfJob = (WorkflowMultiBranchProject) wfJob.getParent();
-            viewLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/steps/%%d/log/",
+            viewLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipeliPipelineSyncRunListenernes/%s/branches/%s/runs/%d/nodes/%%d/steps/%%d/log/",
                     cause.getNamespace(),
                     multiWfJob.getName(),
                     wfJob.getName(),
