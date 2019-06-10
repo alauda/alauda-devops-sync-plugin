@@ -339,6 +339,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
         if(cause == null) {
             logger.warning("run " + run + " do not have JenkinsPipelineCause");
+            return;
         }
 
         String namespace = cause.getNamespace();
