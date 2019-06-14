@@ -323,10 +323,6 @@ public class PipelineConfigWatcher extends AbstractWatcher implements BaseWatche
                         return null;
                     }
                 });
-                // if the bc has a source secret it is possible it should
-                // be deleted as well (called function will cross reference
-                // with secret watch)
-                CredentialsUtils.deleteSourceCredentials(pipelineConfig);
             }
         }
     }

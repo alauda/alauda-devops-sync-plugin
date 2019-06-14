@@ -33,7 +33,6 @@ public class WatcherAliveCheck extends AsyncPeriodicWork {
         List<AbstractWatcher> watcherList = new ArrayList<>();
         watcherList.add(sync.getPipelineConfigWatcher());
         watcherList.add(sync.getPipelineWatcher());
-        watcherList.add(sync.getSecretWatcher());
         watcherList.add(sync.getJenkinsBindingWatcher());
         watcherList.add(sync.getNamespaceWatcher());
 

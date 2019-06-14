@@ -31,6 +31,7 @@ import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.core.UnsupportedSecretException;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.kubernetes.api.model.*;
 import jenkins.branch.Branch;
@@ -51,7 +52,6 @@ import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.DEFAULT_JENKINS_FILEPATH;
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
-import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 public abstract class PipelineConfigToJobMapper {
     private static final Logger LOGGER = Logger.getLogger(PipelineConfigToJobMapper.class.getName());
@@ -417,7 +417,7 @@ public abstract class PipelineConfigToJobMapper {
             branchSpecs = Collections.singletonList(new BranchSpec(branchRef));
         }
 
-        String credentialId = getAndUpdateCredential(pc);
+        String credentialId = CredentialsUtils.getSCMSourceCredentialsId(pc);
 
         // if credentialsID is null, go with an SCM where anonymous has to be sufficient
         List<UserRemoteConfig> configs = Collections.singletonList(new UserRemoteConfig(gitSource.getUri(), null, null, credentialId));
@@ -427,22 +427,8 @@ public abstract class PipelineConfigToJobMapper {
 
     private static SubversionSCM createSvnSCM(PipelineConfig pc, PipelineSource source) throws IOException {
         PipelineSourceSvn svnSource = source.getSvn();
-        String credentialId = getAndUpdateCredential(pc);
+        String credentialId = CredentialsUtils.getSCMSourceCredentialsId(pc);
 
         return new SubversionSCM(svnSource.getUri(), credentialId, ".");
-    }
-
-
-    private static String getAndUpdateCredential(PipelineConfig pc) throws IOException {
-        String credentialId = null;
-        try {
-            credentialId = updateSourceCredentials(pc);
-        } catch (UnsupportedSecretException e) {
-            Condition condition = new Condition();
-            condition.setReason(ErrorMessages.INVALID_CREDENTIAL);
-            condition.setMessage(e.getMessage());
-            pc.getStatus().getConditions().add(condition);
-        }
-        return credentialId;
     }
 }

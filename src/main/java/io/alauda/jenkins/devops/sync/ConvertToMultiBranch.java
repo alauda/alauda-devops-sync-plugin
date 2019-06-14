@@ -278,10 +278,11 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
     private void handleCredentials(@NotNull SCMSource source, @NotNull PipelineConfig pipelineConfig) throws IOException {
         String credentialId;
         try {
-            credentialId = CredentialsUtils.updateSourceCredentials(pipelineConfig);
+            credentialId = CredentialsUtils.getSCMSourceCredentialsId(pipelineConfig);
+
             Method method = source.getClass().getMethod("setCredentialsId", String.class);
             method.invoke(source, credentialId);
-        } catch (UnsupportedSecretException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             logger.severe(String.format("Can't setting credentials, source class is %s", source.getClass()));
         }

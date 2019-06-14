@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,19 +25,17 @@ import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.action.KubernetesClientAction;
-import io.alauda.jenkins.devops.sync.credential.AlaudaToken;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.watcher.*;
 import io.alauda.kubernetes.client.KubernetesClientException;
 import jenkins.model.GlobalConfiguration;
-import jenkins.model.GlobalConfigurationCategory;
 import jenkins.model.Jenkins;
 import jenkins.model.identity.IdentityRootAction;
 import jenkins.util.Timer;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.Symbol;
-import org.kohsuke.stapler.DataBoundConstructor;
+import org.jenkinsci.plugins.plaincredentials.StringCredentials;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -77,7 +75,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private String[] namespaces;
     private transient PipelineWatcher pipelineWatcher;
     private transient PipelineConfigWatcher pipelineConfigWatcher;
-    private transient SecretWatcher secretWatcher;
     private transient JenkinsBindingWatcher jenkinsBindingWatcher;
     private transient NamespaceWatcher namespaceWatcher;
     private transient SyncStatus syncStatus = SyncStatus.OK;
@@ -218,7 +215,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     @SuppressWarnings("unused")
     public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
         Jenkins jenkins = Jenkins.getInstance();
-        return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, AlaudaToken.class).includeCurrentValue(credentialsId);
+        return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, StringCredentials.class).includeCurrentValue(credentialsId);
     }
 
     @SuppressWarnings("unused")
@@ -395,13 +392,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         this.pipelineConfigWatcher.watch();
         this.pipelineConfigWatcher.init(namespaces);
 
-        if (secretWatcher != null) {
-            secretWatcher.stop();
-        }
-        this.secretWatcher = new SecretWatcher();
-        this.secretWatcher.watch();
-        this.secretWatcher.init(namespaces);
-
         if (namespaceWatcher != null) {
             namespaceWatcher.stop();
         }
@@ -418,11 +408,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         if (this.pipelineConfigWatcher != null) {
             this.pipelineConfigWatcher.stop();
             this.pipelineConfigWatcher = null;
-        }
-
-        if (this.secretWatcher != null) {
-            this.secretWatcher.stop();
-            this.secretWatcher = null;
         }
 
         if (jenkinsBindingWatcher != null) {
@@ -444,10 +429,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         return pipelineConfigWatcher;
     }
 
-    public SecretWatcher getSecretWatcher() {
-        return secretWatcher;
-    }
-
     public JenkinsBindingWatcher getJenkinsBindingWatcher() {
         return jenkinsBindingWatcher;
     }
@@ -458,10 +439,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
     public void setPipelineConfigWatcher(PipelineConfigWatcher pipelineConfigWatcher) {
         this.pipelineConfigWatcher = pipelineConfigWatcher;
-    }
-
-    public void setSecretWatcher(SecretWatcher secretWatcher) {
-        this.secretWatcher = secretWatcher;
     }
 
     public void setJenkinsBindingWatcher(JenkinsBindingWatcher jenkinsBindingWatcher) {

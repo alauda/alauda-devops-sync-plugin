@@ -27,7 +27,7 @@ public class AlaudaFolderProperty extends AbstractFolderProperty<AbstractFolder<
     private static class AlaudaFolderPropertyDescriptor extends AbstractFolderPropertyDescriptor {
         @Override
         public AbstractFolderProperty<?> newInstance(StaplerRequest req, JSONObject formData) throws FormException {
-            return (AlaudaFolderProperty) super.newInstance(req, formData);
+            return super.newInstance(req, formData);
         }
     }
 }

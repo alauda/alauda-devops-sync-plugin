@@ -60,6 +60,7 @@ public final class Constants {
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET = "clientSecret";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKEN = "accessToken";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKENKEY = "accessTokenKey";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSPHRASE = "passphrase";
 
     /** secret types */
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SSH = "kubernetes.io/ssh-auth";
