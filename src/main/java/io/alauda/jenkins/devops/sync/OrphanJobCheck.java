@@ -6,11 +6,11 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.security.ACL;
-import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
-import io.alauda.jenkins.devops.sync.watcher.ResourcesCache;
-import io.alauda.kubernetes.api.model.PipelineConfig;
+import io.kubernetes.client.ApiException;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Extension
@@ -33,28 +34,24 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
     @Override
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
-        if (!AlaudaSyncGlobalConfiguration.get().isValid()) {
-            return;
-        }
-
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            LOGGER.severe("AlaudaDevOpsClient is null, skip scan orphan items.");
-            return;
-        }
-
         LOGGER.info("Start to scan orphan items.");
         orphanList.clear();
 
         final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
         try {
-            scanOrphanItems(client);
+            PipelineConfigController pipelineConfigController = PipelineConfigController.getCurrentPipelineConfigController();
+            if (!pipelineConfigController.hasSynced()) {
+                LOGGER.log(Level.INFO, "PipelineConfigController has not synced, will skip this Orphan Job check");
+                return;
+            }
+
+            scanOrphanItems(pipelineConfigController);
         } finally {
             SecurityContextHolder.setContext(previousContext);
         }
     }
 
-    private void scanOrphanItems(AlaudaDevOpsClient client) {
+    private void scanOrphanItems(PipelineConfigController pipelineConfigController) {
         Jenkins jenkins = Jenkins.getInstance();
         List<Folder> folders = jenkins.getItems(Folder.class);
 
@@ -73,12 +70,21 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                 String name = pro.getName();
                 String uid = pro.getUid();
 
-                ResourcesCache cache = ResourcesCache.getInstance();
-
-                PipelineConfig pc = cache.getPipelineConfig(ns, name);
+                V1alpha1PipelineConfig pc = pipelineConfigController.getPipelineConfig(ns, name);
                 if(pc == null) {
-                    PipelineConfig newer = client.pipelineConfigs()
-                            .inNamespace(ns).withName(name).get();
+                    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+                    V1alpha1PipelineConfig newer = null;
+                    try {
+                        newer = api.readNamespacedPipelineConfig(
+                                name,
+                                ns,
+                                null,
+                                null,
+                                null);
+                    } catch (ApiException e) {
+                        LOGGER.log(Level.FINE, "Unable to get newer pipelineConfig");
+                        orphanList.add(item);
+                    }
 
                     if(newer == null || !newer.getMetadata().getUid().equals(uid)) {
                         orphanList.add(item);

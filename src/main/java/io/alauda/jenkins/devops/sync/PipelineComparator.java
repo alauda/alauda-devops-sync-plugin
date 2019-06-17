@@ -1,17 +1,17 @@
 package io.alauda.jenkins.devops.sync;
 
-import io.alauda.kubernetes.api.model.Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 
 import java.io.Serializable;
 import java.util.Comparator;
 
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.isCancelled;
 
-public class PipelineComparator implements Comparator<Pipeline>, Serializable {
+public class PipelineComparator implements Comparator<V1alpha1Pipeline>, Serializable {
     private PipelineNumComparator numComparator = new PipelineNumComparator();
 
     @Override
-    public int compare(Pipeline p1, Pipeline p2) {
+    public int compare(V1alpha1Pipeline p1, V1alpha1Pipeline p2) {
         // Order so cancellations are first in list so we can stop
         // processing build list when build run policy is
         // SerialLatestOnly and job is currently building.

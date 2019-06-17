@@ -1,16 +1,14 @@
 package io.alauda.jenkins.devops.sync.util;
 
-import hudson.model.Action;
-import hudson.model.CauseAction;
-import hudson.model.Item;
-import hudson.model.ItemGroup;
-import hudson.model.ParameterValue;
-import hudson.model.ParametersAction;
+import hudson.model.*;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
+import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.kubernetes.api.model.*;
+import io.alauda.jenkins.devops.sync.controller.PipelineController;
+import io.kubernetes.client.ApiException;
+import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import jenkins.branch.Branch;
 import jenkins.scm.api.SCMHead;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -25,29 +23,28 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
 
 public abstract class PipelineGenerator {
 
     private static final Logger LOGGER = Logger.getLogger(PipelineGenerator.class.getName());
     private static String TRIGGER_BY = "Triggered by Jenkins job at ";
 
-    public static Pipeline buildPipeline(PipelineConfig config, List<Action> actions) {
+    public static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, List<Action> actions) throws ApiException {
         return buildPipeline(config, null, actions);
     }
 
-    public static Pipeline buildPipeline(PipelineConfig config, @NotNull WorkflowJob job,
-                                         String triggerURL, List<Action> actions) {
+    public static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, @NotNull WorkflowJob job,
+                                                 String triggerURL, List<Action> actions) throws ApiException {
         ItemGroup parent = job.getParent();
         Map<String, String> annotations = new HashMap<>();
-        if(parent instanceof WorkflowMultiBranchProject) {
+        if (parent instanceof WorkflowMultiBranchProject) {
             BranchJobProperty property = job.getProperty(BranchJobProperty.class);
-            if(property != null) {
+            if (property != null) {
                 Branch branch = property.getBranch();
                 annotations.put(Annotations.MULTI_BRANCH_NAME, branch.getName());
 
                 // TODO need to consider multi-tag like GitTagSCMHead
-                if(isPR(job)) {
+                if (isPR(job)) {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "pr");
                 } else {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "branch");
@@ -60,7 +57,7 @@ public abstract class PipelineGenerator {
 
     public static boolean isPR(Item item) {
         SCMHead head = SCMHead.HeadByItem.findHead(item);
-        if(head == null) {
+        if (head == null) {
             return false;
         }
 
@@ -71,12 +68,12 @@ public abstract class PipelineGenerator {
 
 
     @Deprecated
-    public static Pipeline buildPipeline(PipelineConfig config, String triggerURL, List<Action> actions) {
+    public static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, String triggerURL, List<Action> actions) throws ApiException {
         return buildPipeline(config, new HashMap<>(), triggerURL, actions);
     }
 
-    public static Pipeline buildPipeline(PipelineConfig config, Map<String, String> annotations, String triggerURL, List<Action> actions) {
-        PipelineSpec pipelineSpec = buildPipelineSpec(config, triggerURL);
+    public static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, Map<String, String> annotations, String triggerURL, List<Action> actions) throws ApiException {
+        V1alpha1PipelineSpec pipelineSpec = buildPipelineSpec(config, triggerURL);
 
         // TODO here should be multi-cause, fix later
         String cause = null;
@@ -103,25 +100,25 @@ public abstract class PipelineGenerator {
             cause = PIPELINE_TRIGGER_TYPE_MANUAL;
         }
 
-        PipelineCause pipelineCause = new PipelineCause(TRIGGER_BY + triggerURL, cause);
+        V1alpha1PipelineCause pipelineCause = new V1alpha1PipelineCause().type(cause).message(TRIGGER_BY + triggerURL);
         pipelineSpec.setCause(pipelineCause);
 
         // add parameters
-        for(Action action : actions) {
-            if(!(action instanceof ParametersAction)) {
+        for (Action action : actions) {
+            if (!(action instanceof ParametersAction)) {
                 continue;
             }
 
             ParametersAction paramAction = (ParametersAction) action;
-            if(paramAction.getParameters() == null) {
+            if (paramAction.getParameters() == null) {
                 continue;
             }
 
-            List<PipelineParameter> parameters = new ArrayList<>();
+            List<V1alpha1PipelineParameter> parameters = new ArrayList<>();
 
-            for(ParameterValue param : paramAction.getParameters()) {
-                PipelineParameter pipeParam = ParameterUtils.to(param);
-                if(pipeParam != null) {
+            for (ParameterValue param : paramAction.getParameters()) {
+                V1alpha1PipelineParameter pipeParam = ParameterUtils.to(param);
+                if (pipeParam != null) {
                     parameters.add(pipeParam);
                 }
             }
@@ -136,27 +133,28 @@ public abstract class PipelineGenerator {
         String namespace = config.getMetadata().getNamespace();
 
         // update pipeline to k8s
-        return getAuthenticatedAlaudaClient()
-            .pipelines()
-            .inNamespace(namespace)
-            .createNew()
-            .withNewMetadata().addToAnnotations(annotations)
-            .addToLabels(labels)
-            .withName(config.getMetadata().getName())
-            .withNamespace(namespace)
-            .endMetadata()
-            .withSpec(pipelineSpec)
-            .done();
+
+
+        V1alpha1Pipeline pipe = new V1alpha1PipelineBuilder().withMetadata(
+                new V1ObjectMetaBuilder()
+                        .withName(config.getMetadata().getName())
+                        .withNamespace(namespace)
+                        .addToAnnotations(annotations)
+                        .addToLabels(labels).build()).withSpec(pipelineSpec).build();
+
+
+        return PipelineController.createPipeline(namespace, pipe);
+
     }
 
-    public static PipelineSpec buildPipelineSpec(PipelineConfig config) {
+    public static V1alpha1PipelineSpec buildPipelineSpec(V1alpha1PipelineConfig config) {
         return buildPipelineSpec(config, null);
     }
 
-    private static PipelineSpec buildPipelineSpec(PipelineConfig config, String triggerURL) {
-        PipelineSpec pipeSpec = new PipelineSpec();
-        PipelineConfigSpec spec = config.getSpec();
-        pipeSpec.setPipelineConfig(new LocalObjectReference(config.getMetadata().getName()));
+    private static V1alpha1PipelineSpec buildPipelineSpec(V1alpha1PipelineConfig config, String triggerURL) {
+        V1alpha1PipelineSpec pipeSpec = new V1alpha1PipelineSpec();
+        V1alpha1PipelineConfigSpec spec = config.getSpec();
+        pipeSpec.setPipelineConfig(new V1alpha1LocalObjectReference().name(config.getMetadata().getName()));
         pipeSpec.setJenkinsBinding(spec.getJenkinsBinding());
         pipeSpec.setRunPolicy(spec.getRunPolicy());
         pipeSpec.setTriggers(spec.getTriggers());

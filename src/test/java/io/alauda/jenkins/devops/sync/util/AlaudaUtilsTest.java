@@ -1,5 +1,6 @@
 package io.alauda.jenkins.devops.sync.util;
 
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import org.junit.Rule;
@@ -13,7 +14,7 @@ public class AlaudaUtilsTest {
 
     @Test
     public void isPipelineStrategyPipelineConfig() {
-        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        V1alpha1PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         assertNotNull(config);
 
         assertTrue(AlaudaUtils.isPipelineStrategyPipelineConfig(config));
@@ -22,7 +23,7 @@ public class AlaudaUtilsTest {
 
     @Test
     public void jenkinsJobName() {
-        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
+        V1alpha1PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient());
         assertNotNull(config);
 
         String jobName = AlaudaUtils.jenkinsJobName(config);

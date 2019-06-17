@@ -1,6 +1,6 @@
 package io.alauda.jenkins.devops.sync;
 
-import io.alauda.kubernetes.api.model.Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -8,10 +8,10 @@ import java.util.Map;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER;
 
-public class PipelineNumComparator implements Comparator<Pipeline>, Serializable
+public class PipelineNumComparator implements Comparator<V1alpha1Pipeline>, Serializable
 {
     @Override
-    public int compare(Pipeline p1, Pipeline p2)
+    public int compare(V1alpha1Pipeline p1, V1alpha1Pipeline p2)
     {
         Map<String, String> p1Anno = p1.getMetadata().getAnnotations();
         Map<String, String> p2Anno = p2.getMetadata().getAnnotations();

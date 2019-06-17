@@ -3,6 +3,8 @@ package io.alauda.jenkins.devops.sync.util;
 import antlr.ANTLRException;
 import hudson.model.*;
 import hudson.triggers.SCMTrigger;
+import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
+import io.alauda.devops.java.client.models.V1alpha1PipelineParameterBuilder;
 import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
 import io.alauda.jenkins.devops.sync.WithoutK8s;
 import io.alauda.kubernetes.api.model.*;
@@ -42,12 +44,12 @@ public class JenkinsUtilsTest {
         assertNull(wfJob.getLastBuild());
 
         // empty params
-        List<PipelineParameter> params = new ArrayList<>();
+        List<V1alpha1PipelineParameter> params = new ArrayList<>();
         assertNull(JenkinsUtils.addJobParamForPipelineParameters(wfJob, params, true));
 
         // not support param type
         params = new ArrayList<>();
-        params.add(new PipelineParameterBuilder()
+        params.add(new V1alpha1PipelineParameterBuilder()
                 .withType("not-support").withName("name").withValue("value").withDescription("desc")
                 .build());
         Map<String, ParameterDefinition> resultParams = JenkinsUtils.addJobParamForPipelineParameters(wfJob, params, true);

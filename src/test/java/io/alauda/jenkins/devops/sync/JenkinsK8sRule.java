@@ -1,7 +1,7 @@
 package io.alauda.jenkins.devops.sync;
 
-import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.util.DevOpsInit;
+import io.kubernetes.client.ApiClient;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -10,7 +10,7 @@ public class JenkinsK8sRule extends JenkinsRule {
     private boolean withK8s = true;
     private final boolean inK8s;
     private DevOpsInit devOpsInit;
-    private AlaudaDevOpsClient client;
+    private ApiClient client;
     private int retryCount;
 
     public JenkinsK8sRule() {

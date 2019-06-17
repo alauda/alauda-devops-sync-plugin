@@ -2,13 +2,12 @@ package io.alauda.jenkins.devops.sync.util;
 
 import hudson.Plugin;
 import hudson.util.VersionNumber;
-import io.alauda.jenkins.devops.sync.WatcherAliveCheck;
+import io.alauda.devops.java.client.models.V1alpha1Condition;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfigTemplate;
+import io.alauda.devops.java.client.models.V1alpha1PipelineDependency;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
-import io.alauda.kubernetes.api.model.Condition;
-import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.PipelineConfigTemplate;
-import io.alauda.kubernetes.api.model.PipelineDependency;
 import jenkins.model.Jenkins;
 
 import javax.annotation.Nonnull;
@@ -25,7 +24,7 @@ public abstract class PipelineConfigUtils {
 
     private PipelineConfigUtils(){}
 
-    public static boolean isSerialPolicy(PipelineConfig pipelineConfig) {
+    public static boolean isSerialPolicy(V1alpha1PipelineConfig pipelineConfig) {
         if(pipelineConfig == null) {
             throw new IllegalArgumentException("param can't be null");
         }
@@ -33,7 +32,7 @@ public abstract class PipelineConfigUtils {
         return Constants.PIPELINE_RUN_POLICY_SERIAL.equals(pipelineConfig.getSpec().getRunPolicy());
     }
 
-    public static boolean isParallel(PipelineConfig pipelineConfig) {
+    public static boolean isParallel(V1alpha1PipelineConfig pipelineConfig) {
         if(pipelineConfig == null) {
             throw new IllegalArgumentException("param can't be null");
         }
@@ -46,15 +45,15 @@ public abstract class PipelineConfigUtils {
      * @param pipelineConfig PipelineConfig
      * @param conditions condition list
      */
-    public static void dependencyCheck(@Nonnull PipelineConfig pipelineConfig, @Nonnull List<Condition> conditions) {
+    public static void dependencyCheck(@Nonnull V1alpha1PipelineConfig pipelineConfig, @Nonnull List<V1alpha1Condition> conditions) {
         boolean fromTpl = createFromTpl(pipelineConfig);
         if(!fromTpl) {
             // just care about template case
             return;
         }
 
-        PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
-        PipelineDependency dependencies = template.getSpec().getDependencies();
+        V1alpha1PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
+        V1alpha1PipelineDependency dependencies = template.getSpec().getDependencies();
         if(dependencies == null || CollectionUtils.isEmpty(dependencies.getPlugins())) {
             logger.info("PipelineConfig " + pipelineConfig.getMetadata().getName() + " no any dependencies.");
             return;
@@ -67,7 +66,7 @@ public abstract class PipelineConfigUtils {
             VersionNumber verNumber = new VersionNumber(version);
             VersionNumber currentNumber;
 
-            Condition condition = new Condition();
+            V1alpha1Condition condition = new V1alpha1Condition();
             condition.setReason(ErrorMessages.PLUGIN_ERROR);
 
             Plugin existsPlugin = jenkins.getPlugin(name);
@@ -94,13 +93,13 @@ public abstract class PipelineConfigUtils {
      * @param pipelineConfig PipelineConfig
      * @return whether PipelineConfig is create from a template
      */
-    public static boolean createFromTpl(@Nonnull PipelineConfig pipelineConfig) {
-        PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
+    public static boolean createFromTpl(@Nonnull V1alpha1PipelineConfig pipelineConfig) {
+        V1alpha1PipelineConfigTemplate template = pipelineConfig.getSpec().getStrategy().getTemplate();
 
         return template != null && template.getSpec() != null;
     }
 
-    public static boolean isMultiBranch(@NotNull PipelineConfig pipelineConfig) {
+    public static boolean isMultiBranch(@NotNull V1alpha1PipelineConfig pipelineConfig) {
         Map<String, String> labels = pipelineConfig.getMetadata().getLabels();
         return (labels != null && PIPELINECONFIG_KIND_MULTI_BRANCH.equals(labels.get(PIPELINECONFIG_KIND)));
     }

@@ -6,16 +6,15 @@ import hudson.Extension;
 import hudson.model.ItemGroup;
 import hudson.model.ParameterDefinition;
 import hudson.util.XStream2;
-import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.devops.java.client.models.V1alpha1Condition;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.constants.PipelineRunPolicy;
+import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
-import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
-import io.alauda.kubernetes.api.model.Condition;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.PipelineConfig;
+import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
@@ -36,7 +35,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
     private final Logger logger = Logger.getLogger(ConvertToWorkflow.class.getName());
 
     @Override
-    public boolean accept(PipelineConfig pipelineConfig) {
+    public boolean accept(V1alpha1PipelineConfig pipelineConfig) {
         if(pipelineConfig == null) {
             return false;
         }
@@ -46,9 +45,11 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
     }
 
     @Override
-    public WorkflowJob convert(PipelineConfig pipelineConfig) throws IOException {
+    public WorkflowJob convert(V1alpha1PipelineConfig pipelineConfig) throws IOException {
         String jobName = AlaudaUtils.jenkinsJobName(pipelineConfig);
         String jobFullName = AlaudaUtils.jenkinsJobFullName(pipelineConfig);
+        String namespace = pipelineConfig.getMetadata().getNamespace();
+        String name = pipelineConfig.getMetadata().getName();
         String resourceVer = pipelineConfig.getMetadata().getResourceVersion();
         WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
         Jenkins activeInstance = Jenkins.getInstance();
@@ -60,7 +61,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
 
         boolean newJob = job == null;
         if (newJob) {
-            parent = AlaudaUtils.getOrCreateFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
+            parent = AlaudaUtils.getOrCreateFullNameParent(activeInstance, jobFullName, namespace);
             job = new WorkflowJob(parent, jobName);
             job.addProperty(WorkflowJobProperty.getInstance(pipelineConfig));
         } else {
@@ -106,7 +107,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         // Setting triggers according to pipeline config
         List<ANTLRException> triggerExceptions = JenkinsUtils.setJobTriggers(job, pipelineConfig.getSpec().getTriggers());
         triggerExceptions.forEach(ex -> {
-            Condition condition = new Condition();
+            V1alpha1Condition condition = new V1alpha1Condition();
             condition.setReason(ErrorMessages.INVALID_TRIGGER);
             condition.setMessage(ex.getMessage());
             pipelineConfig.getStatus().getConditions().add(condition);
@@ -122,7 +123,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
                     activeInstance.createProjectFromXML(jobName, jobStream).save();
                 }
 
-                logger.info("Created job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig)
+                logger.info("Created job " + jobName + " from PipelineConfig " + namespace + "/" + name
                         + " with revision: " + resourceVer);
             } catch (IllegalArgumentException e) {
                 // jenkins might reload existing jobs on
@@ -148,7 +149,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         }
 
         if (workflowJob == null) {
-            logger.warning("Could not find created job " + fullName + " for PipelineConfig: " + NamespaceName.create(pipelineConfig));
+            logger.warning("Could not find created job " + fullName + " for PipelineConfig: " + namespace + "/" + name);
         } else {
             updatePipelineConfigPhase(pipelineConfig);
 
@@ -159,7 +160,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         return workflowJob;
     }
 
-    private void formatJenkinsfile(final PipelineConfig pipelineConfig) {
+    private void formatJenkinsfile(final V1alpha1PipelineConfig pipelineConfig) {
         String jenkinsfile = pipelineConfig.getSpec().getStrategy().getJenkins().getJenkinsfile();
         if (StringUtils.isEmpty(jenkinsfile)) {
             return;
@@ -173,16 +174,13 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
             return;
         }
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        ObjectMeta metadata = pipelineConfig.getMetadata();
+        V1ObjectMeta metadata = pipelineConfig.getMetadata();
         String namespace = metadata.getNamespace();
         String name = metadata.getName();
 
-        client.pipelineConfigs().inNamespace(namespace)
-                .withName(name).edit().editSpec().editStrategy().editJenkins()
-                .withJenkinsfile(formattedJenkinsfile)
-                .endJenkins().endStrategy().endSpec().done();
-
+        V1alpha1PipelineConfig oldPipelineConfig = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        pipelineConfig.getSpec().getStrategy().getJenkins().jenkinsfile(formattedJenkinsfile);
+        PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
 
         logger.fine(String.format("Format PipelineConfig's jenkinsfile %s, name: %s", formattedJenkinsfile, name));
     }

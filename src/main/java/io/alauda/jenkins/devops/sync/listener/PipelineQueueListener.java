@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +18,12 @@ package io.alauda.jenkins.devops.sync.listener;
 import hudson.Extension;
 import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.controller.PipelineController;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 
-import java.util.List;
 import java.util.logging.Logger;
 
 @Extension
@@ -42,15 +43,13 @@ public class PipelineQueueListener extends QueueListener {
         if (pipelineCause != null) {
             String namespace = pipelineCause.getNamespace();
             String name = pipelineCause.getName();
-            AlaudaUtils.getAuthenticatedAlaudaClient()
-                    .pipelines()
-                    .inNamespace(namespace)
-                    .withName(name)
-                    .edit()
-                    .editOrNewStatus()
-                    .withAborted(Boolean.TRUE)
-                    .endStatus().done();
 
+            V1alpha1Pipeline pipe = PipelineController.getCurrentPipelineController().getPipeline(namespace, name);
+            V1alpha1Pipeline newPipe = DeepCopyUtils.deepCopy(pipe);
+
+            newPipe.getStatus().aborted(true);
+
+            PipelineController.updatePipeline(pipe, newPipe);
             logger.info("Item " + leftItem + " already sync with alauda'resource.");
         } else {
             String itemUrl = leftItem.getUrl();

@@ -19,15 +19,12 @@ import hudson.Extension;
 import hudson.model.Job;
 import hudson.model.JobProperty;
 import hudson.model.JobPropertyDescriptor;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.PipelineConfig;
+import io.kubernetes.client.models.V1ObjectMeta;
+import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.DataBoundSetter;
-import net.sf.json.JSONObject;
-
-
 
 import javax.annotation.Nonnull;
 import java.util.HashMap;
@@ -58,8 +55,8 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
         this.contextAnnotation = contextAnnotation;
     }
 
-    public static WorkflowJobProperty getInstance(PipelineConfig pc) {
-        ObjectMeta meta = pc.getMetadata();
+    public static WorkflowJobProperty getInstance(V1alpha1PipelineConfig pc) {
+        V1ObjectMeta meta = pc.getMetadata();
         Map<String, String> Annotation = meta.getAnnotations();
         String contextAnnotation = "{}";
         if(Annotation!=null){

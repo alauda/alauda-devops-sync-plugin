@@ -17,9 +17,8 @@ package io.alauda.jenkins.devops.sync.util;
 
 import antlr.ANTLRException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import hudson.model.*;
-import hudson.model.Job;
 import hudson.model.Queue;
+import hudson.model.*;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.plugins.git.RevisionParameterAction;
 import hudson.security.ACL;
@@ -27,17 +26,12 @@ import hudson.triggers.SCMTrigger;
 import hudson.triggers.SafeTimerTask;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
-import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
-import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
-import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
-import io.alauda.jenkins.devops.sync.MultiBranchProperty;
-import io.alauda.jenkins.devops.sync.PipelineComparator;
-import io.alauda.jenkins.devops.sync.SCMRevisionAction;
-import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
+import io.alauda.devops.java.client.models.*;
+import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
-import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
-import io.alauda.kubernetes.api.model.*;
+import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
+import io.alauda.jenkins.devops.sync.controller.PipelineController;
+import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.MultiBranchProject;
 import jenkins.model.Jenkins;
@@ -63,12 +57,12 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.FAILED;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.*;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.isCancelled;
+import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.updatePipelinePhase;
 import static java.util.logging.Level.SEVERE;
 import static java.util.logging.Level.WARNING;
 
@@ -162,7 +156,7 @@ public abstract class JenkinsUtils {
 //	}
 
     public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(WorkflowJob job,
-        List<PipelineParameter> params, boolean replaceExisting) throws IOException {
+                                                                                    List<V1alpha1PipelineParameter> params, boolean replaceExisting) throws IOException {
         // get existing property defs, including any manually added from the
         // jenkins console independent of PC
         ParametersDefinitionProperty jenkinsParams = job.removeProperty(ParametersDefinitionProperty.class);
@@ -175,7 +169,7 @@ public abstract class JenkinsUtils {
             // builds a list of job parameters
 
             List<String> envKeys = new ArrayList<>();
-            for (PipelineParameter parameter : params) {
+            for (V1alpha1PipelineParameter parameter : params) {
                 envKeys.add(parameter.getName());
             }
             paramMap = new HashMap<>();
@@ -194,7 +188,7 @@ public abstract class JenkinsUtils {
                 }
             }
 
-            for (PipelineParameter param : params) {
+            for (V1alpha1PipelineParameter param : params) {
                 ParameterDefinition jenkinsParam = null;
                 switch (param.getType()) {
                     case PIPELINE_PARAMETER_TYPE_STRING:
@@ -235,7 +229,7 @@ public abstract class JenkinsUtils {
      * @throws IOException
      */
     @NotNull
-    public static List<ANTLRException> setJobTriggers(@Nonnull WorkflowJob job, List<PipelineTrigger> triggers) throws IOException {
+    public static List<ANTLRException> setJobTriggers(@Nonnull WorkflowJob job, List<V1alpha1PipelineTrigger> triggers) throws IOException {
         List<ANTLRException> exceptions = new ArrayList<>();
         if (CollectionUtils.isEmpty(triggers)) {
             return exceptions;
@@ -244,7 +238,7 @@ public abstract class JenkinsUtils {
         job.removeProperty(PipelineTriggersJobProperty.class);
         LOGGER.info(() -> "PipelineTrigger's count is " + triggers.size());
 
-        for (PipelineTrigger pipelineTrigger : triggers) {
+        for (V1alpha1PipelineTrigger pipelineTrigger : triggers) {
             Trigger trigger = null;
             final String type = pipelineTrigger.getType();
             if(type == null) {
@@ -253,9 +247,9 @@ public abstract class JenkinsUtils {
 
             switch (type) {
                 case PIPELINE_TRIGGER_TYPE_CODE_CHANGE:
-                    PipelineTriggerCodeChange codeTrigger = pipelineTrigger.getCodeChange();
+                    V1alpha1PipelineTriggerCodeChange codeTrigger = pipelineTrigger.getCodeChange();
 
-                    if (codeTrigger == null || !codeTrigger.getEnabled()) {
+                    if (codeTrigger == null || !codeTrigger.isEnabled()) {
                         LOGGER.warning(() -> "Trigger type `" + PIPELINE_TRIGGER_TYPE_CODE_CHANGE + "` has empty description or is disabled...");
                         break;
                     }
@@ -271,8 +265,8 @@ public abstract class JenkinsUtils {
 
                     break;
                 case PIPELINE_TRIGGER_TYPE_CRON:
-                    PipelineTriggerCron cronTrigger = pipelineTrigger.getCron();
-                    if (cronTrigger == null || !cronTrigger.getEnabled()) {
+                    V1alpha1PipelineTriggerCron cronTrigger = pipelineTrigger.getCron();
+                    if (cronTrigger == null || !cronTrigger.isEnabled()) {
                         LOGGER.warning(() -> "Trigger type `" + PIPELINE_TRIGGER_TYPE_CRON + "` has empty description or is disabled...");
                         break;
                     }
@@ -302,7 +296,7 @@ public abstract class JenkinsUtils {
     }
 
     @CheckForNull
-	public static List<Action> putJobRunParamsFromEnvAndUIParams(List<PipelineParameter> pipelineParameters,
+	public static List<Action> putJobRunParamsFromEnvAndUIParams(List<V1alpha1PipelineParameter> pipelineParameters,
                                                                  List<Action> buildActions) {
         if(buildActions == null || pipelineParameters == null) {
             return buildActions;
@@ -319,13 +313,13 @@ public abstract class JenkinsUtils {
 	}
 
 	@Nonnull
-    public static List<ParameterValue> getParameterValues(List<PipelineParameter> pipelineParameters) {
+    public static List<ParameterValue> getParameterValues(List<V1alpha1PipelineParameter> pipelineParameters) {
         List<ParameterValue> envVarList = new ArrayList<>();
         if (pipelineParameters == null) {
             return envVarList;
         }
 
-        for (PipelineParameter pipeParam : pipelineParameters) {
+        for (V1alpha1PipelineParameter pipeParam : pipelineParameters) {
             ParameterValue paramValue = null;
             String type = pipeParam.getType();
             if(type == null) {
@@ -354,9 +348,9 @@ public abstract class JenkinsUtils {
         return envVarList;
     }
 
-    public static boolean triggerJob(@Nonnull WorkflowJob job, @Nonnull Pipeline pipeline)
+    public static boolean triggerJob(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline)
             throws IOException {
-        final ObjectMeta pipMeta = pipeline.getMetadata();
+        final V1ObjectMeta pipMeta = pipeline.getMetadata();
         final String namespace = pipMeta.getNamespace();
         final String pipelineName = pipMeta.getName();
 	    LOGGER.info(() -> "will trigger pipeline: " + pipelineName);
@@ -380,9 +374,7 @@ public abstract class JenkinsUtils {
         }
 
         final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
-        PipelineConfig pipelineConfig = getAuthenticatedAlaudaClient()
-                .pipelineConfigs().inNamespace(namespace)
-                .withName(pipelineConfigName).get();
+        V1alpha1PipelineConfig pipelineConfig = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, pipelineConfigName);
         if (pipelineConfig == null) {
             LOGGER.info(() -> "pipeline config not found....: "+pipelineName+" - config name "+pipelineConfigName);
             return false;
@@ -417,7 +409,7 @@ public abstract class JenkinsUtils {
             CauseAction bCauseAction = new CauseAction(newCauses);
             pipelineActions.add(bCauseAction);
 
-            PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
+            V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
             String commit = null;
             if (pipMeta.getAnnotations() != null && pipMeta.getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
               commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
@@ -497,15 +489,15 @@ public abstract class JenkinsUtils {
         }
     }
 
-	private static boolean isAlreadyTriggered(WorkflowJob job, Pipeline pipeline) {
+	private static boolean isAlreadyTriggered(WorkflowJob job, V1alpha1Pipeline pipeline) {
 		return getRun(job, pipeline) != null;
 	}
 
-	public synchronized static void cancelPipeline(WorkflowJob job, Pipeline pipeline) {
+	public synchronized static void cancelPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
 		cancelPipeline(job, pipeline, false);
 	}
 
-	public synchronized static void cancelPipeline(WorkflowJob job, Pipeline pipeline, boolean deleted) {
+	public synchronized static void cancelPipeline(WorkflowJob job, V1alpha1Pipeline pipeline, boolean deleted) {
 		if (!cancelQueuedPipeline(job, pipeline)) {
             cancelRunningPipeline(job, pipeline);
 		}
@@ -517,7 +509,7 @@ public abstract class JenkinsUtils {
         updatePipelinePhase(pipeline, CANCELLED);
 	}
 
-	private static WorkflowRun getRun(WorkflowJob job, Pipeline pipeline) {
+	private static WorkflowRun getRun(WorkflowJob job, V1alpha1Pipeline pipeline) {
 		if (pipeline != null && pipeline.getMetadata() != null) {
 			return getRun(job, pipeline.getMetadata().getUid());
 		}
@@ -534,7 +526,7 @@ public abstract class JenkinsUtils {
 		return null;
 	}
 
-	public static void deleteRun(WorkflowJob workflowJob, Pipeline pipeline) {
+	public static void deleteRun(WorkflowJob workflowJob, V1alpha1Pipeline pipeline) {
         WorkflowRun run = JenkinsUtils.getRun(workflowJob, pipeline);
         if(run != null) {
             JenkinsUtils.deleteRun(run);
@@ -550,7 +542,7 @@ public abstract class JenkinsUtils {
         }
 	}
 
-	private static boolean cancelRunningPipeline(WorkflowJob job, Pipeline pipeline) {
+	private static boolean cancelRunningPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
 		String pipelineUid = pipeline.getMetadata().getUid();
 		WorkflowRun run = getRun(job, pipelineUid);
 		if (run != null && run.isBuilding()) {
@@ -560,7 +552,7 @@ public abstract class JenkinsUtils {
 		return false;
 	}
 
-	private static boolean cancelNotYetStartedPipeline(WorkflowJob job, Pipeline pipeline) {
+	private static boolean cancelNotYetStartedPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
 		String pipelineUid = pipeline.getMetadata().getUid();
 		WorkflowRun run = getRun(job, pipelineUid);
 		if (run != null && run.hasntStartedYet()) {
@@ -593,7 +585,7 @@ public abstract class JenkinsUtils {
 	}
 
 	@SuppressFBWarnings("SE_BAD_FIELD")
-	public static boolean cancelQueuedPipeline(WorkflowJob job, Pipeline pipeline) {
+	public static boolean cancelQueuedPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
 	  LOGGER.info("cancelling queued pipeline: "+pipeline.getMetadata().getName());
 		String pipelineUid = pipeline.getMetadata().getUid();
 		final Queue pipelineQueue = Jenkins.getInstance().getQueue();
@@ -623,8 +615,8 @@ public abstract class JenkinsUtils {
             }
 
             if (pipelineCause.getPipelineConfigUid().equals(pcUid)) {
-                Pipeline pipeline = new PipelineBuilder().withNewMetadata().withNamespace(pipelineCause.getNamespace())
-                        .withName(pipelineCause.getName()).and().build();
+                V1alpha1Pipeline pipeline = new V1alpha1PipelineBuilder().withMetadata(new V1ObjectMeta().namespace(pipelineCause.getNamespace())
+                        .name(pipelineCause.getName())).build();
                 cancelQueuedPipeline(job, pipeline);
             }
 		}
@@ -635,23 +627,21 @@ public abstract class JenkinsUtils {
      * @param pipeline pipeline is the build history for pipelineJob
      * @return workflow job
      */
-	public static WorkflowJob getJobFromPipeline(@Nonnull Pipeline pipeline) {
-        AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
-        if(client == null) {
-            return null;
-        }
-
+	public static WorkflowJob getJobFromPipeline(@Nonnull V1alpha1Pipeline pipeline) {
 		String configName = pipeline.getSpec().getPipelineConfig().getName();
-		PipelineConfig pipelineConfig = getAuthenticatedAlaudaClient().pipelineConfigs()
-				.inNamespace(pipeline.getMetadata().getNamespace()).withName(configName).get();
+        V1alpha1PipelineConfig pipelineConfig =
+                PipelineConfigController.getCurrentPipelineConfigController()
+                        .getPipelineConfig(pipeline.getMetadata().getNamespace(), configName);
 		if (pipelineConfig == null) {
+		    LOGGER.log(WARNING, String.format("Unable to get pipelineconfig '%s/%s' from pipeline '%s/%s'",
+                    pipeline.getMetadata().getNamespace(), configName, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()));
 			return null;
 		}
 
         if(PipelineConfigUtils.isMultiBranch(pipelineConfig)) {
             Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
             if(annotations == null) {
-                ObjectMeta meta = pipeline.getMetadata();
+                V1ObjectMeta meta = pipeline.getMetadata();
                 LOGGER.severe(String.format("Pipeline [%s,%s] don't have annotations, can't find the Workflow.",
                         meta.getNamespace(), meta.getName()));
                 return null;
@@ -686,22 +676,21 @@ public abstract class JenkinsUtils {
             return;
         }
 
-        // TODO: Change to filter on the API level
-        PipelineList list = filterNew(getAuthenticatedAlaudaClient().pipelines()
-                .inNamespace(pcp.getNamespace()).withLabel(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, pcp.getName()).list());
-        LOGGER.info("Got new pipeline list: " + list.getItems());
-        handlePipelineList(job, list.getItems());
+        List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController()
+                .listPipelineConfigs(pcp.getNamespace())
+                .stream()
+                .filter(pipe -> {
+                    Map<String, String> labels = pipe.getMetadata().getLabels();
+                    if (labels == null) {
+                        return false;
+                    }
+                    return pcp.getName().equals(labels.get(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG)) && pipe.getStatus().getPhase().equals(PENDING);
+                }).collect(Collectors.toList());
+
+        handlePipelineList(job, pipelines);
     }
 
-    public static PipelineList filterNew(PipelineList list) {
-        if (list == null || list.getItems() == null || list.getItems().size() == 0) {
-            return list;
-        }
-        list.getItems().removeIf(p -> !isNew(p.getStatus()));
-        return list;
-    }
-
-	public static void handlePipelineList(WorkflowJob job, List<Pipeline> pipelines) {
+	public static void handlePipelineList(WorkflowJob job, List<V1alpha1Pipeline> pipelines) {
 		if (pipelines.isEmpty()) {
 			return;
 		}
@@ -709,7 +698,7 @@ public abstract class JenkinsUtils {
 		boolean isSerial = !job.isConcurrentBuild();
 		boolean jobIsBuilding = job.isBuilding();
 		for (int i = 0; i < pipelines.size(); i++) {
-			Pipeline p = pipelines.get(i);
+            V1alpha1Pipeline p = pipelines.get(i);
 			if (!AlaudaUtils.isPipelineStrategyPipeline(p))
 				continue;
 			// For SerialLatestOnly we should try to cancel all pipelines before
@@ -727,9 +716,9 @@ public abstract class JenkinsUtils {
 
 			boolean buildAdded = false;
 			try {
-				buildAdded = PipelineWatcher.addEventToJenkinsJobRun(p);
+				buildAdded = PipelineController.addEventToJenkinsJobRun(p);
 			} catch (IOException e) {
-				ObjectMeta meta = p.getMetadata();
+				V1ObjectMeta meta = p.getMetadata();
 				LOGGER.log(WARNING, "Failed to add new build " + meta.getNamespace() + "/" + meta.getName(), e);
 			}
 			// If it's a serial build then we only need to schedule the first

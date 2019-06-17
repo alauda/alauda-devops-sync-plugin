@@ -1,12 +1,12 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import hudson.model.TopLevelItem;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.PipelineConfig;
+import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -59,8 +59,8 @@ public class PipelineConfigToJobMap {
     }
 
     @Deprecated
-    public static synchronized WorkflowJob getJobFromPipelineConfig(PipelineConfig pipelineConfig) {
-        ObjectMeta meta = pipelineConfig.getMetadata();
+    public static synchronized WorkflowJob getJobFromPipelineConfig(V1alpha1PipelineConfig pipelineConfig) {
+        V1ObjectMeta meta = pipelineConfig.getMetadata();
         if (meta == null) {
             return null;
         }
@@ -90,8 +90,8 @@ public class PipelineConfigToJobMap {
         return null;
     }
 
-    public static synchronized WorkflowMultiBranchProject getMultiBranchByPC(PipelineConfig pc){
-        ObjectMeta meta = pc.getMetadata();
+    public static synchronized WorkflowMultiBranchProject getMultiBranchByPC(V1alpha1PipelineConfig pc){
+        V1ObjectMeta meta = pc.getMetadata();
         if (meta == null) {
             return null;
         }
@@ -102,22 +102,22 @@ public class PipelineConfigToJobMap {
         return pipelineConfigToJobMap.get(uid);
     }
 
-    public static synchronized TopLevelItem getItemByPC(PipelineConfig pc) {
-        ObjectMeta meta = pc.getMetadata();
+    public static synchronized TopLevelItem getItemByPC(V1alpha1PipelineConfig pc) {
+        V1ObjectMeta meta = pc.getMetadata();
         if (meta == null) {
             return null;
         }
         return getItemById(meta.getUid());
     }
 
-    public static synchronized void putJobWithPipelineConfig(TopLevelItem job, PipelineConfig pipelineConfig) {
+    public static synchronized void putJobWithPipelineConfig(TopLevelItem job, V1alpha1PipelineConfig pipelineConfig) {
         if (pipelineConfig == null) {
             throw new IllegalArgumentException("PipelineConfig cannot be null");
         }
         if (job == null) {
             throw new IllegalArgumentException("Job cannot be null");
         }
-        ObjectMeta meta = pipelineConfig.getMetadata();
+        V1ObjectMeta meta = pipelineConfig.getMetadata();
         if (meta == null) {
             throw new IllegalArgumentException("PipelineConfig must contain valid metadata");
         }
@@ -134,11 +134,11 @@ public class PipelineConfigToJobMap {
         LOGGER.info(String.format("Add job %s, uid %s, total cache number %d", job.getFullName(), uid, pipelineConfigToJobMap.size()));
     }
 
-    public static synchronized void removeJobWithPipelineConfig(PipelineConfig pipelineConfig) {
+    public static synchronized void removeJobWithPipelineConfig(V1alpha1PipelineConfig pipelineConfig) {
         if (pipelineConfig == null) {
             throw new IllegalArgumentException("PipelineConfig cannot be null");
         }
-        ObjectMeta meta = pipelineConfig.getMetadata();
+        V1ObjectMeta meta = pipelineConfig.getMetadata();
         if (meta == null) {
             throw new IllegalArgumentException("PipelineConfig must contain valid metadata");
         }

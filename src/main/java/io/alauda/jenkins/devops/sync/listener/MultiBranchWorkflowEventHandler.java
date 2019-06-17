@@ -3,15 +3,13 @@ package io.alauda.jenkins.devops.sync.listener;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
-import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.PipelineConfig;
-import jenkins.scm.api.SCMHead;
-import jenkins.scm.api.metadata.ContributorMetadataAction;
+import io.kubernetes.client.models.V1ObjectMeta;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONException;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -121,20 +119,16 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.warning("Can't get devops client.");
-            return;
-        }
 
-        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
+        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
         if(pc == null) {
             logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
             return;
         }
 
-        addStaleBranchAnnotation(pc, branchName);
-        updatePipelineConfig(client, namespace, name, pc);
+        V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
+        addStaleBranchAnnotation(newPc, branchName);
+        PipelineConfigController.updatePipelineConfig(pc, newPc);
     }
 
     private void addStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -147,20 +141,12 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.warning("Can't get devops client.");
-            return;
-        }
+        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
-        if(pc == null) {
-            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
-            return;
-        }
+        addStalePRAnnotation(newPc, branchName);
+        PipelineConfigController.updatePipelineConfig(pc, newPc);
 
-        addStalePRAnnotation(pc, branchName);
-        updatePipelineConfig(client, namespace, name, pc);
     }
 
     private void addBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -173,20 +159,12 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.warning("Can't get devops client.");
-            return;
-        }
+        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
-        if(pc == null) {
-            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
-            return;
-        }
+        addBranchAnnotation(newPc, branchName);
+        PipelineConfigController.updatePipelineConfig(pc, newPc);
 
-        addBranchAnnotation(pc, branchName);
-        updatePipelineConfig(client, namespace, name, pc);
     }
 
     private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -199,43 +177,35 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.warning("Can't get devops client.");
-            return;
-        }
 
-        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
-        if(pc == null) {
-            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
-            return;
-        }
+        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        addPRAnnotation(pc, branchName);
-        updatePipelineConfig(client, namespace, name, pc);
+        addPRAnnotation(newPc, branchName);
+        PipelineConfigController.updatePipelineConfig(pc, newPc);
     }
 
-    private void addBranchAnnotation(@NotNull PipelineConfig pc, String name) {
+    private void addBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         addAnnotation(pc, MULTI_BRANCH_BRANCH, name);
     }
 
-    private void addPRAnnotation(@NotNull PipelineConfig pc, String name) {
+    private void addPRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         addAnnotation(pc, MULTI_BRANCH_PR, name);
     }
 
-    private void addStaleBranchAnnotation(@NotNull PipelineConfig pc, String name) {
+    private void addStaleBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         addAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
     }
 
-    private void addStalePRAnnotation(@NotNull PipelineConfig pc, String name) {
+    private void addStalePRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         addAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
     }
 
-    private void addAnnotation(@NotNull PipelineConfig pc, final String annotation, String name) {
-        ObjectMeta meta = pc.getMetadata();
+    private void addAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, String name) {
+        V1ObjectMeta meta = pc.getMetadata();
         Map<String, String> annotations = meta.getAnnotations();
         if(annotations == null) {
-            annotations = new HashMap();
+            annotations = new HashMap<>();
             meta.setAnnotations(annotations);
         }
 
@@ -268,20 +238,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.warning("Can't get devops client.");
-            return;
-        }
+        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
-        if(pc == null) {
-            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
-            return;
-        }
-
-        delPRAnnotation(pc, branchName);
-        updatePipelineConfig(client, namespace, name, pc);
+        delPRAnnotation(newPc, branchName);
+        PipelineConfigController.updatePipelineConfig(pc, newPc);
     }
 
     private void delBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -294,20 +255,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.warning("Can't get devops client.");
-            return;
-        }
+        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
-        if(pc == null) {
-            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
-            return;
-        }
-
-        delBranchAnnotation(pc, branchName);
-        updatePipelineConfig(client, namespace, name, pc);
+        delBranchAnnotation(newPc, branchName);
+        PipelineConfigController.updatePipelineConfig(pc, newPc);
     }
 
     private void delStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -320,20 +272,12 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.warning("Can't get devops client.");
-            return;
-        }
 
-        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
-        if(pc == null) {
-            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
-            return;
-        }
+        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        delStalePRAnnotation(pc, branchName);
-        updatePipelineConfig(client, namespace, name, pc);
+        delStalePRAnnotation(newPc, branchName);
+        PipelineConfigController.updatePipelineConfig(pc, newPc);
     }
 
     private void delStaleBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -346,40 +290,31 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.warning("Can't get devops client.");
-            return;
-        }
+        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        PipelineConfig pc = client.pipelineConfigs().inNamespace(namespace).withName(name).get();
-        if(pc == null) {
-            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
-            return;
-        }
-
-        delStaleBranchAnnotation(pc, branchName);
-        updatePipelineConfig(client, namespace, name, pc);
+        delStaleBranchAnnotation(newPc, branchName);
+        PipelineConfigController.updatePipelineConfig(pc, newPc);
     }
 
-    private void delBranchAnnotation(@NotNull PipelineConfig pc, String name) {
+    private void delBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         delAnnotation(pc, MULTI_BRANCH_BRANCH, name);
     }
 
-    private void delPRAnnotation(@NotNull PipelineConfig pc, String name) {
+    private void delPRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         delAnnotation(pc, MULTI_BRANCH_PR, name);
     }
 
-    private void delStaleBranchAnnotation(@NotNull PipelineConfig pc, String name) {
+    private void delStaleBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         delAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
     }
 
-    private void delStalePRAnnotation(@NotNull PipelineConfig pc, String name) {
+    private void delStalePRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         delAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
     }
 
-    private void delAnnotation(@NotNull PipelineConfig pc, final String annotation, String name) {
-        ObjectMeta meta = pc.getMetadata();
+    private void delAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, String name) {
+        V1ObjectMeta meta = pc.getMetadata();
         Map<String, String> annotations = meta.getAnnotations();
         if(annotations == null) {
             return;
@@ -400,10 +335,4 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         }
     }
 
-    private void updatePipelineConfig(AlaudaDevOpsClient client, String namespace, String name, PipelineConfig pc) {
-        client.pipelineConfigs().inNamespace(namespace)
-                .withName(name).edit().editMetadata()
-                .addToAnnotations(pc.getMetadata().getAnnotations())
-                .endMetadata().done();
-    }
 }

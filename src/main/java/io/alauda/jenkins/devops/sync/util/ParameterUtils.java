@@ -3,8 +3,8 @@ package io.alauda.jenkins.devops.sync.util;
 import hudson.model.BooleanParameterValue;
 import hudson.model.ParameterValue;
 import hudson.model.StringParameterValue;
-import io.alauda.kubernetes.api.model.PipelineParameter;
-import io.alauda.kubernetes.api.model.PipelineParameterBuilder;
+import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
+import io.alauda.devops.java.client.models.V1alpha1PipelineParameterBuilder;
 
 /**
  * Convert between PipelineParameter and ParameterValue
@@ -13,7 +13,7 @@ import io.alauda.kubernetes.api.model.PipelineParameterBuilder;
 public abstract class ParameterUtils {
     private ParameterUtils(){}
 
-    public static PipelineParameter to(ParameterValue parameterValue) {
+    public static V1alpha1PipelineParameter to(ParameterValue parameterValue) {
         if(parameterValue == null) {
             return null;
         }
@@ -30,7 +30,7 @@ public abstract class ParameterUtils {
             return null;
         }
 
-        return new PipelineParameterBuilder()
+        return new V1alpha1PipelineParameterBuilder()
                 .withType(type)
                 .withName(parameterValue.getName())
                 .withDescription(parameterValue.getDescription())

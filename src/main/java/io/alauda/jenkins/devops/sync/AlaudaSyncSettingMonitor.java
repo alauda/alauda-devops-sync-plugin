@@ -3,6 +3,7 @@ package io.alauda.jenkins.devops.sync;
 import hudson.Extension;
 import hudson.model.AdministrativeMonitor;
 import hudson.util.HttpResponses;
+import io.alauda.jenkins.devops.sync.controller.JenkinsController;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.Symbol;
@@ -36,16 +37,12 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
 
     @Override
     public boolean isActivated() {
-        AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
-        if (config == null) {
-            return true;
-        }
+        JenkinsController jenkinsController = JenkinsController.getCurrentJenkinsController();
 
-        message = config.getErrorMsg();
-        syncEnable = config.isEnabled();
-        syncServiceName = config.getJenkinsService();
+        this.syncEnable = AlaudaSyncGlobalConfiguration.get().isEnabled();
+        this.syncServiceName = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
 
-        return !config.isValid();
+        return !jenkinsController.hasSynced();
     }
 
     @RequirePOST

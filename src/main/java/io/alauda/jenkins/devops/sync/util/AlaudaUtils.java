@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,22 +16,18 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import hudson.BulkChange;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.util.XStream2;
-import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
-import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.devops.java.client.models.*;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.controller.PipelineController;
 import io.alauda.jenkins.devops.sync.icons.AlaudaFolderIcon;
-import io.alauda.kubernetes.api.model.*;
-import io.alauda.kubernetes.client.Config;
-import io.alauda.kubernetes.client.Version;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
@@ -40,10 +36,6 @@ import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -55,7 +47,6 @@ public abstract class AlaudaUtils {
     private final static Logger logger = Logger.getLogger(AlaudaUtils.class.getName());
     private static final String PLUGIN_NAME = "alauda-sync";
 
-    private static AlaudaDevOpsClient alaudaClient;
     private static String jenkinsPodNamespace = null;
 
     private AlaudaUtils(){}
@@ -86,73 +77,20 @@ public abstract class AlaudaUtils {
 
     private static final DateTimeFormatter dateFormatter = ISODateTimeFormat.dateTimeNoMillis();
 
-    /**
-     * Initializes an {@link AlaudaDevOpsClient}
-     *
-     * @param serverUrl the optional URL of where the OpenShift cluster API server is
-     *                  running
-     */
-    public synchronized static void initializeAlaudaDevOpsClient(String serverUrl) {
-        AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
-        if (serverUrl != null && !serverUrl.isEmpty()) {
-            configBuilder.withMasterUrl(serverUrl);
-        }
 
-        Config config = configBuilder.build();
-        if (config != null) {
-            if (Jenkins.getInstance().getPluginManager() != null && Jenkins.getInstance().getPluginManager()
-                    .getPlugin(PLUGIN_NAME) != null) {
-                config.setUserAgent(PLUGIN_NAME + "-plugin-"
-                        + Jenkins.getInstance().getPluginManager()
-                        .getPlugin(PLUGIN_NAME).getVersion() + "/alauda-devops-"
-                        + Version.clientVersion());
-            }
-            config.setTrustCerts(true);
-            alaudaClient = new DefaultAlaudaDevOpsClient(config);
-            logger.info("Alauda client is created well.");
-        } else {
-            logger.warning("Config builder could not build a configuration for Alauda Connection");
-        }
-    }
-
-    @Deprecated
-    public synchronized static AlaudaDevOpsClient getAlaudaClient() {
-        return alaudaClient;
-    }
-
-    // Get the current AlaudaDevOpsClient and configure to use the current Oauth
-    // token.
-    public synchronized static AlaudaDevOpsClient getAuthenticatedAlaudaClient() {
-        if (alaudaClient != null) {
-            String token = CredentialsUtils.getCurrentToken();
-            if (token != null && token.length() > 0) {
-                alaudaClient.getConfiguration().setOauthToken(token);
-            }
-        }
-
-        return alaudaClient;
-    }
-
-    public synchronized static void shutdownAlaudaClient() {
-        if (alaudaClient != null) {
-            alaudaClient.close();
-            alaudaClient = null;
-        }
-    }
-
-    public static boolean isPipelineStrategyPipeline(Pipeline pipeline) {
+    public static boolean isPipelineStrategyPipeline(V1alpha1Pipeline pipeline) {
         if (pipeline.getSpec() == null) {
             logger.warning("bad input, null spec: " + pipeline);
             return false;
         }
 
-        PipelineStrategy strategy = pipeline.getSpec().getStrategy();
+        V1alpha1PipelineStrategy strategy = pipeline.getSpec().getStrategy();
         if (strategy == null) {
             logger.warning("bad input, null strategy: " + pipeline);
             return false;
         }
 
-        PipelineStrategyJenkins jenkins = strategy.getJenkins();
+        V1alpha1PipelineStrategyJenkins jenkins = strategy.getJenkins();
 
         return (jenkins != null && (
             StringUtils.isNotEmpty(jenkins.getJenkinsfile()) ||
@@ -162,23 +100,23 @@ public abstract class AlaudaUtils {
     }
 
     /**
-     * Checks if a {@link PipelineConfig} relates to a Jenkins build
+     * Checks if a {@link V1alpha1PipelineConfig} relates to a Jenkins build
      *
      * @param pc
      *            the PipelineConfig
      * @return true if this is an Alauda DevOps PipelineConfig which should be mirrored
      *         to a Jenkins Job
      */
-    public static boolean isPipelineStrategyPipelineConfig(PipelineConfig pc) {
+    public static boolean isPipelineStrategyPipelineConfig(V1alpha1PipelineConfig pc) {
         if(pc == null) {
             return false;
         }
-        PipelineStrategy strategy = pc.getSpec().getStrategy();
+        V1alpha1PipelineStrategy strategy = pc.getSpec().getStrategy();
         if(strategy == null) {
             return false;
         }
 
-        PipelineStrategyJenkins jenkins = strategy.getJenkins();
+        V1alpha1PipelineStrategyJenkins jenkins = strategy.getJenkins();
         if(jenkins == null) {
             return false;
         }
@@ -191,12 +129,12 @@ public abstract class AlaudaUtils {
 
 
     /**
-     * Finds the Jenkins job name for the given {@link PipelineConfig}.
+     * Finds the Jenkins job name for the given {@link V1alpha1PipelineConfig}.
      *
      * @param pc the PipelineConfig
      * @return the jenkins job name for the given BuildConfig
      */
-    public static String jenkinsJobName(PipelineConfig pc) {
+    public static String jenkinsJobName(V1alpha1PipelineConfig pc) {
         String namespace = pc.getMetadata().getNamespace();
         String name = pc.getMetadata().getName();
         return jenkinsJobName(namespace, name);
@@ -208,7 +146,7 @@ public abstract class AlaudaUtils {
      * @param namespace
      *            the namespace of the build
      * @param pipelineConfigName
-     *            the name of the {@link PipelineConfig} in in the namespace
+     *            the name of the {@link V1alpha1PipelineConfig} in in the namespace
      * @return the jenkins job name for the given namespace and name
      */
     public static String jenkinsJobName(String namespace, String pipelineConfigName) {
@@ -217,18 +155,20 @@ public abstract class AlaudaUtils {
 
     /**
      * Finds the full jenkins job path including folders for the given
-     * {@link PipelineConfig}.
+     * {@link V1alpha1PipelineConfig}.
      *
      * @param pc
      *            the PipelineConfig
      * @return the jenkins job name for the given PipelineConfig
      */
-    public static String jenkinsJobFullName(PipelineConfig pc) {
-        String jobName = getAnnotation(pc, Annotations.JENKINS_JOB_PATH);
+    public static String jenkinsJobFullName(V1alpha1PipelineConfig pc) {
+        String jobName = pc.getMetadata().getAnnotations().get(Annotations.JENKINS_JOB_PATH);
+
         if (StringUtils.isNotBlank(jobName)) {
             return jobName;
         }
-        return getNamespace(pc) + "/" + getName(pc);
+
+        return pc.getMetadata().getNamespace() + "/" + pc.getMetadata().getName();
     }
 
     /**
@@ -282,12 +222,12 @@ public abstract class AlaudaUtils {
     }
 
     /**
-     * Finds the Jenkins job display name for the given {@link PipelineConfig}.
+     * Finds the Jenkins job display name for the given {@link V1alpha1PipelineConfig}.
      *
      * @param pc the PipelineConfig
      * @return the jenkins job display name for the given PipelineConfig
      */
-    public static String jenkinsJobDisplayName(PipelineConfig pc) {
+    public static String jenkinsJobDisplayName(V1alpha1PipelineConfig pc) {
         String namespace = pc.getMetadata().getNamespace();
         String name = pc.getMetadata().getName();
         return jenkinsJobDisplayName(namespace, name);
@@ -299,171 +239,13 @@ public abstract class AlaudaUtils {
      * @param namespace
      *            the namespace of the build
      * @param pipelineConfigName
-     *            the name of the {@link PipelineConfig} in in the namespace
+     *            the name of the {@link V1alpha1PipelineConfig} in in the namespace
      * @return the jenkins job display name for the given namespace and name
      */
     public static String jenkinsJobDisplayName(String namespace, String pipelineConfigName) {
         return namespace + "/" + pipelineConfigName;
     }
 
-    /**
-     * Gets the current namespace running Jenkins inside or returns a reasonable
-     * default
-     *
-     * @param configuredJenkinsService
-     *            the optional configured jenkins service
-     * @param client
-     *            the AlaudaDevOps client
-     * @return the default namespace using either the configuration value, the
-     *         default namespace on the client or "default"
-     */
-    public static String[] getNamespaceOrUseDefault(
-            String configuredJenkinsService, AlaudaDevOpsClient client) {
-        List<String> namespaces = new ArrayList<>();
-        if (configuredJenkinsService == null || configuredJenkinsService.isEmpty()) {
-          logger.fine("No jenkins service configured... will look using jenkins host...");
-          // fetch jenkins host address
-          String jenkinsHost = getJenkinsURL(client, null);
-          // if we have a configured address we can look
-          // for AlaudaDevops Jenkins instances to make a comparisson
-          if (jenkinsHost != null && !jenkinsHost.isEmpty()) {
-            // fetch Jenkins services
-            // compare addresses
-            JenkinsList jenkinsList = client.jenkins().list();
-            if (jenkinsList.getItems() != null && jenkinsList.getItems().size() > 0) {
-              for (io.alauda.kubernetes.api.model.Jenkins jen : jenkinsList.getItems()) {
-                if (jenkinsHost.equals(jen.getSpec().getHttp().getHost())) {
-                  configuredJenkinsService = jen.getMetadata().getName();
-                  logger.fine("Found correct jenkins service: "+ jen.getMetadata().getName());
-                  break;
-                }
-              }
-            }
-          } else {
-            logger.warning("Could not get a jenkins host address for search... Please setup the Jenkins host"+
-            " address or adjust settings to the given Jenkins Service in Alauda DevOps");
-          }
-        }
-
-        if (configuredJenkinsService != null && !configuredJenkinsService.isEmpty()) {
-          logger.fine("Looking for bindings for the jenkins instance "+configuredJenkinsService+"...");
-          // look for all the jenkinsbindings
-          // comparing the name and fetch bound namespaces
-          JenkinsBindingList jenkinsBindingList = client.jenkinsBindings().inAnyNamespace().list();
-          if (jenkinsBindingList != null && jenkinsBindingList.getItems() != null && jenkinsBindingList.getItems().size() > 0) {
-            for (JenkinsBinding binding : jenkinsBindingList.getItems()) {
-              if (configuredJenkinsService.equals(binding.getSpec().getJenkins().getName())) {
-                // found the jenkins binding
-                String namespace = binding.getMetadata().getNamespace();
-                if (!namespaces.contains(namespace)) {
-                  namespaces.add(namespace);
-                }
-              }
-            }
-          }
-        } else {
-          logger.warning("Jenkins service name was not set. Please set the name of the service in the Jenkins configuration."+
-          " It must be the same as in the Alauda DevOps.");
-        }
-
-      return namespaces.toArray(new String[]{});
-    }
-
-
-    /**
-     * Returns the public URL of the given service
-     *
-     * @param alaudaClient
-     *            the AlaudaDevOpsClient to use
-     * @param defaultProtocolText
-     *            the protocol text part of a URL such as <code>http://</code>
-     * @param namespace
-     *            the Kubernetes namespace
-     * @param serviceName
-     *            the service name
-     * @return the external URL of the service
-     */
-    public static String getExternalServiceUrl(AlaudaDevOpsClient alaudaClient,
-            String defaultProtocolText, String namespace, String serviceName) {
-//        if (namespace != null && serviceName != null) {
-//            try {
-//                RouteList routes = alaudaClient.routes()
-//                        .inNamespace(namespace).list();
-//                for (Route route : routes.getItems()) {
-//                    RouteSpec spec = route.getSpec();
-//                    if (spec != null
-//                            && spec.getTo() != null
-//                            && "Service".equalsIgnoreCase(spec.getTo()
-//                                    .getKind())
-//                            && serviceName.equalsIgnoreCase(spec.getTo()
-//                                    .getName())) {
-//                        String host = spec.getHost();
-//                        if (host != null && host.length() > 0) {
-//                            if (spec.getTls() != null) {
-//                                return "https://" + host;
-//                            }
-//                            return "http://" + host;
-//                        }
-//                    }
-//                }
-//            } catch (Exception e) {
-//                logger.log(Level.WARNING, "Could not find Route for service "
-//                        + namespace + "/" + serviceName + ". " + e, e);
-//            }
-//            // lets try the portalIP instead
-//            try {
-//                Service service = alaudaClient.services()
-//                        .inNamespace(namespace).withName(serviceName).get();
-//                if (service != null) {
-//                    ServiceSpec spec = service.getSpec();
-//                    if (spec != null) {
-//                        String host = spec.getClusterIP();
-//                        if (host != null && host.length() > 0) {
-//                            return defaultProtocolText + host;
-//                        }
-//                    }
-//                }
-//            } catch (Exception e) {
-//                logger.log(Level.WARNING, "Could not find Route for service "
-//                        + namespace + "/" + serviceName + ". " + e, e);
-//            }
-//        }
-
-        // lets default to the service DNS name
-        return defaultProtocolText + serviceName;
-    }
-
-    /**
-     * Calculates the external URL to access Jenkins
-     *
-     * @param namespace
-     *            the namespace Jenkins is runing inside
-     * @param alaudaDevOpsClient
-     *            the AlaudaDevops client
-     * @return the external URL to access Jenkins
-     */
-    public static String getJenkinsURL(AlaudaDevOpsClient alaudaDevOpsClient,
-            String namespace) {
-        // if the user has explicitly configured the jenkins root URL, use it
-        String rootUrl = null;
-        // TODO: ??
-//        try {
-//          rootUrl = Jenkins.getInstance().getRootUrl();
-//        } catch (Exception exc) {
-//          logger.severe("Exception when getting jenkins Root URL: "+exc);
-//        }
-//        if (StringUtils.isNotEmpty(rootUrl)) {
-//            return rootUrl;
-//        }
-        return rootUrl;
-
-        // otherwise, we'll see if we are running in a pod and can infer it from
-        // the service/route
-        // TODO we will eventually make the service name configurable, with the
-        // default of "jenkins"
-//        return getExternalServiceUrl(alaudaDevOpsClient, "http://", namespace,
-//                "jenkins");
-    }
 
     public static String getNamespacefromPodInputs() {
         return jenkinsPodNamespace;
@@ -477,80 +259,70 @@ public abstract class AlaudaUtils {
      * @param gitUrl         the URL to the git repo
      * @param ref            the git ref (commit/branch/etc) for the build
      */
-    public static void updateGitSourceUrl(PipelineConfig pipelineConfig, String gitUrl, String ref) {
-        PipelineSource source = getOrCreatePipelineSource(pipelineConfig);
-        PipelineSourceGit git = source.getGit();
+    public static void updateGitSourceUrl(V1alpha1PipelineConfig pipelineConfig, String gitUrl, String ref) {
+        V1alpha1PipelineSource source = getOrCreatePipelineSource(pipelineConfig);
+        V1alpha1PipelineSourceGit git = source.getGit();
         if (git == null) {
-            git = new PipelineSourceGit();
+            git = new V1alpha1PipelineSourceGit();
             source.setGit(git);
         }
         git.setUri(gitUrl);
         git.setRef(ref);
     }
 
-    public static void updateSvnSourceUrl(PipelineConfig pipelineConfig, String svnUrl) {
-        PipelineSource source = getOrCreatePipelineSource(pipelineConfig);
-        PipelineSourceSvn svn = source.getSvn();
+    public static void updateSvnSourceUrl(V1alpha1PipelineConfig pipelineConfig, String svnUrl) {
+        V1alpha1PipelineSource source = getOrCreatePipelineSource(pipelineConfig);
+        V1alpha1PipelineSourceSvn svn = source.getSvn();
         if (svn == null) {
-            svn = new PipelineSourceSvn();
+            svn = new V1alpha1PipelineSourceSvn();
             source.setSvn(svn);
         }
         svn.setUri(svnUrl);
     }
 
-    public static PipelineSource getOrCreatePipelineSource(PipelineConfig pipelineConfig) {
-        PipelineConfigSpec spec = pipelineConfig.getSpec();
+    public static V1alpha1PipelineSource getOrCreatePipelineSource(V1alpha1PipelineConfig pipelineConfig) {
+        V1alpha1PipelineConfigSpec spec = pipelineConfig.getSpec();
         if (spec == null) {
-            spec = new PipelineConfigSpec();
+            spec = new V1alpha1PipelineConfigSpec();
             pipelineConfig.setSpec(spec);
         }
-        PipelineSource source = spec.getSource();
+        V1alpha1PipelineSource source = spec.getSource();
         if (source == null) {
-            source = new PipelineSource();
+            source = new V1alpha1PipelineSource();
             spec.setSource(source);
         }
         return source;
     }
 
-    public static boolean isValidSource(PipelineSource source) {
+    public static boolean isValidSource(V1alpha1PipelineSource source) {
         return isValidGitSource(source) || isValidSvnSource(source);
     }
 
-    public static boolean isValidGitSource(PipelineSource source) {
+    public static boolean isValidGitSource(V1alpha1PipelineSource source) {
         return source != null && source.getGit() != null && source.getGit().getUri() != null;
     }
 
-    public static boolean isValidSvnSource(PipelineSource source) {
+    public static boolean isValidSvnSource(V1alpha1PipelineSource source) {
         return source != null && source.getSvn() != null && source.getSvn().getUri() != null;
     }
 
-    public static void updatePipelinePhase(Pipeline pipeline, String phase) {
+    public static void updatePipelinePhase(V1alpha1Pipeline pipeline, String phase) {
         logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}", new Object[]{phase, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()});
-        AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.severe("Can't found alauda client.");
-            return;
-        }
 
         String namespace = pipeline.getMetadata().getNamespace();
         String name = pipeline.getMetadata().getName();
-        Pipeline pipe = client.pipelines().inNamespace(namespace).withName(name).get();
-        if (pipe == null) {
-            logger.warning(() -> "Can't find Pipeline by namespace: " + namespace + ", name: " + name);
-            return;
-        }
 
-        PipelineStatus stats = pipe.getStatus();
+        V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
+
+        V1alpha1PipelineStatus stats = newPipeline.getStatus();
         if (stats == null) {
-            stats = new PipelineStatusBuilder().build();
+            stats = new V1alpha1PipelineStatusBuilder().build();
         }
         stats.setPhase(phase);
-        pipe.setStatus(stats);
+        newPipeline.setStatus(stats);
 
-        client.pipelines()
-                .inNamespace(namespace)
-                .withName(name)
-                .patch(pipe);
+        PipelineController.updatePipeline(newPipeline, pipeline);
+        pipeline.setStatus(stats);
     }
 
     /**
@@ -581,18 +353,6 @@ public abstract class AlaudaUtils {
         return new NamespaceName(namespace, jobName);
     }
 
-    public static long parseResourceVersion(HasMetadata obj) {
-        return parseResourceVersion(obj.getMetadata().getResourceVersion());
-    }
-
-    public static long parseResourceVersion(String resourceVersion) {
-        try {
-            return Long.parseLong(resourceVersion);
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
-
     public static String formatTimestamp(long timestamp) {
         return dateFormatter.print(new DateTime(timestamp));
     }
@@ -605,18 +365,18 @@ public abstract class AlaudaUtils {
         return dateFormatter.parseMillis(timestamp);
     }
 
-    public static boolean isCancellable(PipelineStatus pipelineStatus) {
+    public static boolean isCancellable(V1alpha1PipelineStatus pipelineStatus) {
         String phase = pipelineStatus.getPhase();
         return phase.equals(QUEUED) || phase.equals(PENDING)
                 || phase.equals(RUNNING);
     }
 
-    public static boolean isNew(PipelineStatus pipelineStatus) {
+    public static boolean isNew(V1alpha1PipelineStatus pipelineStatus) {
         return pipelineStatus.getPhase().equals(PENDING);
     }
 
-    public static boolean isCancelled(PipelineStatus status) {
-      return status != null && status.getAborted();
+    public static boolean isCancelled(V1alpha1PipelineStatus status) {
+      return status != null && status.isAborted();
     }
 
     /**
@@ -646,123 +406,13 @@ public abstract class AlaudaUtils {
         return builder.toString();
     }
 
-    public static String getAnnotation(HasMetadata resource, String name) {
-        ObjectMeta metadata = resource.getMetadata();
-        if (metadata != null) {
-            Map<String, String> annotations = metadata.getAnnotations();
-            if (annotations != null) {
-                return annotations.get(name);
-            }
-        }
-        return null;
-    }
 
-    public static void addAnnotation(HasMetadata resource, String name,
-            String value) {
-        ObjectMeta metadata = resource.getMetadata();
-        if (metadata == null) {
-            metadata = new ObjectMeta();
-            resource.setMetadata(metadata);
-        }
-        Map<String, String> annotations = metadata.getAnnotations();
-        if (annotations == null) {
-            annotations = new HashMap<>();
-            metadata.setAnnotations(annotations);
-        }
-        annotations.put(name, value);
-    }
-
-    public static String getNamespace(HasMetadata resource) {
-        ObjectMeta metadata = resource.getMetadata();
-        if (metadata != null) {
-            return metadata.getNamespace();
-        }
-        return null;
-    }
-
-    public static String getName(HasMetadata resource) {
-        ObjectMeta metadata = resource.getMetadata();
-        if (metadata != null) {
-            return metadata.getName();
-        }
-        return null;
-    }
-
-    public static boolean isBindingToCurrentJenkins(JenkinsBinding jenkinsBinding) {
+    public static boolean isBindingToCurrentJenkins(V1alpha1JenkinsBinding jenkinsBinding) {
         AlaudaSyncGlobalConfiguration pluginConfig = AlaudaSyncGlobalConfiguration.get();
 
         String jenkinsName = jenkinsBinding.getSpec().getJenkins().getName();
         String jenkinsService = pluginConfig.getJenkinsService();
 
         return (jenkinsName.equals(jenkinsService));
-    }
-
-    public static boolean isBindingToCurrentJenkins(String namespace) {
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.severe("Can't found alauda client.");
-            return false;
-        }
-
-        String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
-
-        JenkinsBindingList jenkinsBindings = client.jenkinsBindings().inNamespace(namespace).list();
-        if(jenkinsBindings != null) {
-            for(JenkinsBinding binding : jenkinsBindings.getItems()) {
-                if(binding.getSpec().getJenkins().getName().equals(jenkinsService)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    abstract class StatelessReplicationControllerMixIn extends
-            ReplicationController {
-        @JsonIgnore
-        private ReplicationControllerStatus status;
-
-        StatelessReplicationControllerMixIn() {
-        }
-
-        @JsonIgnore
-        public abstract ReplicationControllerStatus getStatus();
-    }
-
-    abstract class ObjectMetaMixIn extends ObjectMeta {
-        @JsonIgnore
-        private String creationTimestamp;
-        @JsonIgnore
-        private String deletionTimestamp;
-        @JsonIgnore
-        private Long generation;
-        @JsonIgnore
-        private String resourceVersion;
-        @JsonIgnore
-        private String selfLink;
-        @JsonIgnore
-        private String uid;
-
-        ObjectMetaMixIn() {
-        }
-
-        @JsonIgnore
-        public abstract String getCreationTimestamp();
-
-        @JsonIgnore
-        public abstract String getDeletionTimestamp();
-
-        @JsonIgnore
-        public abstract Long getGeneration();
-
-        @JsonIgnore
-        public abstract String getResourceVersion();
-
-        @JsonIgnore
-        public abstract String getSelfLink();
-
-        @JsonIgnore
-        public abstract String getUid();
     }
 }
