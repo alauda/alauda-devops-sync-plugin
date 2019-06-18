@@ -237,8 +237,6 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
         arr.forEach(jsonElement -> body.add(jsonElement.getAsJsonObject()));
 
-        logger.log(Level.SEVERE, arr.toString());
-
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
         try {
             api.patchNamespacedPipeline(

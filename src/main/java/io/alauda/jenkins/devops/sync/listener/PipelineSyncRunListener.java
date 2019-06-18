@@ -542,7 +542,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         logger.log(INFO, "Patching pipeline {0}/{1}: setting phase to {2}", new Object[]{cause.getNamespace(), cause.getName(), phase});
         V1alpha1Pipeline pipeline = PipelineController.getCurrentPipelineController().getPipeline(cause.getNamespace(), cause.getName());
-        logger.log(SEVERE, "AAAAAAAAAAAAAAAAAAAAAAAA");
         if (pipeline == null) {
             cause.setSynced(false);
             logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
@@ -570,7 +569,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         badgeHandle(run, annotations);
 
-        logger.log(SEVERE, "BBBBBBBBBBBBBBBBBBBBB");
         try {
             // status
             V1alpha1PipelineStatus status = createPipelineStatus(newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
@@ -579,7 +577,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        logger.log(SEVERE, "CCCCCCCCCCCCCCCCCCCCC");
         try {
             PipelineController.updatePipeline(pipeline, newPipeline);
             logger.fine(String.format("updated pipeline: '%s/%s", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
