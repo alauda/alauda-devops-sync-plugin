@@ -7,6 +7,7 @@ import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfigStatus;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfigStatusBuilder;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import org.joda.time.DateTime;
@@ -50,9 +51,8 @@ public interface PipelineConfigConvert<T extends TopLevelItem> extends Extension
             statusBuilder.withPhase(PipelineConfigPhase.READY);
         }
 
-        V1alpha1PipelineConfig oldPipelineConfig = PipelineConfigController
-                .getCurrentPipelineConfigController().getPipelineConfig(pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName());
-
+        statusBuilder.withLastUpdated(DateTime.now());
+        V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
         pipelineConfig.status(statusBuilder.build());
 
         PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);

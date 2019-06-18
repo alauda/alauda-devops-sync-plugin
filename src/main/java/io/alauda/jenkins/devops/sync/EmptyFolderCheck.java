@@ -40,8 +40,8 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
             }
 
             JenkinsBindingController controller = JenkinsBindingController.getCurrentJenkinsBindingController();
-            if (!controller.hasSynced()) {
-                logger.log(Level.INFO, "JenkinsBidingController is not synced, will skip this empty folder check");
+            if (!controller.isValid()) {
+                logger.log(Level.INFO, "JenkinsBidingController is not synced or is not valid, will skip this empty folder check");
                 return;
             }
             List<String> allNamespaces = controller.getBindingNamespaces();

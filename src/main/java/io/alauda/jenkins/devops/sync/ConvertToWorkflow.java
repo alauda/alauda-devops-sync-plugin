@@ -8,6 +8,7 @@ import hudson.model.ParameterDefinition;
 import hudson.util.XStream2;
 import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.constants.PipelineRunPolicy;
 import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
@@ -25,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND;
@@ -175,10 +177,9 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         }
 
         V1ObjectMeta metadata = pipelineConfig.getMetadata();
-        String namespace = metadata.getNamespace();
         String name = metadata.getName();
 
-        V1alpha1PipelineConfig oldPipelineConfig = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
         pipelineConfig.getSpec().getStrategy().getJenkins().jenkinsfile(formattedJenkinsfile);
         PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
 

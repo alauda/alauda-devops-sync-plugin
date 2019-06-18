@@ -14,6 +14,7 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.apache.commons.lang.StringUtils.isBlank;
@@ -77,6 +78,10 @@ public class PipelineConfigToJobMap {
         TopLevelItem item = pipelineConfigToJobMap.get(uid);
         if(item instanceof WorkflowJob) {
             return (WorkflowJob) item;
+        }
+
+        if (item == null) {
+            LOGGER.log(Level.WARNING, String.format("Unable to find job by uid %s in pipelineconfig Map", uid));
         }
 
         return null;

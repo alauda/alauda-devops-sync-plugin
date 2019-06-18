@@ -40,8 +40,8 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
         final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
         try {
             PipelineConfigController pipelineConfigController = PipelineConfigController.getCurrentPipelineConfigController();
-            if (!pipelineConfigController.hasSynced()) {
-                LOGGER.log(Level.INFO, "PipelineConfigController has not synced, will skip this Orphan Job check");
+            if (!pipelineConfigController.isValid()) {
+                LOGGER.log(Level.INFO, "PipelineConfigController has not synced or is not valid, will skip this Orphan Job check");
                 return;
             }
 

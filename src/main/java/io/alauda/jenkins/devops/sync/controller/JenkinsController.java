@@ -1,7 +1,7 @@
 package io.alauda.jenkins.devops.sync.controller;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import hudson.Extension;
@@ -28,7 +28,8 @@ import org.parboiled.common.StringUtils;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -150,14 +151,15 @@ public class JenkinsController implements Controller<V1alpha1Jenkins, V1alpha1Je
                     name, e.getMessage()), e);
             return;
         }
-        ArrayList<JsonObject> arr = new ArrayList<>();
-        arr.add(new Gson().fromJson(patch, JsonElement.class).getAsJsonObject());
+        List<JsonObject> body = new LinkedList<>();
+        JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
+        arr.forEach(jsonElement -> body.add(jsonElement.getAsJsonObject()));
 
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
         try {
             api.patchJenkins(
                     name,
-                    arr,
+                    body,
                     null,
                     null);
         } catch (ApiException e) {

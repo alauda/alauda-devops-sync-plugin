@@ -1,11 +1,12 @@
 package io.alauda.jenkins.devops.sync.controller;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import hudson.Extension;
 import hudson.ExtensionList;
+import hudson.model.Item;
 import hudson.model.TopLevelItem;
 import hudson.security.ACL;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
@@ -33,13 +34,12 @@ import io.kubernetes.client.informer.cache.Lister;
 import io.kubernetes.client.models.V1Status;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -121,9 +121,9 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
                         String.format("PipelineConfigController receives event: Add; PipelineConfig '%s/%s'",
                                 pipelineConfigNamespace, pipelineConfigName));
 
-                if (!namespaces.contains(pipelineConfig.getSpec().getJenkinsBinding().getName())) {
-                    logger.log(Level.FINE,
-                            String.format("PipelineConfig '%s/%s' not exists in namespace has correct jenkinsbinding, will skip it", pipelineConfigNamespace, pipelineConfigName));
+                if (!namespaces.contains(pipelineConfig.getMetadata().getNamespace())) {
+                    logger.log(Level.WARNING,
+                            String.format("PipelineConfig '%s/%s' not exists in namespace that has correct jenkinsbinding, will skip it", pipelineConfigNamespace, pipelineConfigName));
                     return;
                 }
 
@@ -147,7 +147,7 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
                         String.format("PipelineConfigController receives event: Update; PipelineConfig '%s/%s'",
                                 pipelineConfigNamespace, pipelineConfigName));
 
-                if (!namespaces.contains(newPipelineConfig.getSpec().getJenkinsBinding().getName())) {
+                if (!namespaces.contains(newPipelineConfig.getMetadata().getNamespace())) {
                     logger.log(Level.FINE,
                             String.format("PipelineConfig '%s/%s' not exists in namespace has correct jenkinsbinding, will skip it", pipelineConfigNamespace, pipelineConfigName));
                     return;
@@ -221,6 +221,7 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
         }
         Wait.waitUntil(this, PipelineConfigController::isValid, 500, timeout, TimeUnit.MILLISECONDS);
     }
+
     /**
      * Get current running PipelineConfigController
      *
@@ -248,6 +249,22 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
         String pipelineConfigPhase = null;
         if (pipelineConfigStatus == null || !PipelineConfigPhase.SYNCING.equals(
                 (pipelineConfigPhase = pipelineConfig.getStatus().getPhase()))) {
+
+            ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, Exception>() {
+                @Override
+                public Void call() throws Exception {
+                    String jobFullname = AlaudaUtils.jenkinsJobFullName(pipelineConfig);
+                    Item item = Jenkins.getInstance().getItemByFullName(jobFullname);
+
+                    if (item instanceof WorkflowJob || item instanceof WorkflowMultiBranchProject) {
+                        PipelineConfigToJobMap.putJobWithPipelineConfig(((TopLevelItem) item), pipelineConfig);
+                    } else {
+                        logger.log(Level.WARNING, String.format("Unable to find mapped job in Jenkins for PipelineConfig '%s/%s'",  pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName()));
+                    }
+                    return null;
+                }
+            });
+
             logger.log(Level.FINE, String.format("Do nothing, PipelineConfig [%s], phase [%s].",
                     pipelineConfig.getMetadata().getName(), pipelineConfigPhase));
             return;
@@ -340,15 +357,19 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
                     namespace, name, e.getMessage()), e);
             return;
         }
-        ArrayList<JsonObject> arr = new ArrayList<>();
-        arr.add(new Gson().fromJson(patch, JsonElement.class).getAsJsonObject());
+
+        List<JsonObject> body = new LinkedList<>();
+        JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
+        arr.forEach(jsonElement -> body.add(jsonElement.getAsJsonObject()));
+
+        logger.log(Level.SEVERE, arr.toString());
 
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
         try {
             api.patchNamespacedPipelineConfig(
                     name,
                     namespace,
-                    arr,
+                    body,
                     null,
                     null);
         } catch (ApiException e) {

@@ -60,7 +60,7 @@ public class PipelineUtils {
         V1ObjectMeta configMetadata = config.getMetadata();
         String namespace = configMetadata.getNamespace();
 
-        List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController().listPipelineConfigs(namespace)
+        List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController().listPipelines(namespace)
                 .stream().filter(p -> configMetadata.getName().equals(p.getMetadata().getLabels().get(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG)))
                 .collect(Collectors.toList());
 

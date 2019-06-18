@@ -368,7 +368,7 @@ public abstract class JenkinsUtils {
         }
 
         if(pcProp == null) {
-            LOGGER.warning(() -> "aborting trigger of pipeline " + pipeline
+            LOGGER.warning(() -> "aborting trigger of pipeline " + pipeline.getMetadata().getNamespace() + "/"+ pipeline.getMetadata().getName()
                     + "because of missing pc project property");
             return false;
         }
@@ -677,7 +677,7 @@ public abstract class JenkinsUtils {
         }
 
         List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController()
-                .listPipelineConfigs(pcp.getNamespace())
+                .listPipelines(pcp.getNamespace())
                 .stream()
                 .filter(pipe -> {
                     Map<String, String> labels = pipe.getMetadata().getLabels();

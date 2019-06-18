@@ -256,6 +256,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             throw new IllegalStateException("Cannot poll a non-workflow run");
         }
 
+        logger.log(FINE, String.format("Polling run %s", run.getFullDisplayName()));
         RunExt wfRunExt = RunExt.create((WorkflowRun) run);
 
         // try blue run

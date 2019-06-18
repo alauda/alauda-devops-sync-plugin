@@ -168,7 +168,7 @@ public abstract class AlaudaUtils {
             return jobName;
         }
 
-        return pc.getMetadata().getNamespace() + "/" + pc.getMetadata().getName();
+        return pc.getMetadata().getNamespace() + "/" + jenkinsJobName(pc);
     }
 
     /**

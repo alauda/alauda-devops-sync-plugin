@@ -1,7 +1,7 @@
 package io.alauda.jenkins.devops.sync.controller;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import hudson.Extension;
@@ -33,8 +33,8 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -59,7 +59,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         pipelineInformer = sharedInformerFactory.sharedIndexInformerFor(
                 callGeneratorParams -> {
                     try {
-                        return api.listPipelineConfigForAllNamespacesCall(
+                        return api.listPipelineForAllNamespacesCall(
                                 null,
                                 null,
                                 null,
@@ -233,15 +233,16 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
                     namespace, name, e.getMessage()), e);
             return;
         }
-        ArrayList<JsonObject> arr = new ArrayList<>();
-        arr.add(new Gson().fromJson(patch, JsonElement.class).getAsJsonObject());
+        List<JsonObject> body = new LinkedList<>();
+        JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
+        arr.forEach(jsonElement -> body.add(jsonElement.getAsJsonObject()));
 
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
         try {
             api.patchNamespacedPipeline(
                     name,
                     namespace,
-                    arr,
+                    body,
                     null,
                     null);
         } catch (ApiException e) {
@@ -364,12 +365,12 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         }
     }
 
-    public V1alpha1Pipeline getPipelineConfig(String namespace, String name) {
+    public V1alpha1Pipeline getPipeline(String namespace, String name) {
         Lister<V1alpha1Pipeline> lister = new Lister<>(pipelineInformer.getIndexer());
         return lister.namespace(namespace).get(name);
     }
 
-    public List<V1alpha1Pipeline> listPipelineConfigs(String namespace) {
+    public List<V1alpha1Pipeline> listPipelines(String namespace) {
         Lister<V1alpha1Pipeline> lister = new Lister<>(pipelineInformer.getIndexer());
         return lister.namespace(namespace).list();
     }
@@ -383,15 +384,10 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         ExtensionList<PipelineController> pipelineControllers = ExtensionList.lookup(PipelineController.class);
 
         if (pipelineControllers.size() > 1) {
-            logger.log(Level.WARNING, "There are more than two PipelineConfigController exist, maybe a potential bug");
+            logger.log(Level.WARNING, "There are more than two PipelineController exist, maybe a potential bug");
         }
 
         return pipelineControllers.get(0);
-    }
-
-    public V1alpha1Pipeline getPipeline(String namespace, String name) {
-        Lister<V1alpha1Pipeline> lister = new Lister<>(pipelineInformer.getIndexer());
-        return lister.namespace(namespace).get(name);
     }
 
     public static V1alpha1Pipeline createPipeline(String namespace, V1alpha1Pipeline pipe) throws ApiException {
@@ -401,6 +397,6 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
 
     public static V1Status deletePipeline(String namespace, String name) throws ApiException {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-        return api.deleteNamespacedPipelineConfig(name, namespace, null, null, null, null, null, null);
+        return api.deleteNamespacedPipeline(name, namespace, null, null, null, null, null, null);
     }
 }
