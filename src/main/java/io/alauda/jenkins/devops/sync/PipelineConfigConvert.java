@@ -35,11 +35,13 @@ public interface PipelineConfigConvert<T extends TopLevelItem> extends Extension
     }
 
     default void updatePipelineConfigPhase(@NotNull final V1alpha1PipelineConfig pipelineConfig) {
-        V1alpha1PipelineConfigStatusBuilder statusBuilder = new V1alpha1PipelineConfigStatusBuilder();
 
         V1alpha1PipelineConfigStatus status = pipelineConfig.getStatus();
         List<V1alpha1Condition> conditions = status.getConditions();
+
         if (conditions.size() > 0) {
+            V1alpha1PipelineConfigStatusBuilder statusBuilder = new V1alpha1PipelineConfigStatusBuilder();
+
             conditions.forEach(condition -> {
                 condition.setLastAttempt(new DateTime());
                 statusBuilder.addNewConditionLike(condition).endCondition();
@@ -47,14 +49,17 @@ public interface PipelineConfigConvert<T extends TopLevelItem> extends Extension
 
             statusBuilder.withMessage("Exists errors in process of creating pipeline job.");
             statusBuilder.withPhase(PipelineConfigPhase.ERROR);
+            V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
+
+            statusBuilder.withLastUpdated(DateTime.now());
+            pipelineConfig.status(statusBuilder.build());
+
+            PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
         } else {
-            statusBuilder.withPhase(PipelineConfigPhase.READY);
+            V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
+            pipelineConfig.getStatus().setPhase(PipelineConfigPhase.READY);
+
+            PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
         }
-
-        statusBuilder.withLastUpdated(DateTime.now());
-        V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
-        pipelineConfig.status(statusBuilder.build());
-
-        PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
     }
 }
