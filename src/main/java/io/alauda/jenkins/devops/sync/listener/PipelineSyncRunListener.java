@@ -57,6 +57,8 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputAction;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputStepExecution;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDateTime;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import javax.annotation.Nonnull;
@@ -527,19 +529,20 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         String phase = runToPipelinePhase(run);
         long started = getStartTime(run);
-        String startTime = null;
-        String completionTime = null;
-        String updatedTime = AlaudaUtils.getCurrentTimestamp();
+        DateTime startTime = null;
+        DateTime completionTime = null;
+        DateTime updatedTime = DateTime.now();
         if (started > 0) {
-            startTime = formatTimestamp(started);
+            startTime = new DateTime(started, DateTimeZone.getDefault());
             long duration = getDuration(run);
             if (duration > 0) {
-                completionTime = formatTimestamp(started + duration);
+                completionTime = new DateTime(started + duration, DateTimeZone.getDefault());
             }
         }
 
         logger.log(INFO, "Patching pipeline {0}/{1}: setting phase to {2}", new Object[]{cause.getNamespace(), cause.getName(), phase});
         V1alpha1Pipeline pipeline = PipelineController.getCurrentPipelineController().getPipeline(cause.getNamespace(), cause.getName());
+        logger.log(SEVERE, "AAAAAAAAAAAAAAAAAAAAAAAA");
         if (pipeline == null) {
             cause.setSynced(false);
             logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
@@ -567,13 +570,19 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         badgeHandle(run, annotations);
 
-        // status
-        V1alpha1PipelineStatus status = createPipelineStatus(newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
-        newPipeline.setStatus(status);
+        logger.log(SEVERE, "BBBBBBBBBBBBBBBBBBBBB");
+        try {
+            // status
+            V1alpha1PipelineStatus status = createPipelineStatus(newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
+            newPipeline.setStatus(status);
 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        logger.log(SEVERE, "CCCCCCCCCCCCCCCCCCCCC");
         try {
             PipelineController.updatePipeline(pipeline, newPipeline);
-            logger.fine("updated pipeline: " + newPipeline);
+            logger.fine(String.format("updated pipeline: '%s/%s", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
         } catch (Exception e) {
             cause.setSynced(false);
             throw e;
@@ -609,15 +618,15 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         annotations.put(ANNOTATION_BADGE, jsonArray.toString());
     }
 
-    private V1alpha1PipelineStatus createPipelineStatus(V1alpha1Pipeline pipeline, String phase, String startTime, String completionTime, String updatedTime, String blueJson, Run run, RunExt wfRunExt) {
+    private V1alpha1PipelineStatus createPipelineStatus(V1alpha1Pipeline pipeline, String phase, DateTime startTime, DateTime completionTime, DateTime updatedTime, String blueJson, Run run, RunExt wfRunExt) {
         V1alpha1PipelineStatus status = pipeline.getStatus();
         if (status == null) {
             status = new V1alpha1PipelineStatus();
         }
         status.setPhase(phase);
-        status.setStartedAt(DateTime.parse(startTime));
-        status.setFinishedAt(DateTime.parse(completionTime));
-        status.setUpdatedAt(DateTime.parse(updatedTime));
+        status.setStartedAt(startTime);
+        status.setFinishedAt(completionTime);
+        status.setUpdatedAt(updatedTime);
 
         V1alpha1PipelineStatusJenkins statusJenkins = status.getJenkins();
         if (statusJenkins == null) {

@@ -309,19 +309,16 @@ public abstract class AlaudaUtils {
     public static void updatePipelinePhase(V1alpha1Pipeline pipeline, String phase) {
         logger.log(FINE, "setting pipeline to {0} in namespace {1}/{2}", new Object[]{phase, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()});
 
-        String namespace = pipeline.getMetadata().getNamespace();
-        String name = pipeline.getMetadata().getName();
+        V1alpha1Pipeline oldPipeline = DeepCopyUtils.deepCopy(pipeline);
 
-        V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
-
-        V1alpha1PipelineStatus stats = newPipeline.getStatus();
+        V1alpha1PipelineStatus stats = pipeline.getStatus();
         if (stats == null) {
             stats = new V1alpha1PipelineStatusBuilder().build();
         }
         stats.setPhase(phase);
-        newPipeline.setStatus(stats);
+        pipeline.setStatus(stats);
 
-        PipelineController.updatePipeline(newPipeline, pipeline);
+        PipelineController.updatePipeline(oldPipeline, pipeline);
         pipeline.setStatus(stats);
     }
 

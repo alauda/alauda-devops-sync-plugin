@@ -2,6 +2,7 @@ package io.alauda.jenkins.devops.sync.controller;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import hudson.Extension;
@@ -249,7 +250,6 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
         String pipelineConfigPhase = null;
         if (pipelineConfigStatus == null || !PipelineConfigPhase.SYNCING.equals(
                 (pipelineConfigPhase = pipelineConfig.getStatus().getPhase()))) {
-
             ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, Exception>() {
                 @Override
                 public Void call() throws Exception {
@@ -259,7 +259,7 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
                     if (item instanceof WorkflowJob || item instanceof WorkflowMultiBranchProject) {
                         PipelineConfigToJobMap.putJobWithPipelineConfig(((TopLevelItem) item), pipelineConfig);
                     } else {
-                        logger.log(Level.WARNING, String.format("Unable to find mapped job in Jenkins for PipelineConfig '%s/%s'",  pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName()));
+                        logger.log(Level.WARNING, String.format("Unable to find mapped job in Jenkins for PipelineConfig '%s/%s'", pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName()));
                     }
                     return null;
                 }
@@ -358,22 +358,46 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
             return;
         }
 
-        List<JsonObject> body = new LinkedList<>();
+        // When use remove op on omitempty empty field, will cause 422 Exception
+        List<JsonObject> bodyWithoutRemove = new LinkedList<>();
+        List<JsonObject> bodyOnlyRemove = new LinkedList<>();
+
         JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
-        arr.forEach(jsonElement -> body.add(jsonElement.getAsJsonObject()));
+        arr.forEach(jsonElement -> {
+            JsonElement op = jsonElement.getAsJsonObject().get("op");
+            if (op != null) {
+                if ("remove".equals(op.getAsString())) {
+                    bodyOnlyRemove.add(jsonElement.getAsJsonObject());
+                } else {
+                    bodyWithoutRemove.add(jsonElement.getAsJsonObject());
+                }
+            }
+        });
 
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
         try {
             api.patchNamespacedPipelineConfig(
                     name,
                     namespace,
-                    body,
+                    bodyWithoutRemove,
                     null,
                     null);
         } catch (ApiException e) {
             logger.log(Level.WARNING, String.format("Unable to patch PipelineConfig '%s/%s', reason: %s",
                     namespace, name, e.getMessage()), e);
         }
+        try {
+            api.patchNamespacedPipelineConfig(
+                    name,
+                    namespace,
+                    bodyOnlyRemove,
+                    null,
+                    null);
+        } catch (ApiException e) {
+            logger.log(Level.WARNING, String.format("Unable to patch PipelineConfig '%s/%s', reason: %s",
+                    namespace, name, e.getMessage()), e);
+        }
+
     }
 
     // innerDeleteEventToJenkinsJob is the actual delete logic at the heart of
