@@ -115,7 +115,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
                     return;
                 }
 
-                if(isCreateByJenkins(pipeline)) {
+                if (isCreateByJenkins(pipeline)) {
                     updatePipelinePhase(pipeline, QUEUED);
                     logger.fine(() -> "Pipeline created by Jenkins. It should be triggered, skip create event.");
                     return;
@@ -169,7 +169,8 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
 
     @Override
     public Type getType() {
-        return new TypeToken<V1alpha1Pipeline>(){}.getType();
+        return new TypeToken<V1alpha1Pipeline>() {
+        }.getType();
     }
 
 
@@ -180,7 +181,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         clearNoPCList();
         for (V1alpha1Pipeline pipeline : clone) {
             WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-            logger.fine("Pipeline flush: "+pipeline.getMetadata().getName()+" - job: "+job);
+            logger.fine("Pipeline flush: " + pipeline.getMetadata().getName() + " - job: " + job);
             if (job != null) {
                 try {
                     logger.info("triggering job run for previously skipped pipeline "
@@ -275,7 +276,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         }
 
         WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-        logger.info("Pipeline got job... "+job);
+        logger.info("Pipeline got job... " + job);
         if (job != null) {
             logger.info(String.format("Pipeline job will trigger... %s pipeline: %s/%s", job.getName(), pipelineNamespace, pipelineName));
             return JenkinsUtils.triggerJob(job, pipeline);
@@ -291,7 +292,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         String pipelineName = pipeline.getMetadata().getName();
 
         V1alpha1PipelineStatus status = pipeline.getStatus();
-        logger.info(String.format("Modified pipeline %s/%s" , pipelineNamespace, pipelineName));
+        logger.info(String.format("Modified pipeline %s/%s", pipelineNamespace, pipelineName));
         if (status != null && AlaudaUtils.isCancellable(status) && AlaudaUtils.isCancelled(status)) {
             logger.info(String.format("Pipeline %s/%s was cancelled", pipelineNamespace, pipelineName));
             WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
@@ -318,7 +319,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
     // order
     private static synchronized void deleteEventToJenkinsJobRun(
             final V1alpha1Pipeline pipeline) throws Exception {
-        logger.info("Pipeline delete: "+pipeline.getMetadata().getName());
+        logger.info("Pipeline delete: " + pipeline.getMetadata().getName());
         List<V1OwnerReference> ownerRefs = pipeline.getMetadata().getOwnerReferences();
         for (V1OwnerReference ref : ownerRefs) {
             if ("PipelineConfig".equals(ref.getKind()) && ref.getUid() != null
@@ -395,8 +396,13 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         return api.createNamespacedPipeline(namespace, pipe, null, null, null);
     }
 
-    public static V1Status deletePipeline(String namespace, String name) throws ApiException {
+    public static V1Status deletePipeline(String namespace, String name) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-        return api.deleteNamespacedPipeline(name, namespace, null, null, null, null, null, null);
+        try {
+            return api.deleteNamespacedPipeline(name, namespace, null, null, null, null, null, null);
+        } catch (ApiException e) {
+            logger.log(Level.WARNING, String.format("Unable to delete pipelineconfig '%s/%s', reason: %s", namespace, name, e.getMessage()), e);
+            return null;
+        }
     }
 }

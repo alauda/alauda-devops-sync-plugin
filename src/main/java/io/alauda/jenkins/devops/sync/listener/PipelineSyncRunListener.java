@@ -569,14 +569,10 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         badgeHandle(run, annotations);
 
-        try {
-            // status
-            V1alpha1PipelineStatus status = createPipelineStatus(newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
-            newPipeline.setStatus(status);
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        V1alpha1PipelineStatus status = createPipelineStatus(newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
+        newPipeline.setStatus(status);
+
         try {
             PipelineController.updatePipeline(pipeline, newPipeline);
             logger.fine(String.format("updated pipeline: '%s/%s", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));

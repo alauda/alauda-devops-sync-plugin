@@ -137,7 +137,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             // cases for git provider
             String codeRepoName = codeRepoRef.getName();
 
-            V1alpha1CodeRepository codeRep = CodeRepositoryController.getCurrentCodeRepositoryController().getCodeRepository(namespace, name);
+            V1alpha1CodeRepository codeRep = CodeRepositoryController.getCurrentCodeRepositoryController().getCodeRepository(namespace, codeRepoRef.getName());
             if(codeRep != null) {
                 V1alpha1CodeRepositorySpec codeRepoSpec = codeRep.getSpec();
                 V1alpha1OriginCodeRepository codeRepo = codeRepoSpec.getRepository();

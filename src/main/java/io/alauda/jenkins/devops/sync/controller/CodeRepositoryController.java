@@ -106,10 +106,9 @@ public class CodeRepositoryController implements Controller<V1alpha1CodeReposito
      */
     public static CodeRepositoryController getCurrentCodeRepositoryController() {
         ExtensionList<CodeRepositoryController> codeRepositoryControllers = ExtensionList.lookup(CodeRepositoryController.class);
-        if (codeRepositoryControllers.size() == 0) {
-            return null;
+        if (codeRepositoryControllers.size() > 1) {
+            logger.log(Level.WARNING, "There are more than two CodeRepositoryController exist, maybe a potential bug");
         }
-
 
         return codeRepositoryControllers.get(0);
     }
