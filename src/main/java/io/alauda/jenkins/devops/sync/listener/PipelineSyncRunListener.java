@@ -37,7 +37,6 @@ import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.controller.PipelineController;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
@@ -58,7 +57,6 @@ import org.jenkinsci.plugins.workflow.support.steps.input.InputAction;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputStepExecution;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.LocalDateTime;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import javax.annotation.Nonnull;
@@ -75,7 +73,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.formatTimestamp;
 import static java.util.logging.Level.*;
 
 /**
@@ -100,13 +97,34 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     public PipelineSyncRunListener() {
     }
 
-    @Override
-    public void onInitialize(Run run) {
-        super.onInitialize(run);
+    /**
+     * It might has multiple JenkinsPipelineCause which could leads the wrong status of pipeline
+     * @param run build item from the Jenkins
+     */
+    private void cleanupDuplicatePipelineCauses(Run run) {
+        TreeSet<JenkinsPipelineCause> pipelineCauses = PipelineUtils.findAllAlaudaCauses(run);
+
+        int count = pipelineCauses.size();
+        if(count > 1) {
+            logger.log(Level.INFO, String.format("Found %d pipeline causes.", count));
+            pipelineCauses.pollFirst();
+            Iterator<JenkinsPipelineCause> it = pipelineCauses.iterator();
+            while(it.hasNext()) {
+                JenkinsPipelineCause pipeline = it.next();
+                String namespace = pipeline.getNamespace();
+                String name = pipeline.getName();
+
+                PipelineController.deletePipeline(namespace, name);
+                logger.log(Level.INFO, String.format("Going to delete pipeline %s-%s", namespace, name));
+            }
+        }
     }
+
 
     @Override
     public void onStarted(Run run, TaskListener listener) {
+        cleanupDuplicatePipelineCauses(run);
+
         if (shouldPollRun(run)) {
             if (runsToPoll.add(run)) {
                 logger.info("starting polling build " + run.getUrl());

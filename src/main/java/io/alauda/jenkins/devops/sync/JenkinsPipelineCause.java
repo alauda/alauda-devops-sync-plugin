@@ -147,4 +147,13 @@ public class JenkinsPipelineCause extends Cause {
     public void setSynced(boolean synced) {
         this.synced = synced;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if(obj == null) {
+            return false;
+        }
+
+        return StringUtils.equals(getName(), ((JenkinsPipelineCause) obj).getName());
+    }
 }
