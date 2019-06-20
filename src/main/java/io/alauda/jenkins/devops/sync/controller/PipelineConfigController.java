@@ -290,6 +290,8 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
 
                             try {
                                 convert.convert(pipelineConfig);
+                                // if create job successfully,
+                                PipelineController.flushPipelinesWithNoPCList();
                             } catch (Exception e) {
                                 logger.log(Level.SEVERE,
                                         String.format("Unable to convert PipelineConfig '%s/%s' to job, reason: %s",
