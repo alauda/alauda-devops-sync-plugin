@@ -1,6 +1,10 @@
 # ChangeLog
 
-## 0.2.39 (not released yet)
+## 0.2.40 (not released yet)
+
+* [DEVOPS-1477] Fix the problem which caused by holding multiple causes
+
+## 0.2.39
 
 * [DEVOPS-1379] Fix the build trigger issues
 

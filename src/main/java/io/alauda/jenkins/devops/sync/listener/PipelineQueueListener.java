@@ -22,7 +22,6 @@ import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 
-import java.util.List;
 import java.util.logging.Logger;
 
 @Extension
