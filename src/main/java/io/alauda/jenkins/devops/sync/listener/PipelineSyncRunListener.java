@@ -104,7 +104,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         int count = pipelineCauses.size();
         if(count > 1) {
-            logger.log(Level.INFO, String.format("Found %d pipeline causes.", count));
+            logger.log(Level.FINE, String.format("Found %d pipeline causes.", count));
             AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
             pipelineCauses.pollFirst();
             Iterator<JenkinsPipelineCause> it = pipelineCauses.iterator();
@@ -115,7 +115,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
                 client.pipelines().inNamespace(namespace).withName(name).delete();
 
-                logger.log(Level.INFO, String.format("Going to delete pipeline %s-%s", namespace, name));
+                logger.log(Level.FINE, String.format("Going to delete pipeline %s-%s", namespace, name));
             }
         }
     }
