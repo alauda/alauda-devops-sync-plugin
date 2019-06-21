@@ -31,7 +31,6 @@ import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
-import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -58,6 +57,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
 
     @Override
     public void onUpdated(WorkflowJob item) {
+        logger.log(Level.FINE, "onUpdated {0}", item);
         upsertWorkflowJob(item);
     }
 
@@ -108,11 +108,13 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
         WorkflowJobProperty property = pipelineConfigProjectForJob(job);
 
         //we just take care of our style's jobs
-        if (canUpdate(job, property)) {
+        if (property != null && isNotDeleteInProgress(property)) {
             logger.info(() -> "Upsert WorkflowJob " + job.getName() + " to PipelineConfig: "
                     + property.getNamespace() + "/" + property.getName() + " in Alauda Kubernetes");
 
             upsertPipelineConfigForJob(job, property);
+        } else {
+            logger.log(Level.FINE, "skip job {0}, it's not created by alauda", job);
         }
     }
 
@@ -129,16 +131,6 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
             }
         }
         return null;
-    }
-
-    /**
-     * Check status of job
-     * @param job WorkflowJob
-     * @param property WorkflowJobProperty
-     * @return if we can update the job, will return true
-     */
-    private boolean canUpdate(WorkflowJob job, WorkflowJobProperty property) {
-        return (property != null && isNotDeleteInProgress(property));
     }
 
     private boolean isNotDeleteInProgress(WorkflowJobProperty property) {
@@ -193,6 +185,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
             }
         }
 
+        logger.log(Level.FINE, "update PipelineConfig from job {0}", job);
         PipelineConfigToJobMapper.updatePipelineConfigFromJob(job, jobPipelineConfig);
 
         if (!hasEmbeddedPipelineOrValidSource(jobPipelineConfig)) {
