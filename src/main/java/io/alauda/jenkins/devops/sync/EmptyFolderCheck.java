@@ -6,11 +6,7 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.security.ACL;
-import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.kubernetes.api.model.JenkinsBindingList;
-import io.alauda.kubernetes.api.model.Namespace;
-import io.alauda.kubernetes.api.model.NamespaceList;
+import io.alauda.jenkins.devops.sync.controller.JenkinsBindingController;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
@@ -20,9 +16,13 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Extension
 public class EmptyFolderCheck extends AsyncPeriodicWork {
+    private static final Logger logger = Logger.getLogger(EmptyFolderCheck.class.getName());
+
     public EmptyFolderCheck() {
         super("EmptyFolderCheck");
     }
@@ -35,30 +35,36 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
         try {
             folders = Jenkins.getInstance().getItems(Folder.class);
 
-            if(folders == null) {
+            if (folders == null) {
                 return;
             }
 
-            List<Namespace> allNamespaces = getAllNamespaces();
+            JenkinsBindingController controller = JenkinsBindingController.getCurrentJenkinsBindingController();
+            if (!controller.isValid()) {
+                logger.log(Level.INFO, "JenkinsBidingController is not synced or is not valid, will skip this empty folder check");
+                return;
+            }
+            List<String> allNamespaces = controller.getBindingNamespaces();
 
             // when the folder is dirty and there is not any custom itemJenkinsPipelineJobListener
             folders.stream().filter(folder -> folder.getProperties().stream().anyMatch(
                     pro -> {
                         String folderName = folder.getName();
-                        return (pro instanceof AlaudaFolderProperty &&
-                                (((AlaudaFolderProperty) pro).isDirty() || // delay to remove folder
-                                        (allNamespaces != null && noneMatch(allNamespaces, folderName)) || // target namespace doesn't exists anymore
-                                        noJenkinsBinding(folderName)));  // namespaces exists but no binding
+                        // delay to remove folder
+                        // target namespace doesn't exists anymore
+                        return pro instanceof AlaudaFolderProperty && (((AlaudaFolderProperty) pro).isDirty()
+                                || noneMatch(allNamespaces, folderName) ||
+                                noJenkinsBinding(allNamespaces, folderName));  // namespaces exists but no binding
                     }
             )).filter(folder -> {
                 Collection<TopLevelItem> items = folder.getItems();
-                if(items.size() == 0) {
+                if (items.size() == 0) {
                     return true;
                 }
 
                 // find custom created item
                 return items.stream().noneMatch(item -> {
-                    if(item instanceof WorkflowJob) {
+                    if (item instanceof WorkflowJob) {
                         return ((WorkflowJob) item).getProperty(WorkflowJobProperty.class) == null;
                     }
                     return false;
@@ -66,9 +72,7 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
             }).forEach(folder -> {
                 try {
                     folder.delete();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (InterruptedException e) {
+                } catch (IOException | InterruptedException e) {
                     e.printStackTrace();
                 }
             });
@@ -77,31 +81,12 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
         }
     }
 
-    private boolean noJenkinsBinding(String namespace) {
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            return false;
-        }
-
-        JenkinsBindingList list = client.jenkinsBindings().inNamespace(namespace).list();
-        return list == null || list.getItems().isEmpty();
+    private boolean noJenkinsBinding(List<String> namespaces, String target) {
+        return !namespaces.contains(target);
     }
 
-    private boolean noneMatch(List<Namespace> list, String target) {
-        return list.stream().noneMatch(ns -> ns.getMetadata().getName().equalsIgnoreCase(target));
-    }
-
-    private List<Namespace> getAllNamespaces() {
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            return null;
-        }
-
-        NamespaceList list = client.namespaces().list();
-        if(list != null) {
-            return list.getItems();
-        }
-        return null;
+    private boolean noneMatch(List<String> list, String target) {
+        return list.stream().noneMatch(ns -> ns.equalsIgnoreCase(target));
     }
 
     @Override

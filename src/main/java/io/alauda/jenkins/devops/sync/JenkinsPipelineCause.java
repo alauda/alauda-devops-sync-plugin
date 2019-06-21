@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +16,8 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.model.Cause;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.kubernetes.client.models.V1ObjectMeta;
 import org.apache.commons.lang.StringUtils;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_COMMIT;
@@ -53,12 +53,12 @@ public class JenkinsPipelineCause extends Cause {
         this.lastUpdateToAlaudaDevOps = lastUpdateToAlaudaDevOps;
     }
 
-    public JenkinsPipelineCause(Pipeline pipeline, String pipelineConfigUid) {
+    public JenkinsPipelineCause(V1alpha1Pipeline pipeline, String pipelineConfigUid) {
         this.pipelineConfigUid = pipelineConfigUid;
         if (pipeline == null || pipeline.getMetadata() == null) {
             return;
         }
-        ObjectMeta meta = pipeline.getMetadata();
+        V1ObjectMeta meta = pipeline.getMetadata();
         uid = meta.getUid();
         namespace = meta.getNamespace();
         name = meta.getName();

@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,21 +19,18 @@ import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.model.Item;
 import hudson.model.listeners.ItemListener;
-import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.kubernetes.api.model.*;
+import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import java.util.Arrays;
 import java.util.logging.Logger;
 
 /**
  * Listens to {@link WorkflowJob} objects being updated via the web console or
  * Jenkins REST API and replicating the changes back to the Alauda DevOps
- * {@link PipelineConfig} for the case where folks edit inline Jenkinsfile flows
+ * {@link V1alpha1PipelineConfig} for the case where folks edit inline Jenkinsfile flows
  * inside the Jenkins UI
  */
 @Extension
@@ -41,8 +38,6 @@ public class JenkinsPipelineJobListener extends ItemListener {
     private static final Logger logger = Logger.getLogger(JenkinsPipelineJobListener.class.getName());
     private final ExtensionList<ItemEventHandler> handler;
 
-    private String server;
-    private String[] namespaces;
     private String jenkinsService;
     private String jobNamePattern;
 
@@ -50,24 +45,17 @@ public class JenkinsPipelineJobListener extends ItemListener {
     public JenkinsPipelineJobListener() {
         handler = Jenkins.getInstance().getExtensionList(ItemEventHandler.class);
         AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
-        this.server = config.getServer();
         this.jenkinsService = config.getJenkinsService();
         this.jobNamePattern = config.getJobNamePattern();
         init();
     }
 
     private void init() {
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            logger.severe("Can't get AlaudaDevOpsClient when init JenkinsPipelineJobListener.");
-            return;
-        }
-        namespaces = AlaudaUtils.getNamespaceOrUseDefault(jenkinsService, client);
     }
 
     @Override
     public void onCreated(Item item) {
-        if (!AlaudaSyncGlobalConfiguration.get().isValid()) {
+        if (!PipelineConfigController.getCurrentPipelineConfigController().hasSynced()) {
             return;
         }
 
@@ -81,7 +69,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onUpdated(Item item) {
-        if (!AlaudaSyncGlobalConfiguration.get().isValid()) {
+        if (!PipelineConfigController.getCurrentPipelineConfigController().hasSynced()) {
             return;
         }
 
@@ -95,7 +83,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onDeleted(Item item) {
-        if (!AlaudaSyncGlobalConfiguration.get().isValid()) {
+        if (!PipelineConfigController.getCurrentPipelineConfigController().hasSynced()) {
             logger.info("no configuration... onDelete ignored...");
             return;
         }
@@ -117,15 +105,14 @@ public class JenkinsPipelineJobListener extends ItemListener {
         if (config != null) {
             this.jobNamePattern = config.getJobNamePattern();
             this.jenkinsService = config.getJenkinsService();
-            this.server = config.getServer();
             init();
         }
     }
 
     @Override
     public String toString() {
-        return "JenkinsPipelineJobListener{" + "server='" + server + '\'' + ", jenkinsService='" +
-                jenkinsService + '\'' + ", namespace='" + Arrays.toString(namespaces) + '\'' + ", jobNamePattern='" +
+        return "JenkinsPipelineJobListener{"  + ", jenkinsService='" +
+                jenkinsService + '\'' +  ", jobNamePattern='" +
                 jobNamePattern + '\'' + '}';
     }
 }

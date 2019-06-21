@@ -1,30 +1,28 @@
 package io.alauda.jenkins.devops.sync.util;
 
-import hudson.model.Action;
-import hudson.model.Actionable;
-import hudson.model.Cause;
-import hudson.model.CauseAction;
-import hudson.model.Result;
-import hudson.model.Run;
+import hudson.model.*;
 import hudson.util.RunList;
-import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.watcher.PipelineWatcher;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.PipelineList;
+import io.alauda.jenkins.devops.sync.controller.PipelineController;
+import io.kubernetes.client.models.V1ObjectMeta;
+import io.kubernetes.client.models.V1Status;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeSet;
+import java.util.*;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG;
 
 public class PipelineUtils {
+    private static final Logger logger = Logger.getLogger(PipelineUtils.class.getName());
+
+
     /**
      * Find all AlaudaPipelineCauses from the Actionable object
      * @param actionable which could holds the actions
@@ -66,6 +64,8 @@ public class PipelineUtils {
         }
         return pipelineCauses;
     }
+
+
     /**
      * All job build caused by Alauda which will hold JenkinsPipelineCause.
      * A build possible has multiple causes, but we just need the perfect one(first one).
@@ -78,37 +78,25 @@ public class PipelineUtils {
         return pipelineCauses.isEmpty() ? null : pipelineCauses.first();
     }
 
-    public static boolean delete(String namespace, String name) {
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            return false;
-        }
-
-        return client.pipelines().inNamespace(namespace).withName(name).delete();
+    public static V1Status delete(String namespace, String name) {
+        return PipelineController.deletePipeline(namespace, name);
     }
 
-    public static void pipelinesCheck(PipelineConfig config) {
-        ObjectMeta configMetadata = config.getMetadata();
+    public static void pipelinesCheck(V1alpha1PipelineConfig config) {
+        V1ObjectMeta configMetadata = config.getMetadata();
         String namespace = configMetadata.getNamespace();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            return;
-        }
+        List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController().listPipelines(namespace)
+                .stream().filter(p -> configMetadata.getName().equals(p.getMetadata().getLabels().get(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG)))
+                .collect(Collectors.toList());
 
-        PipelineList list = client.pipelines().inNamespace(namespace)
-                .withLabel(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG, configMetadata.getName())
-                .list();
-        if(list == null) {
-            return;
-        }
 
         WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(config);
-        if(job == null) {
+        if (job == null) {
             return;
         }
 
-        list.getItems().forEach(pipeline -> {
+        pipelines.forEach(pipeline -> {
             String uid = pipeline.getMetadata().getUid();
             RunList<WorkflowRun> runList = job.getBuilds().filter(run -> {
                 JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
@@ -116,44 +104,42 @@ public class PipelineUtils {
                 return cause != null && cause.getUid().equals(uid);// && phase.equals(pipeline.getStatus().getPhase());
             });//.isEmpty();
 
-            if(runList.isEmpty()) {
-                if(PipelinePhases.QUEUED.equals(pipeline.getStatus().getPhase())){
+            if (runList.isEmpty()) {
+                if (PipelinePhases.QUEUED.equals(pipeline.getStatus().getPhase())) {
                     Map<String, String> labels = pipeline.getMetadata().getLabels();
                     String retry = null;
-                    if(labels != null) {
+                    if (labels != null) {
                         retry = labels.get("retry");
                     }
 
-                    if(retry == null) {
+                    if (retry == null) {
                         retry = "1";
                     } else {
-                        try{
+                        try {
                             retry = String.valueOf(Integer.parseInt(retry) + 1);
                         } catch (NumberFormatException e) {
                             retry = "1";
                         }
                     }
 
-                    PipelineWatcher.addPipelineToNoPCList(pipeline);
+                    PipelineController.addPipelineToNoPCList(pipeline);
+                    V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
 
-                    client.pipelines().inNamespace(namespace)
-                            .withName(pipeline.getMetadata().getName())
-                            .edit().editMetadata().addToLabels("retry", retry).endMetadata()
-                            .done();
+                    newPipeline.getMetadata().putLabelsItem("retry", retry);
+                    PipelineController.updatePipeline(pipeline, newPipeline);
+
                 } else {
-                    client.pipelines().inNamespace(namespace)
-                            .withName(pipeline.getMetadata().getName()).delete();
+                    PipelineController.deletePipeline(namespace, pipeline.getMetadata().getName());
                 }
             } else {
                 WorkflowRun build = runList.getLastBuild();
                 String phase = runToPipelinePhase(build);
 
-                if(!phase.equals(pipeline.getStatus().getPhase())) {
-                    client.pipelines().inNamespace(namespace)
-                            .withName(pipeline.getMetadata().getName())
-                            .edit().editStatus()
-                            .withPhase(phase)
-                            .endStatus().done();
+                if (!phase.equals(pipeline.getStatus().getPhase())) {
+                    V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
+                    newPipeline.getStatus().phase(phase);
+
+                    PipelineController.updatePipeline(pipeline, newPipeline);
                 }
             }
         });

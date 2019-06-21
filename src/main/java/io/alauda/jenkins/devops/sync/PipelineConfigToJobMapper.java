@@ -27,12 +27,12 @@ import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
+import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
-import io.alauda.jenkins.devops.sync.core.UnsupportedSecretException;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
-import io.alauda.kubernetes.api.model.*;
 import jenkins.branch.Branch;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.transport.RemoteConfig;
@@ -51,7 +51,6 @@ import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.DEFAULT_JENKINS_FILEPATH;
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
-import static io.alauda.jenkins.devops.sync.util.CredentialsUtils.updateSourceCredentials;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 public abstract class PipelineConfigToJobMapper {
     private static final Logger LOGGER = Logger.getLogger(PipelineConfigToJobMapper.class.getName());
@@ -65,20 +64,20 @@ public abstract class PipelineConfigToJobMapper {
      * @return pipeline object
      * @throws IOException in case of io exception
      */
-    public static FlowDefinition mapPipelineConfigToFlow(PipelineConfig pc) throws IOException {
+    public static FlowDefinition mapPipelineConfigToFlow(V1alpha1PipelineConfig pc) throws IOException {
         if (!AlaudaUtils.isPipelineStrategyPipelineConfig(pc)) {
             return null;
         }
 
-        PipelineConfigSpec spec = pc.getSpec();
-        PipelineSource source = null;
+        V1alpha1PipelineConfigSpec spec = pc.getSpec();
+        V1alpha1PipelineSource source = null;
         String jenkinsfile = null;
         String jenkinsfilePath = null;
         if (spec != null) {
             source = spec.getSource();
-            PipelineStrategy strategy = spec.getStrategy();
+            V1alpha1PipelineStrategy strategy = spec.getStrategy();
             if (strategy != null) {
-                PipelineStrategyJenkins pipelineStrategyJenkins = strategy.getJenkins();
+                V1alpha1PipelineStrategyJenkins pipelineStrategyJenkins = strategy.getJenkins();
                 if (pipelineStrategyJenkins != null) {
                     jenkinsfile = pipelineStrategyJenkins.getJenkinsfile();
                     jenkinsfilePath = pipelineStrategyJenkins.getJenkinsfilePath();
@@ -96,7 +95,7 @@ public abstract class PipelineConfigToJobMapper {
                 SCM scm = createSCM(pc);
                 return new CpsScmFlowDefinition(scm, jenkinsfilePath);
             } else {
-                Condition condition = new Condition();
+                V1alpha1Condition condition = new V1alpha1Condition();
                 condition.setReason(ErrorMessages.INVALID_SOURCE);
                 condition.setMessage("please check git uri");
                 pc.getStatus().getConditions().add(condition);
@@ -116,13 +115,13 @@ public abstract class PipelineConfigToJobMapper {
      * @param type type of PipelineTrigger
      * @return target PipelineTrigger. Return null if can not find it.
      */
-    private static PipelineTrigger findPipelineTriggers(@Nonnull PipelineConfig pipelineConfig, @Nonnull String type) {
-        List<PipelineTrigger> triggers = pipelineConfig.getSpec().getTriggers();
+    private static V1alpha1PipelineTrigger findPipelineTriggers(@Nonnull V1alpha1PipelineConfig pipelineConfig, @Nonnull String type) {
+        List<V1alpha1PipelineTrigger> triggers = pipelineConfig.getSpec().getTriggers();
         if (triggers == null) {
             return null;
         }
 
-        for (PipelineTrigger trigger : triggers) {
+        for (V1alpha1PipelineTrigger trigger : triggers) {
             if (trigger.getType().equals(type)) {
                 return trigger;
             }
@@ -137,37 +136,37 @@ public abstract class PipelineConfigToJobMapper {
      * @param job            WorkflowJob
      * @param pipelineConfig PipelineConfig
      */
-    private static void updateTrigger(WorkflowJob job, PipelineConfig pipelineConfig) {
+    private static void updateTrigger(WorkflowJob job, V1alpha1PipelineConfig pipelineConfig) {
         Map<TriggerDescriptor, Trigger<?>> triggers = job.getTriggers();
         if (triggers == null) {
             return;
         }
 
         // checking if there are triggers to be updated
-        List<PipelineTrigger> pipelineConfigTriggers = pipelineConfig.getSpec().getTriggers();
-        final PipelineTrigger cronTrigger;
+        List<V1alpha1PipelineTrigger> pipelineConfigTriggers = pipelineConfig.getSpec().getTriggers();
+        final V1alpha1PipelineTrigger cronTrigger;
         if(pipelineConfigTriggers == null) {
             pipelineConfig.getSpec().setTriggers(new ArrayList<>());
             cronTrigger = null;
         } else {
             pipelineConfigTriggers.clear();
-            Optional<PipelineTrigger> triggerOptional = pipelineConfigTriggers.stream().filter(trigger ->
+            Optional<V1alpha1PipelineTrigger> triggerOptional = pipelineConfigTriggers.stream().filter(trigger ->
                     PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType())).findFirst();
 
             cronTrigger = triggerOptional.orElse(null);
         }
 
         triggers.forEach((desc, trigger) -> {
-            PipelineTrigger pipelineTrigger = null;
+            V1alpha1PipelineTrigger pipelineTrigger = null;
             if (trigger instanceof SCMTrigger) {
-                pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE)
+                pipelineTrigger = new V1alpha1PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE)
                         .withNewCodeChange().withEnabled(true).withPeriodicCheck(trigger.getSpec()).endCodeChange().build();
             } else if (trigger instanceof TimerTrigger) {
                 if(cronTrigger == null) {
-                    pipelineTrigger = new PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
+                    pipelineTrigger = new V1alpha1PipelineTriggerBuilder().withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
                             .withNewCron().withEnabled(true).withRule(trigger.getSpec()).endCron().build();
                 } else {
-                    PipelineTriggerCron cron = new PipelineTriggerCron();
+                    V1alpha1PipelineTriggerCron cron = new V1alpha1PipelineTriggerCron();
                     cron.setEnabled(true);
                     cron.setRule(trigger.getSpec());
                     cronTrigger.setCron(cron);
@@ -184,7 +183,7 @@ public abstract class PipelineConfigToJobMapper {
     }
 
     /**
-     * Updates the {@link PipelineConfig} if the Jenkins {@link WorkflowJob} changes
+     * Updates the {@link V1alpha1PipelineConfig} if the Jenkins {@link WorkflowJob} changes
      *
      * @param job
      *            the job thats been updated via Jenkins
@@ -192,12 +191,12 @@ public abstract class PipelineConfigToJobMapper {
      *            the Alauda DevOps PipelineConfig to update
      * @return true if the PipelineConfig was changed
      */
-    public static boolean updatePipelineConfigFromJob(WorkflowJob job, PipelineConfig pipelineConfig) {
-        NamespaceName namespaceName = NamespaceName.create(pipelineConfig);
-        PipelineStrategyJenkins pipelineStrategyJenkins = null;
-        PipelineConfigSpec spec = pipelineConfig.getSpec();
+    public static boolean updatePipelineConfigFromJob(WorkflowJob job, V1alpha1PipelineConfig pipelineConfig) {
+        NamespaceName namespaceName = new NamespaceName(pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName());
+        V1alpha1PipelineStrategyJenkins pipelineStrategyJenkins = null;
+        V1alpha1PipelineConfigSpec spec = pipelineConfig.getSpec();
         if (spec != null) {
-            PipelineStrategy strategy = spec.getStrategy();
+            V1alpha1PipelineStrategy strategy = spec.getStrategy();
             if (strategy != null) {
                 pipelineStrategyJenkins = strategy.getJenkins();
             } else {
@@ -221,7 +220,7 @@ public abstract class PipelineConfigToJobMapper {
             String scriptPath = cpsScmFlowDefinition.getScriptPath();
             if (scriptPath != null && scriptPath.trim().length() > 0) {
                 boolean rc = false;
-                PipelineSource source = AlaudaUtils.getOrCreatePipelineSource(pipelineConfig);
+                V1alpha1PipelineSource source = AlaudaUtils.getOrCreatePipelineSource(pipelineConfig);
 
                 if (!scriptPath.equals(pipelineStrategyJenkins.getJenkinsfilePath())) {
                     LOGGER.log(Level.FINE, "updating PipelineConfig " + namespaceName + " jenkinsfile path to " + scriptPath + " from ");
@@ -265,7 +264,7 @@ public abstract class PipelineConfigToJobMapper {
             if (branch != null) {
                 String ref = branch.getName();
                 SCM scm = branch.getScm();
-                PipelineSource source = AlaudaUtils.getOrCreatePipelineSource(pipelineConfig);
+                V1alpha1PipelineSource source = AlaudaUtils.getOrCreatePipelineSource(pipelineConfig);
                 if (scm instanceof GitSCM) {
                     if (populateFromGitSCM(pipelineConfig, source, (GitSCM) scm, ref)) {
                         if (StringUtils.isEmpty(pipelineStrategyJenkins.getJenkinsfilePath())) {
@@ -281,8 +280,8 @@ public abstract class PipelineConfigToJobMapper {
         return false;
     }
 
-    private static void updateParameters(WorkflowJob job, PipelineConfig pipelineConfig) {
-        PipelineConfigSpec spec = pipelineConfig.getSpec();
+    private static void updateParameters(WorkflowJob job, V1alpha1PipelineConfig pipelineConfig) {
+        V1alpha1PipelineConfigSpec spec = pipelineConfig.getSpec();
 
         if (spec.getParameters() == null) {
             spec.setParameters(new ArrayList<>());
@@ -313,7 +312,7 @@ public abstract class PipelineConfigToJobMapper {
     }
 
     @Nonnull
-    private static PipelineParameter convertTo(ParameterDefinition def) {
+    private static V1alpha1PipelineParameter convertTo(ParameterDefinition def) {
         if (!isSupportParamType(def)) {
             String errDesc = "Not support type:" + def.getType() + ", please fix these.";
 
@@ -326,7 +325,7 @@ public abstract class PipelineConfigToJobMapper {
             value = defVal.getValue().toString();
         }
 
-        return new PipelineParameterBuilder().withType(paramType(def)).withName(def.getName()).withValue(value).withDescription(def.getDescription()).build();
+        return new V1alpha1PipelineParameterBuilder().withType(paramType(def)).withName(def.getName()).withValue(value).withDescription(def.getDescription()).build();
     }
 
     /**
@@ -342,9 +341,9 @@ public abstract class PipelineConfigToJobMapper {
         return map.get(parameterDefinition.getType());
     }
 
-    private static boolean populateFromGitSCM(PipelineConfig pipelineConfig, PipelineSource source, GitSCM gitSCM, String ref) {
+    private static boolean populateFromGitSCM(V1alpha1PipelineConfig pipelineConfig, V1alpha1PipelineSource source, GitSCM gitSCM, String ref) {
         if (source.getGit() == null) {
-            source.setGit(new PipelineSourceGit());
+            source.setGit(new V1alpha1PipelineSourceGit());
         }
 
         source.setSourceType(Constants.SOURCE_TYPE_GIT);
@@ -378,9 +377,9 @@ public abstract class PipelineConfigToJobMapper {
         return false;
     }
 
-    private static boolean populateFromSvnSCM(PipelineConfig pipelineConfig, PipelineSource source, SubversionSCM subversionSCM) {
+    private static boolean populateFromSvnSCM(V1alpha1PipelineConfig pipelineConfig, V1alpha1PipelineSource source, SubversionSCM subversionSCM) {
         if (source.getSvn() == null) {
-            source.setSvn(new PipelineSourceSvn());
+            source.setSvn(new V1alpha1PipelineSourceSvn());
         }
         source.setSourceType(Constants.SOURCE_TYPE_SVN);
 
@@ -396,8 +395,8 @@ public abstract class PipelineConfigToJobMapper {
         return false;
     }
 
-    private static SCM createSCM(PipelineConfig pc) throws IOException {
-        PipelineSource source = pc.getSpec().getSource();
+    private static SCM createSCM(V1alpha1PipelineConfig pc) throws IOException {
+        V1alpha1PipelineSource source = pc.getSpec().getSource();
         if (AlaudaUtils.isValidGitSource(source) && (source.getSourceType().equals(Constants.SOURCE_TYPE_GIT) || source.getSourceType().equals(""))) {
             return createGitSCM(pc, source);
         } else if (AlaudaUtils.isValidSvnSource(source) && source.getSourceType().equals(Constants.SOURCE_TYPE_SVN)) {
@@ -409,15 +408,15 @@ public abstract class PipelineConfigToJobMapper {
 
 
 
-    private static GitSCM createGitSCM(PipelineConfig pc, PipelineSource source) throws IOException {
-        PipelineSourceGit gitSource = source.getGit();
+    private static GitSCM createGitSCM(V1alpha1PipelineConfig pc, V1alpha1PipelineSource source) throws IOException {
+        V1alpha1PipelineSourceGit gitSource = source.getGit();
         String branchRef = gitSource.getRef();
         List<BranchSpec> branchSpecs = Collections.emptyList();
         if (isNotBlank(branchRef)) {
             branchSpecs = Collections.singletonList(new BranchSpec(branchRef));
         }
 
-        String credentialId = getAndUpdateCredential(pc);
+        String credentialId = CredentialsUtils.getSCMSourceCredentialsId(pc);
 
         // if credentialsID is null, go with an SCM where anonymous has to be sufficient
         List<UserRemoteConfig> configs = Collections.singletonList(new UserRemoteConfig(gitSource.getUri(), null, null, credentialId));
@@ -425,24 +424,10 @@ public abstract class PipelineConfigToJobMapper {
         return new GitSCM(configs, branchSpecs, false, Collections.<SubmoduleConfig>emptyList(), null, null, Collections.<GitSCMExtension>emptyList());
     }
 
-    private static SubversionSCM createSvnSCM(PipelineConfig pc, PipelineSource source) throws IOException {
-        PipelineSourceSvn svnSource = source.getSvn();
-        String credentialId = getAndUpdateCredential(pc);
+    private static SubversionSCM createSvnSCM(V1alpha1PipelineConfig pc, V1alpha1PipelineSource source) throws IOException {
+        V1alpha1PipelineSourceSvn svnSource = source.getSvn();
+        String credentialId = CredentialsUtils.getSCMSourceCredentialsId(pc);
 
         return new SubversionSCM(svnSource.getUri(), credentialId, ".");
-    }
-
-
-    private static String getAndUpdateCredential(PipelineConfig pc) throws IOException {
-        String credentialId = null;
-        try {
-            credentialId = updateSourceCredentials(pc);
-        } catch (UnsupportedSecretException e) {
-            Condition condition = new Condition();
-            condition.setReason(ErrorMessages.INVALID_CREDENTIAL);
-            condition.setMessage(e.getMessage());
-            pc.getStatus().getConditions().add(condition);
-        }
-        return credentialId;
     }
 }

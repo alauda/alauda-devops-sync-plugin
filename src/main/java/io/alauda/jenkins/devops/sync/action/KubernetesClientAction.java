@@ -4,13 +4,8 @@ import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.model.UnprotectedRootAction;
 import hudson.util.HttpResponses;
-import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
-import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
+import io.alauda.jenkins.devops.sync.controller.JenkinsBindingController;
 import io.alauda.jenkins.devops.sync.util.CronUtils;
-import io.alauda.jenkins.devops.sync.watcher.ResourcesCache;
-import io.alauda.kubernetes.client.Config;
-import io.alauda.kubernetes.client.KubernetesClientException;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONArray;
 import org.acegisecurity.AccessDeniedException;
@@ -24,13 +19,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 import javax.annotation.CheckForNull;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 
 @Extension
@@ -55,24 +44,6 @@ public class KubernetesClientAction implements UnprotectedRootAction {
     @Override
     public String getUrlName() {
         return "alauda";
-    }
-
-    public HttpResponse doConnectTest(@QueryParameter String server,
-                                      @QueryParameter String credentialId,
-                                      @QueryParameter boolean trustCerts) {
-        Map<String, String> result = new HashMap<>();
-
-        try {
-            connectTest(server, credentialId, trustCerts);
-
-            result.put("success", "true");
-            result.put("message", "ok");
-        } catch(KubernetesClientException e) {
-            result.put("success", "false");
-            result.put("message", e.getMessage());
-        }
-
-        return HttpResponses.okJSON(result);
     }
 
     @Exported
@@ -100,9 +71,8 @@ public class KubernetesClientAction implements UnprotectedRootAction {
             return HttpResponses.errorJSON("No administer");
         }
 
-        Set<String> allNamespaces = ResourcesCache.getInstance().getNamespaces();
         JSONArray array = new JSONArray();
-        array.addAll(allNamespaces);
+        array.addAll(JenkinsBindingController.getCurrentJenkinsBindingController().getBindingNamespaces());
         return HttpResponses.okJSON(array);
     }
 
@@ -143,24 +113,4 @@ public class KubernetesClientAction implements UnprotectedRootAction {
         return HttpResponses.okJSON(result);
     }
 
-    public URL connectTest(String server, String credentialId, boolean trustCerts) {
-        AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
-        if (server != null && !server.isEmpty()) {
-            configBuilder.withMasterUrl(server);
-        }
-
-        Config config = configBuilder.build();
-        config.setTrustCerts(trustCerts);
-        DefaultAlaudaDevOpsClient client = new DefaultAlaudaDevOpsClient(config);
-
-        if(credentialId != null) {
-            String token = CredentialsUtils.getToken(credentialId);
-            if(token != null) {
-                client.getConfiguration().setOauthToken(token);
-            }
-        }
-
-        client.pods().inAnyNamespace().list();
-        return client.getMasterUrl();
-    }
 }

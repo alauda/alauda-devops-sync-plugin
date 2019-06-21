@@ -22,32 +22,11 @@
              description="Check if we should sync Alauda DevOps Pipelines with Jenkins jobs">
       <f:checkbox/>
     </f:entry>
-    <f:entry title="${%Server}" field="server"
-             description="The API server to sync against - leave blank if running on an Kubernetes cluster">
-      <f:textbox/>
-    </f:entry>
-    <f:entry title="${%Disable https certificate check}" field="trustCerts">
-      <f:checkbox/>
-    </f:entry>
-    <f:entry title="${%Credentials}" field="credentialsId">
-      <c:select/>
-    </f:entry>
     <f:entry title="${%Jenkins service}" field="jenkinsService"
              description="The name of the Jenkins service installed in Alauda DevOps platform. If left blank an attempt to find its matching Jenkins using the host address will be made.">
       <f:textbox/>
     </f:entry>
 
-    <f:advanced>
-      <f:entry title="${%Shared Namespace}" field="sharedNamespace">
-        <f:textbox default="global-credentials"/>
-      </f:entry>
-      <f:entry title="${%Watcher Alive Check}" field="watcherAliveCheck">
-        <f:number default="5"/>
-      </f:entry>
-    </f:advanced>
-
-    <f:validateButton title="${%Test Connection}" method="verifyConnect"
-                      with="server,credentialsId,trustCerts" progress="Testing..."></f:validateButton>
     <f:invisibleEntry title="Sync Job Name Pattern" field="jobNamePattern"
              description="The regular expression to match pipeline job names which should be sync'd to PipelineConfigs in Alauda DevOps - leave blank to not sync Jenkins Jobs to Alauda DevOps PipelineConfigs.">
       <f:textbox/>

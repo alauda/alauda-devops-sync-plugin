@@ -25,35 +25,38 @@ import com.jenkinsci.plugins.badge.action.BadgeAction;
 import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.*;
-import hudson.model.Job;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
-import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStatus;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkins;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkinsBuilder;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.controller.PipelineController;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
-import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
-import io.alauda.kubernetes.api.model.*;
-import io.alauda.kubernetes.client.KubernetesClientException;
+import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.jenkins.blueocean.rest.factory.BlueRunFactory;
 import io.jenkins.blueocean.rest.model.BluePipelineNode;
 import io.jenkins.blueocean.rest.model.BluePipelineStep;
 import io.jenkins.blueocean.rest.model.BlueRun;
 import io.jenkins.blueocean.rest.model.BlueRun.BlueRunResult;
+import io.kubernetes.client.models.V1Status;
 import jenkins.model.Jenkins;
 import jenkins.util.Timer;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
-import org.apache.commons.httpclient.HttpStatus;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputAction;
 import org.jenkinsci.plugins.workflow.support.steps.input.InputStepExecution;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import javax.annotation.Nonnull;
@@ -70,7 +73,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.*;
 import static java.util.logging.Level.*;
 
 /**
@@ -104,8 +106,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         int count = pipelineCauses.size();
         if(count > 1) {
-            logger.log(Level.FINE, String.format("Found %d pipeline causes.", count));
-            AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
+            logger.log(Level.INFO, String.format("Found %d pipeline causes.", count));
             pipelineCauses.pollFirst();
             Iterator<JenkinsPipelineCause> it = pipelineCauses.iterator();
             while(it.hasNext()) {
@@ -113,12 +114,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 String namespace = pipeline.getNamespace();
                 String name = pipeline.getName();
 
-                client.pipelines().inNamespace(namespace).withName(name).delete();
-
-                logger.log(Level.FINE, String.format("Going to delete pipeline %s-%s", namespace, name));
+                PipelineController.deletePipeline(namespace, name);
+                logger.log(Level.INFO, String.format("Going to delete pipeline %s-%s", namespace, name));
             }
         }
     }
+
 
     @Override
     public void onStarted(Run run, TaskListener listener) {
@@ -144,7 +145,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             }, delayPollPeriodMs, pollPeriodMs, TimeUnit.MILLISECONDS);
         }
 
-        if(unSyncedTimerStarted.compareAndSet(false, true)) {
+        if (unSyncedTimerStarted.compareAndSet(false, true)) {
             Timer.get().scheduleAtFixedRate(new SafeTimerTask() {
                 @Override
                 protected void doRun() throws Exception {
@@ -156,23 +157,23 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
     private void findUnSyncedRecords() {
         List<Folder> folders = Jenkins.getInstance().getItems(Folder.class);
-        if(folders == null) {
+        if (folders == null) {
             return;
         }
 
         folders.forEach(folder -> {
             Collection<? extends Job> jobs = folder.getAllJobs();
-            if(jobs == null) {
+            if (jobs == null) {
                 return;
             }
 
             jobs.forEach(job -> {
-                if(WorkflowJobUtils.hasNotAlaudaProperty(job)) {
+                if (WorkflowJobUtils.hasNotAlaudaProperty(job)) {
                     return;
                 }
 
                 job.getBuilds().filter(new UnSyncedBuild()).forEach((run) -> {
-                    if(run instanceof Run) {
+                    if (run instanceof Run) {
                         runsToPoll.add((Run) run);
                     }
                 });
@@ -183,12 +184,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     class UnSyncedBuild implements Predicate<Run> {
         @Override
         public boolean apply(@Nullable Run run) {
-            if(run == null) {
+            if (run == null) {
                 return false;
             }
 
             JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
-            if(cause == null) {
+            if (cause == null) {
                 return false;
             }
 
@@ -205,9 +206,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 runsToPoll.remove(run);
                 logger.fine("onCompleted " + run.getUrl());
                 JenkinsUtils.maybeScheduleNext(((WorkflowRun) run).getParent());
-            } catch (TimeoutException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
+            } catch (TimeoutException | InterruptedException e) {
                 e.printStackTrace();
             }
         } else {
@@ -226,12 +225,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             String namespace = cause.getNamespace();
             String pipelineName = cause.getName();
 
-            boolean result = false;
-            try{
-                result = PipelineUtils.delete(namespace, pipelineName);
-            } catch (KubernetesClientException e) {
-                logger.warning(e.getMessage());
-            }
+
+            V1Status result = PipelineUtils.delete(namespace, pipelineName);
 
             int buildNum = run.getNumber();
             logger.fine("Delete `Pipeline` result is: " + result + "; name is: " + pipelineName + "; buildNum is: " + buildNum);
@@ -262,7 +257,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 pollRun(run);
 
                 StatusExt status = RunExt.create((WorkflowRun) run).getStatus();
-                switch(status) {
+                switch (status) {
                     case IN_PROGRESS:
                     case PAUSED_PENDING_INPUT:
                     case NOT_EXECUTED:
@@ -270,7 +265,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                     default:
                         runsToPoll.remove(run);
                 }
-            } catch (KubernetesClientException | TimeoutException | InterruptedException e) {
+            } catch (TimeoutException | InterruptedException e) {
                 e.printStackTrace();
             }
         }
@@ -281,6 +276,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             throw new IllegalStateException("Cannot poll a non-workflow run");
         }
 
+        logger.log(FINE, String.format("Polling run %s", run.getFullDisplayName()));
         RunExt wfRunExt = RunExt.create((WorkflowRun) run);
 
         // try blue run
@@ -293,13 +289,10 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         try {
             upsertPipeline(run, wfRunExt, blueRun);
-        } catch (KubernetesClientException e) {
-            if (e.getCode() == HttpStatus.SC_UNPROCESSABLE_ENTITY) {
-                runsToPoll.remove(run);
-                logger.log(WARNING, "Cannot update status: {0}", e.getMessage());
-                return;
-            }
-            throw e;
+        } catch (Exception e) {
+            runsToPoll.remove(run);
+            logger.log(WARNING, "Cannot update status: {0}", e.getMessage());
+
         }
     }
 
@@ -345,20 +338,13 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         return null;
     }
 
-    private void upsertPipeline(@NotNull Run run, RunExt wfRunExt, BlueRun blueRun) throws TimeoutException, InterruptedException {
-        final AlaudaDevOpsClient client = getAuthenticatedAlaudaClient();
-        if(client == null) {
-            return;
-        }
-
+    private void upsertPipeline(@NotNull Run run, RunExt wfRunExt, BlueRun blueRun) {
         List<Cause> causes = run.getCauses();
-        if(causes != null) {
-            causes.forEach(causeItem -> {
-                logger.fine(() -> "run " + run + " caused by " + causeItem);
-            });
-        }
+        causes.forEach(causeItem -> {
+            logger.fine(() -> "run " + run + " caused by " + causeItem);
+        });
         JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
-        if(cause == null) {
+        if (cause == null) {
             logger.warning("run " + run + " do not have JenkinsPipelineCause");
             return;
         }
@@ -375,7 +361,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         String stepsUrl;
         String stepsLogUrl;
         String changeTitle = "";
-        if(JenkinsUtils.fromMultiBranch(run)) {
+        if (JenkinsUtils.fromMultiBranch(run)) {
             WorkflowJob wfJob = (WorkflowJob) run.getParent();
             WorkflowMultiBranchProject multiWfJob = (WorkflowMultiBranchProject) wfJob.getParent();
             viewLogUrl = String.format("/blue/rest/organizations/jenkins/pipelines/%s/pipelines/%s/branches/%s/runs/%d/nodes/%%d/steps/%%d/log/",
@@ -409,7 +395,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                     run.number);
 
             Object changeTitleObj = run.getEnvVars().get("CHANGE_TITLE");
-            if(changeTitleObj != null) {
+            if (changeTitleObj != null) {
                 changeTitle = changeTitleObj.toString();
             }
         } else {
@@ -453,19 +439,17 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             Jenkins jenkins = Jenkins.getInstance();
             // NOTE, the excessive null checking is to keep `mvn findbugs:gui`
             // quiet
-            if (jenkins != null) {
-                PluginManager pluginMgr = jenkins.getPluginManager();
-                if (pluginMgr != null) {
-                    ClassLoader cl = pluginMgr.uberClassLoader;
-                    if (cl != null) {
-                        Class weburlbldr = cl.loadClass("org.jenkinsci.plugins.blueoceandisplayurl.BlueOceanDisplayURLImpl");
-                        Constructor ctor = weburlbldr.getConstructor();
-                        Object displayURL = ctor.newInstance();
-                        Method getRunURLMethod = weburlbldr.getMethod("getRunURL", hudson.model.Run.class);
-                        Object blueOceanURI = getRunURLMethod.invoke(displayURL, run);
-                        logsBlueOceanUrl = blueOceanURI.toString();
-                        logsBlueOceanUrl = logsBlueOceanUrl.replaceAll("http://unconfigured-jenkins-location/", "");
-                    }
+            PluginManager pluginMgr = jenkins.getPluginManager();
+            if (pluginMgr != null) {
+                ClassLoader cl = pluginMgr.uberClassLoader;
+                if (cl != null) {
+                    Class weburlbldr = cl.loadClass("org.jenkinsci.plugins.blueoceandisplayurl.BlueOceanDisplayURLImpl");
+                    Constructor ctor = weburlbldr.getConstructor();
+                    Object displayURL = ctor.newInstance();
+                    Method getRunURLMethod = weburlbldr.getMethod("getRunURL", Run.class);
+                    Object blueOceanURI = getRunURLMethod.invoke(displayURL, run);
+                    logsBlueOceanUrl = blueOceanURI.toString();
+                    logsBlueOceanUrl = logsBlueOceanUrl.replaceAll("http://unconfigured-jenkins-location/", "");
                 }
             }
         } catch (Throwable t) {
@@ -563,28 +547,29 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         String phase = runToPipelinePhase(run);
         long started = getStartTime(run);
-        String startTime = null;
-        String completionTime = null;
-        String updatedTime = AlaudaUtils.getCurrentTimestamp();
+        DateTime startTime = null;
+        DateTime completionTime = null;
+        DateTime updatedTime = DateTime.now();
         if (started > 0) {
-            startTime = formatTimestamp(started);
+            startTime = new DateTime(started, DateTimeZone.getDefault());
             long duration = getDuration(run);
             if (duration > 0) {
-                completionTime = formatTimestamp(started + duration);
+                completionTime = new DateTime(started + duration, DateTimeZone.getDefault());
             }
         }
 
         logger.log(INFO, "Patching pipeline {0}/{1}: setting phase to {2}", new Object[]{cause.getNamespace(), cause.getName(), phase});
-        Pipeline pipeline = client.pipelines().inNamespace(cause.getNamespace()).withName(cause.getName()).get();
+        V1alpha1Pipeline pipeline = PipelineController.getCurrentPipelineController().getPipeline(cause.getNamespace(), cause.getName());
         if (pipeline == null) {
             cause.setSynced(false);
             logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
             return;
         }
+        V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
 
         String blueJson = toBlueJson(pipeJson);
 
-        Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
+        Map<String, String> annotations = newPipeline.getMetadata().getAnnotations();
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON, json);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON, blueJson);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI, buildUrl);
@@ -598,20 +583,17 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG, stepsLogUrl);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG, progressiveLogUrl);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE, changeTitle);
-        pipeline.getMetadata().setAnnotations(annotations);
+        newPipeline.getMetadata().setAnnotations(annotations);
 
         badgeHandle(run, annotations);
 
-        // status
-        PipelineStatus status = createPipelineStatus(pipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
-        pipeline.setStatus(status);
+
+        V1alpha1PipelineStatus status = createPipelineStatus(newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
+        newPipeline.setStatus(status);
 
         try {
-            Pipeline result = client
-                    .pipelines().inNamespace(namespace)
-                    .withName(pipeline.getMetadata().getName())
-                    .patch(pipeline);
-            logger.fine("updated pipeline: " + result);
+            PipelineController.updatePipeline(pipeline, newPipeline);
+            logger.fine(String.format("updated pipeline: '%s/%s", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
         } catch (Exception e) {
             cause.setSynced(false);
             throw e;
@@ -647,19 +629,19 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         annotations.put(ANNOTATION_BADGE, jsonArray.toString());
     }
 
-    private PipelineStatus createPipelineStatus(Pipeline pipeline, String phase, String startTime, String completionTime, String updatedTime, String blueJson, Run run, RunExt wfRunExt) {
-        PipelineStatus status = pipeline.getStatus();
+    private V1alpha1PipelineStatus createPipelineStatus(V1alpha1Pipeline pipeline, String phase, DateTime startTime, DateTime completionTime, DateTime updatedTime, String blueJson, Run run, RunExt wfRunExt) {
+        V1alpha1PipelineStatus status = pipeline.getStatus();
         if (status == null) {
-            status = new PipelineStatusBuilder().build();
+            status = new V1alpha1PipelineStatus();
         }
         status.setPhase(phase);
         status.setStartedAt(startTime);
         status.setFinishedAt(completionTime);
         status.setUpdatedAt(updatedTime);
 
-        PipelineStatusJenkins statusJenkins = status.getJenkins();
+        V1alpha1PipelineStatusJenkins statusJenkins = status.getJenkins();
         if (statusJenkins == null) {
-            statusJenkins = new PipelineStatusJenkinsBuilder().build();
+            statusJenkins = new V1alpha1PipelineStatusJenkinsBuilder().build();
         }
         status.setJenkins(statusJenkins);
 
@@ -705,9 +687,9 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
 
     /**
-     * @see PipelineUtils#runToPipelinePhase(Run)
      * @param run
      * @return
+     * @see PipelineUtils#runToPipelinePhase(Run)
      */
     @Deprecated
     private String runToPipelinePhase(Run run) {

@@ -3,6 +3,8 @@ package io.alauda.jenkins.devops.sync;
 import hudson.model.BooleanParameterDefinition;
 import hudson.model.StringParameterDefinition;
 import hudson.model.TextParameterDefinition;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfigBuilder;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.PipelineConfig;
 import io.alauda.kubernetes.api.model.PipelineConfigBuilder;
@@ -21,7 +23,7 @@ public class PipelineConfigToJobMapperTest {
     @Test
     public void mapPipelineConfigToFlow() throws Exception {
         assertNull(PipelineConfigToJobMapper.mapPipelineConfigToFlow(null));
-        PipelineConfig config = new PipelineConfigBuilder().withNewSpec().withNewStrategy()
+        V1alpha1PipelineConfig config = new V1alpha1PipelineConfigBuilder().withNewSpec().withNewStrategy()
                 .withNewJenkins().endJenkins().endStrategy().endSpec().build();
         assertNull(PipelineConfigToJobMapper.mapPipelineConfigToFlow(config));
 

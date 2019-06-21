@@ -6,28 +6,14 @@ import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
 import hudson.Extension;
 import hudson.model.ItemGroup;
 import hudson.util.XStream2;
-import io.alauda.devops.client.AlaudaDevOpsClient;
-import io.alauda.jenkins.devops.sync.core.UnsupportedSecretException;
+import io.alauda.devops.java.client.models.*;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
+import io.alauda.jenkins.devops.sync.controller.CodeRepositoryController;
+import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
-import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
-import io.alauda.kubernetes.api.model.CodeRepository;
-import io.alauda.kubernetes.api.model.CodeRepositoryRef;
-import io.alauda.kubernetes.api.model.CodeRepositorySpec;
-import io.alauda.kubernetes.api.model.MultiBranchBehaviours;
-import io.alauda.kubernetes.api.model.MultiBranchOrphan;
-import io.alauda.kubernetes.api.model.MultiBranchPipeline;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.OriginCodeRepository;
-import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.PipelineConfigSpec;
-import io.alauda.kubernetes.api.model.PipelineSource;
-import io.alauda.kubernetes.api.model.PipelineSourceGit;
-import io.alauda.kubernetes.api.model.PipelineStrategyJenkins;
-import io.alauda.kubernetes.api.model.PipelineTrigger;
-import io.alauda.kubernetes.api.model.PipelineTriggerCron;
 import jenkins.branch.BranchSource;
 import jenkins.model.Jenkins;
 import jenkins.plugins.git.GitSCMSource;
@@ -45,11 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
@@ -63,7 +45,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
     private final Logger logger = Logger.getLogger(ConvertToMultiBranch.class.getName());
 
     @Override
-    public boolean accept(PipelineConfig pipelineConfig) {
+    public boolean accept(V1alpha1PipelineConfig pipelineConfig) {
         if(pipelineConfig == null) {
             return false;
         }
@@ -73,7 +55,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
     }
 
     @Override
-    public WorkflowMultiBranchProject convert(PipelineConfig pipelineConfig) throws IOException {
+    public WorkflowMultiBranchProject convert(V1alpha1PipelineConfig pipelineConfig) throws IOException {
         String jobName = AlaudaUtils.jenkinsJobName(pipelineConfig);
         String jobFullName = AlaudaUtils.jenkinsJobFullName(pipelineConfig);
         String namespace = pipelineConfig.getMetadata().getNamespace();
@@ -81,10 +63,6 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
         String uid = pipelineConfig.getMetadata().getUid();
         String resourceVer = pipelineConfig.getMetadata().getResourceVersion();
 
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            return null;
-        }
 
         WorkflowMultiBranchProject job = PipelineConfigToJobMap.getMultiBranchByPC(pipelineConfig);
         Jenkins activeInstance = Jenkins.getInstance();
@@ -96,7 +74,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
         boolean newJob = job == null;
         if (newJob) {
-            parent = AlaudaUtils.getOrCreateFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
+            parent = AlaudaUtils.getOrCreateFullNameParent(activeInstance, jobFullName, namespace);
             job = new WorkflowMultiBranchProject(parent, jobName);
             job.addProperty(new MultiBranchProperty(namespace, name, uid, resourceVer));
 
@@ -120,8 +98,8 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
         // we just support only one source
         job.getSourcesList().clear();
 
-        PipelineConfigSpec spec = pipelineConfig.getSpec();
-        PipelineStrategyJenkins strategy = spec.getStrategy().getJenkins();
+        V1alpha1PipelineConfigSpec spec = pipelineConfig.getSpec();
+        V1alpha1PipelineStrategyJenkins strategy = spec.getStrategy().getJenkins();
         if(strategy == null) {
             logger.severe(String.format("No strategy in here, namespace: %s, name: %s.", namespace, name));
             return null;
@@ -131,11 +109,11 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
         wfFactory.setScriptPath(strategy.getJenkinsfilePath());
         job.setProjectFactory(wfFactory);
 
-        MultiBranchBehaviours behaviours = null;
+        V1alpha1MultiBranchBehaviours behaviours = null;
         // orphaned setting
-        MultiBranchPipeline multiBranch = strategy.getMultiBranch();
+        V1alpha1MultiBranchPipeline multiBranch = strategy.getMultiBranch();
         if(multiBranch != null) {
-            MultiBranchOrphan orphaned = multiBranch.getOrphaned();
+            V1alpha1MultiBranchOrphan orphaned = multiBranch.getOrphaned();
             DefaultOrphanedItemStrategy orphanedStrategy;
             if(orphaned != null) {
                 orphanedStrategy = new DefaultOrphanedItemStrategy(
@@ -148,21 +126,21 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             behaviours = multiBranch.getBehaviours();
         }
 
-        PipelineSource source = spec.getSource();
+        V1alpha1PipelineSource source = spec.getSource();
         SCMSource scmSource = null;
 
-        CodeRepositoryRef codeRepoRef = source.getCodeRepository();
-        PipelineSourceGit gitSource = source.getGit();
+        V1alpha1CodeRepositoryRef codeRepoRef = source.getCodeRepository();
+        V1alpha1PipelineSourceGit gitSource = source.getGit();
         GitProviderMultiBranch gitProvider = null;
         // TODO maybe put some redundancy into annotation
         if(codeRepoRef != null) {
             // cases for git provider
             String codeRepoName = codeRepoRef.getName();
 
-            CodeRepository codeRep = client.codeRepositories().inNamespace(namespace).withName(codeRepoName).get();
+            V1alpha1CodeRepository codeRep = CodeRepositoryController.getCurrentCodeRepositoryController().getCodeRepository(namespace, codeRepoRef.getName());
             if(codeRep != null) {
-                CodeRepositorySpec codeRepoSpec = codeRep.getSpec();
-                OriginCodeRepository codeRepo = codeRepoSpec.getRepository();
+                V1alpha1CodeRepositorySpec codeRepoSpec = codeRep.getSpec();
+                V1alpha1OriginCodeRepository codeRepo = codeRepoSpec.getRepository();
                 String repoOwner = codeRepo.getOwner().getName();
                 String repository = codeRepo.getName();
                 String codeRepoType = codeRepo.getCodeRepoServiceType();
@@ -206,16 +184,16 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
             scmSource.setOwner(job);
         }
 
-        List<PipelineTrigger> triggers = spec.getTriggers();
+        List<V1alpha1PipelineTrigger> triggers = spec.getTriggers();
         if(triggers != null) {
-            Optional<PipelineTrigger> triggerOpt = triggers.stream().filter(
+            Optional<V1alpha1PipelineTrigger> triggerOpt = triggers.stream().filter(
                     trigger -> PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType())).findFirst();
             if(triggerOpt.isPresent()) {
-                PipelineTrigger trigger = triggerOpt.get();
-                PipelineTriggerCron cron = trigger.getCron();
+                V1alpha1PipelineTrigger trigger = triggerOpt.get();
+                V1alpha1PipelineTriggerCron cron = trigger.getCron();
 
                 try {
-                    job.addTrigger(new CronFolderTrigger(cron.getRule(), cron.getEnabled()));
+                    job.addTrigger(new CronFolderTrigger(cron.getRule(), cron.isEnabled()));
                 } catch (ANTLRException e) {
                     e.printStackTrace();
                 }
@@ -234,7 +212,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
             PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
 
-            logger.info("Created job " + jobName + " from PipelineConfig " + NamespaceName.create(pipelineConfig)
+            logger.info("Created job " + jobName + " from PipelineConfig " + namespace + "/" + name
                     + " with revision: " + resourceVer);
         } else {
             updateJob(job, jobStream, jobName, pipelineConfig);
@@ -242,7 +220,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
 
         Map<String, String> logURLs = Collections.singletonMap(ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG,
                 String.format("/job/%s/job/%s/indexing/logText/progressiveText", namespace, jobName));
-        addAnnotations(pipelineConfig, logURLs, client);
+        addAnnotations(pipelineConfig, logURLs);
 
         updatePipelineConfigPhase(pipelineConfig);
 
@@ -250,7 +228,7 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
     }
 
     // TODO should create a PR to unit the interface
-    private void handleSCMTraits(@NotNull SCMSource source, MultiBranchBehaviours behaviours, GitProviderMultiBranch gitProvider) {
+    private void handleSCMTraits(@NotNull SCMSource source, V1alpha1MultiBranchBehaviours behaviours, GitProviderMultiBranch gitProvider) {
         List<SCMSourceTrait> traits = new ArrayList<>();
         if(behaviours != null && StringUtils.isNotBlank(behaviours.getFilterExpression())) {
             traits.add(new RegexSCMHeadFilterTrait(behaviours.getFilterExpression()));
@@ -275,25 +253,25 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
     }
 
     // TODO should create a PR to unit the interface
-    private void handleCredentials(@NotNull SCMSource source, @NotNull PipelineConfig pipelineConfig) throws IOException {
+    private void handleCredentials(@NotNull SCMSource source, @NotNull V1alpha1PipelineConfig pipelineConfig) throws IOException {
         String credentialId;
         try {
-            credentialId = CredentialsUtils.updateSourceCredentials(pipelineConfig);
+            credentialId = CredentialsUtils.getSCMSourceCredentialsId(pipelineConfig);
+
             Method method = source.getClass().getMethod("setCredentialsId", String.class);
             method.invoke(source, credentialId);
-        } catch (UnsupportedSecretException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             logger.severe(String.format("Can't setting credentials, source class is %s", source.getClass()));
         }
     }
 
-    private void addAnnotations(@NotNull PipelineConfig pc, @NotNull Map<String, String> annotations,
-                                @NotNull AlaudaDevOpsClient client) {
-        ObjectMeta meta = pc.getMetadata();
-        client.pipelineConfigs().inNamespace(meta.getNamespace())
-                .withName(meta.getName()).edit()
-                .editMetadata().addToAnnotations(annotations)
-                .endMetadata().done();
+    private void addAnnotations(@NotNull V1alpha1PipelineConfig pc, @NotNull Map<String, String> annotations) {
+        V1alpha1PipelineConfig oldPc = DeepCopyUtils.deepCopy(pc);
+
+
+        annotations.forEach((key, value) -> pc.getMetadata().putAnnotationsItem(key, value));
+        PipelineConfigController.updatePipelineConfig(oldPc, pc);
     }
 
 }

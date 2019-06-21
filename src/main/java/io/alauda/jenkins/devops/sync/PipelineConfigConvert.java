@@ -3,14 +3,14 @@ package io.alauda.jenkins.devops.sync;
 import hudson.ExtensionPoint;
 import hudson.model.AbstractItem;
 import hudson.model.TopLevelItem;
-import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.devops.java.client.models.V1alpha1Condition;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfigStatus;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfigStatusBuilder;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
-import io.alauda.kubernetes.api.model.Condition;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.api.model.PipelineConfigStatus;
-import io.alauda.kubernetes.api.model.PipelineConfigStatusBuilder;
+import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
+import org.joda.time.DateTime;
 
 import javax.validation.constraints.NotNull;
 import javax.xml.transform.Source;
@@ -20,45 +20,46 @@ import java.io.InputStream;
 import java.util.List;
 
 public interface PipelineConfigConvert<T extends TopLevelItem> extends ExtensionPoint {
-    boolean accept(PipelineConfig pipelineConfig);
+    boolean accept(V1alpha1PipelineConfig pipelineConfig);
 
-    T convert(PipelineConfig pipelineConfig) throws IOException;
+    T convert(V1alpha1PipelineConfig pipelineConfig) throws IOException;
 
-    default boolean isSameJob(PipelineConfig pipelineConfig, AlaudaJobProperty jobProperty) {
+    default boolean isSameJob(V1alpha1PipelineConfig pipelineConfig, AlaudaJobProperty jobProperty) {
         return pipelineConfig.getMetadata().getUid().equals(jobProperty.getUid());
     }
 
-    default void updateJob(AbstractItem item, InputStream jobStream, String jobName, PipelineConfig pipelineConfig) throws IOException {
+    default void updateJob(AbstractItem item, InputStream jobStream, String jobName, V1alpha1PipelineConfig pipelineConfig) throws IOException {
         Source source = new StreamSource(jobStream);
         item.updateByXml(source);
         item.save();
     }
 
-    default void updatePipelineConfigPhase(@NotNull final PipelineConfig pipelineConfig) {
-        PipelineConfigStatusBuilder statusBuilder = new PipelineConfigStatusBuilder();
+    default void updatePipelineConfigPhase(@NotNull final V1alpha1PipelineConfig pipelineConfig) {
 
-        PipelineConfigStatus status = pipelineConfig.getStatus();
-        List<Condition> conditions = status.getConditions();
+        V1alpha1PipelineConfigStatus status = pipelineConfig.getStatus();
+        List<V1alpha1Condition> conditions = status.getConditions();
+
         if (conditions.size() > 0) {
+            V1alpha1PipelineConfigStatusBuilder statusBuilder = new V1alpha1PipelineConfigStatusBuilder();
+
             conditions.forEach(condition -> {
-                condition.setLastAttempt(AlaudaUtils.getCurrentTimestamp());
+                condition.setLastAttempt(new DateTime());
                 statusBuilder.addNewConditionLike(condition).endCondition();
             });
 
             statusBuilder.withMessage("Exists errors in process of creating pipeline job.");
             statusBuilder.withPhase(PipelineConfigPhase.ERROR);
+            V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
+
+            statusBuilder.withLastUpdated(DateTime.now());
+            pipelineConfig.status(statusBuilder.build());
+
+            PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
         } else {
-            statusBuilder.withPhase(PipelineConfigPhase.READY);
+            V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
+            pipelineConfig.getStatus().setPhase(PipelineConfigPhase.READY);
+
+            PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
         }
-
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        ObjectMeta metadata = pipelineConfig.getMetadata();
-        String namespace = metadata.getNamespace();
-        String name = metadata.getName();
-
-        PipelineConfig result = client.pipelineConfigs().inNamespace(namespace)
-                .withName(name).edit()
-                .withNewStatusLike(statusBuilder.build()).endStatus()
-                .done();
     }
 }

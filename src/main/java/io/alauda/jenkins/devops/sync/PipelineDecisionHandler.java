@@ -17,15 +17,13 @@ package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
 import hudson.model.*;
-import io.alauda.devops.client.AlaudaDevOpsClient;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.alauda.jenkins.devops.sync.util.PipelineToActionMapper;
-import io.alauda.jenkins.devops.sync.util.PipelineUtils;
-import io.alauda.kubernetes.api.model.Pipeline;
-import io.alauda.kubernetes.api.model.PipelineConfig;
-import io.alauda.kubernetes.client.KubernetesClientException;
+import io.kubernetes.client.ApiException;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -48,18 +46,18 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
     @Override
     public boolean shouldSchedule(Queue.Task p, List<Action> actions) {
-        if(!(p instanceof WorkflowJob)) {
+        if (!(p instanceof WorkflowJob)) {
             return true;
         }
 
-        if(triggerFromJenkins(actions)) {
+        if (triggerFromJenkins(actions)) {
             // in case of triggered by users or triggers
             WorkflowJob workflowJob = (WorkflowJob) p;
             String taskName = p.getName();
 
-            AlaudaJobProperty alaudaJobProperty ;
-            if(isMultiBranch(workflowJob)) {
-                alaudaJobProperty = ((WorkflowMultiBranchProject)workflowJob.getParent())
+            AlaudaJobProperty alaudaJobProperty;
+            if (isMultiBranch(workflowJob)) {
+                alaudaJobProperty = ((WorkflowMultiBranchProject) workflowJob.getParent())
                         .getProperties().get(MultiBranchProperty.class);
             } else {
                 alaudaJobProperty = workflowJob.getProperty(WorkflowJobProperty.class);
@@ -76,17 +74,8 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             LOGGER.info(() -> "Got this namespace " + namespace + " from this alaudaJobProperty: " + name);
             // TODO: Add trigger API for pipelineconfig (like above)
 
-            PipelineConfig config = null;
-            try {
-                config = AlaudaUtils.getAuthenticatedAlaudaClient()
-                        .pipelineConfigs().inNamespace(namespace)
-                        .withName(name).get();
-            } catch (KubernetesClientException e) {
-                Throwable cause = e.getCause();
-
-                LOGGER.warning(() -> e.getMessage() + "; cause: " + (cause != null ? cause.getMessage() : cause));
-            }
-
+            V1alpha1PipelineConfig config = null;
+            config = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
             if (config == null) {
                 return false;
             } else if (config.getMetadata() == null) {
@@ -94,16 +83,12 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                 return false;
             }
 
-            Pipeline pipeline;
+            V1alpha1Pipeline pipeline;
             try {
                 // create k8s resource(Pipeline)
                 pipeline = PipelineGenerator.buildPipeline(config, workflowJob, jobURL, actions);
-            } catch (KubernetesClientException e) {
-                LOGGER.warning(config.getMetadata().getName() + " got error : " + e.getMessage());
-
-                if(e.getCode() == 409) {
-                    PipelineUtils.pipelinesCheck(config);
-                }
+            } catch (ApiException e) {
+                LOGGER.log(Level.WARNING, String.format("Unable to create Pipeline '%s/%s', reason: %s", namespace, config.getMetadata().getName(), e.getMessage()), e);
 
                 return false;
             }
@@ -128,12 +113,10 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
                 // TODO consider how to keep other actions which are not just causeAction
                 // TODO should we add a extension point here?
                 List<Cause> causes = new ArrayList<>(cause.getCauses());
-                if(actions != null) {
-                    for(Action action : actions) {
-                        if(action instanceof SCMRevisionAction) {
-                            causes.add((SCMRevisionAction) action);
-                            break;
-                        }
+                for (Action action : actions) {
+                    if (action instanceof SCMRevisionAction) {
+                        causes.add((SCMRevisionAction) action);
+                        break;
                     }
                 }
 
@@ -152,12 +135,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
     }
 
     private String getJobUrl(WorkflowJob workflowJob, String namespace) {
-        AlaudaDevOpsClient client = AlaudaUtils.getAuthenticatedAlaudaClient();
-        if(client == null) {
-            return null;
-        }
-
-        String jenkinsUrl = AlaudaUtils.getJenkinsURL(client, namespace);
+        String jenkinsUrl = "";
         return PipelineSyncRunListener.joinPaths(jenkinsUrl, workflowJob.getUrl());
     }
 

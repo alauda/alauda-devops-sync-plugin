@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2018 Alauda.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,9 +15,6 @@
  */
 package io.alauda.jenkins.devops.sync.util;
 
-import io.alauda.kubernetes.api.model.HasMetadata;
-import io.alauda.kubernetes.api.model.ObjectMeta;
-
 /**
  * Represents a name in a namespace we can use as a key in a map
  */
@@ -30,16 +27,6 @@ public class NamespaceName {
         this.name = name;
     }
 
-    public static NamespaceName create(HasMetadata hasMetadata) {
-        notNull(hasMetadata, "resource");
-        ObjectMeta metadata = hasMetadata.getMetadata();
-        notNull(metadata, "metadata");
-        String name = metadata.getName();
-        String namespace = metadata.getNamespace();
-        notNull(name, "metadata.name");
-        notNull(namespace, "metadata.namespace");
-        return new NamespaceName(namespace, name);
-    }
 
     @Override
     public String toString() {

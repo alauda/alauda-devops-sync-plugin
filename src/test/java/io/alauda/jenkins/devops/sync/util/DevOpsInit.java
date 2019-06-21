@@ -4,9 +4,12 @@ import hudson.remoting.Base64;
 import io.alauda.devops.client.AlaudaDevOpsClient;
 import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
 import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.kubernetes.api.model.*;
 import io.alauda.kubernetes.client.Config;
+import io.kubernetes.client.ApiClient;
+import io.kubernetes.client.util.Config;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -29,14 +32,16 @@ public class DevOpsInit {
     private String secretName;
     private String bindingName;
 
-    public AlaudaDevOpsClient getClient() {
-        AlaudaDevOpsConfigBuilder configBuilder = new AlaudaDevOpsConfigBuilder();
-        Config config = configBuilder.build();
-        return new DefaultAlaudaDevOpsClient(config);
+    public ApiClient getClient() {
+        try {
+            return Config.fromCluster();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public DevOpsInit init() throws InterruptedException {
-        AlaudaDevOpsClient client = getClient();
+        ApiClient client = getClient();
 
         namespace = createProject(client).getMetadata().getName();
         jenkinsName = createJenkins(client).getMetadata().getName();
@@ -54,15 +59,15 @@ public class DevOpsInit {
      * @param client k8s client
      * @return PipelineConfig instance
      */
-    public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client) {
+    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client) {
         return createPipelineConfig(client, "echo '1'");
     }
 
-    public void deletePipelineConfig(AlaudaDevOpsClient client, String name) {
+    public void deletePipelineConfig(ApiClient client, String name) {
         client.pipelineConfigs().inNamespace(namespace).withName(name).delete();
     }
 
-    public void addCronTrigger4PipelineConfig(AlaudaDevOpsClient client, String name, String cron) {
+    public void addCronTrigger4PipelineConfig(ApiClient client, String name, String cron) {
         client.pipelineConfigs().inNamespace(namespace)
                 .withName(name).edit()
                 .editOrNewSpec().addNewTrigger().withType("cron").withNewCron()
@@ -70,20 +75,20 @@ public class DevOpsInit {
                 .endTrigger().endSpec().done();
     }
 
-    public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client, String script) {
+    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script) {
         return createPipelineConfig(client, script, null);
     }
 
-    public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client, String script, String cron) {
+    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String cron) {
         return createPipelineConfig(client, script, null, cron);
     }
 
-    public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client, String script, String jenkinsFilePath, String cron) {
+    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String jenkinsFilePath, String cron) {
         return createPipelineConfig(client, script, jenkinsFilePath, cron, null);
     }
 
-    public PipelineConfig createPipelineConfig(AlaudaDevOpsClient client, String script, String jenkinsFilePath, String cron, String secret) {
-        PipelineConfigSpecBuilder specBuilder = new PipelineConfigSpecBuilder()
+    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String jenkinsFilePath, String cron, String secret) {
+        V1alpha1PipelineConfigSpecBuilder specBuilder = new V1alpha1PipelineConfigSpecBuilder()
 //                .withNewSource().withNewSecret().endSecret().endSource()
                 .withNewStrategy()
                 .withNewJenkins().withJenkinsfile(script).withJenkinsfilePath(jenkinsFilePath).endJenkins()
@@ -99,7 +104,7 @@ public class DevOpsInit {
         }
 
         if(cron != null) {
-            PipelineTrigger trigger = new PipelineTriggerBuilder()
+            V1alpha1PipelineTrigger trigger = new V1alpha1PipelineTriggerBuilder()
                     .withType("cron").withNewCron().withEnabled(true).withRule(cron).endCron().build();
             specBuilder.withTriggers(trigger);
         }
@@ -114,13 +119,13 @@ public class DevOpsInit {
                 .done();
     }
 
-    public PipelineConfig updatePipelineConfigWithParams(AlaudaDevOpsClient client,
+    public V1alpha1PipelineConfig updatePipelineConfigWithParams(ApiClient client,
                                                          String name,
                                                          Map<String, String> paramMap,
                                                          String script) {
-        List<PipelineParameter> params = convertTo(paramMap);
+        List<V1alpha1PipelineParameter> params = convertTo(paramMap);
 
-        PipelineStrategy strategy = new PipelineStrategyBuilder()
+        V1alpha1PipelineStrategy strategy = new PipelineStrategyBuilder()
                 .withNewJenkins().withJenkinsfile(script).endJenkins().build();
 
         return client.pipelineConfigs().inNamespace(namespace).withName(name)
@@ -132,7 +137,7 @@ public class DevOpsInit {
                 .done();
     }
 
-    public PipelineConfig createPipelineConfigWithParams(AlaudaDevOpsClient client,
+    public PipelineConfig createPipelineConfigWithParams(ApiClient client,
                                                          Map<String, String> paramMap,
                                                          String script) {
         List<PipelineParameter> params = convertTo(paramMap);
@@ -162,7 +167,7 @@ public class DevOpsInit {
         return params;
     }
 
-    public void updatePipelineConfig(AlaudaDevOpsClient client, String name, String script) {
+    public void updatePipelineConfig(ApiClient client, String name, String script) {
         client.pipelineConfigs().inNamespace(namespace)
                 .withName(name)
                 .edit()
@@ -177,11 +182,11 @@ public class DevOpsInit {
                 .done();
     }
 
-    public PipelineConfig getPipelineConfig(AlaudaDevOpsClient client, String name) {
+    public PipelineConfig getPipelineConfig(ApiClient client, String name) {
         return client.pipelineConfigs().inNamespace(namespace).withName(name).get();
     }
 
-    public Pipeline createPipeline(AlaudaDevOpsClient client, String configName, Map<String, String> paramMap) {
+    public Pipeline createPipeline(ApiClient client, String configName, Map<String, String> paramMap) {
         PipelineConfig pipelineConfig = client.pipelineConfigs().inNamespace(namespace).withName(configName).get();
         List<PipelineParameter> params = pipelineConfig.getSpec().getParameters();
         List<PipelineParameter> pipelineParameters = new ArrayList<>();
@@ -209,15 +214,15 @@ public class DevOpsInit {
                 .done();
     }
 
-    public List<Pipeline> getPipelines(AlaudaDevOpsClient client) {
+    public List<Pipeline> getPipelines(ApiClient client) {
         return client.pipelines().inNamespace(namespace).list().getItems();
     }
 
-    public Pipeline getPipeline(AlaudaDevOpsClient client, String name) {
+    public Pipeline getPipeline(ApiClient client, String name) {
         return client.pipelines().inNamespace(namespace).withName(name).get();
     }
 
-    public void abortPipeline(AlaudaDevOpsClient client, String pipelineName) {
+    public void abortPipeline(ApiClient client, String pipelineName) {
         Pipeline pipeline = client.pipelines().inNamespace(namespace).withName(pipelineName).get();
         PipelineStatus status = pipeline.getStatus();
         status.setAborted(true);
@@ -226,7 +231,7 @@ public class DevOpsInit {
                 .edit().withStatus(status).done();
     }
 
-    public Pipeline createPipeline(AlaudaDevOpsClient client, String pipelineConfig) {
+    public Pipeline createPipeline(ApiClient client, String pipelineConfig) {
         PipelineConfig pipCfg = client.pipelineConfigs()
                 .inNamespace(namespace)
                 .withName(pipelineConfig).get();
@@ -249,7 +254,7 @@ public class DevOpsInit {
                 .done();
     }
 
-    public JenkinsBinding createBinding(AlaudaDevOpsClient client) {
+    public JenkinsBinding createBinding(ApiClient client) {
         return client.jenkinsBindings()
                 .createNew()
                 .withNewMetadata()
@@ -266,7 +271,7 @@ public class DevOpsInit {
                 .done();
     }
 
-    public Jenkins createJenkins(AlaudaDevOpsClient client) {
+    public Jenkins createJenkins(ApiClient client) {
         String fakeUrl = "http://abc-"+System.nanoTime()+".com";
         JenkinsSpec jenkinsSpec = new JenkinsSpecBuilder()
                 .withNewHttp(fakeUrl, fakeUrl)
@@ -280,7 +285,7 @@ public class DevOpsInit {
                 .done();
     }
 
-    public Secret createSecret(AlaudaDevOpsClient client) {
+    public Secret createSecret(ApiClient client) {
         Map<String, String> data = new HashMap<>();
         data.put("username", Base64.encode("a".getBytes()));
         data.put("password", Base64.encode("a".getBytes()));
@@ -297,7 +302,7 @@ public class DevOpsInit {
                 .done();
     }
 
-    public Namespace createProject(AlaudaDevOpsClient client) {
+    public Namespace createProject(ApiClient client) {
         DoneableNamespace namespace = client.namespaces().createNew()
                 .withNewMetadata()
                 .withLabels(Collections.singletonMap(TEST_FLAG, TEST_FLAG_VALUE))
@@ -306,14 +311,14 @@ public class DevOpsInit {
         return namespace.done();
     }
 
-    public ServiceAccount createServiceAccounts(AlaudaDevOpsClient client) {
+    public ServiceAccount createServiceAccounts(ApiClient client) {
         return client.serviceAccounts().createNew()
                 .withNewMetadata().withNamespace(namespace)
                 .withGenerateName("serviceaccounttest").endMetadata()
                 .done();
     }
 
-    public Pod createPod(AlaudaDevOpsClient client, final String accountName) {
+    public Pod createPod(ApiClient client, final String accountName) {
         return client.pods().createNew()
                 .withNewMetadata().withNamespace(namespace).withGenerateName("pod-test-").endMetadata()
                 .withNewSpec().withServiceAccountName(accountName)
