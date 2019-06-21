@@ -245,9 +245,7 @@ public abstract class PipelineConfigToJobMapper {
             }
 
             return false;
-        }
-
-        if (definition instanceof CpsFlowDefinition) {
+        } else if (definition instanceof CpsFlowDefinition) {
             CpsFlowDefinition cpsFlowDefinition = (CpsFlowDefinition) definition;
             String jenkinsfile = cpsFlowDefinition.getScript();
             if (jenkinsfile != null && jenkinsfile.trim().length() > 0 && !jenkinsfile.equals(pipelineStrategyJenkins.getJenkinsfile())) {
@@ -293,11 +291,13 @@ public abstract class PipelineConfigToJobMapper {
 
         ParametersDefinitionProperty paramsDefPro = job.getProperty(ParametersDefinitionProperty.class);
         if (paramsDefPro == null) {
+            LOGGER.log(Level.FINE, "No parameters define property for job {0}", job);
             return;
         }
 
         List<ParameterDefinition> paramDefs = paramsDefPro.getParameterDefinitions();
         if (paramDefs == null || paramDefs.size() == 0) {
+            LOGGER.log(Level.FINE, "No parameters defined for job {0}", job);
             return;
         }
 
