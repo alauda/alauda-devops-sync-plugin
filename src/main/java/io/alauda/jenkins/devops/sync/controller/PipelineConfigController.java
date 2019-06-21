@@ -32,6 +32,7 @@ import io.kubernetes.client.informer.ResourceEventHandler;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
+import io.kubernetes.client.models.V1DeleteOptions;
 import io.kubernetes.client.models.V1Status;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
@@ -458,7 +459,7 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
         try {
-            return api.deleteNamespacedPipelineConfig(name, namespace, null, null, null, null, null, null);
+            return api.deleteNamespacedPipelineConfig(name, namespace, new V1DeleteOptions(), null, null, null, null, null);
         } catch (ApiException e) {
             logger.log(Level.WARNING, String.format("Unable to delete pipelineconfig '%s/%s', reason: %s", namespace, name, e.getMessage()), e);
             return null;
