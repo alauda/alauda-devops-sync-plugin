@@ -99,7 +99,7 @@ pipeline {
                 script {
                     container('java'){
                         sh """
-                            mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true
+                            mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true -Dmaven.site.skip=true -Dmaven.javadoc.skip=true
                         """
                     }
 
