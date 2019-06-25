@@ -24,9 +24,9 @@ public class SSHAuthCredentialsConverter extends SecretToCredentialConverter {
     public IdCredentials convert(V1Secret secret) throws CredentialsConversionException {
         SecretUtils.requireNonNull(secret.getData(), "kubernetes.io/ssh-auth definition contains no data");
 
-        String username = SecretUtils.getNonNullSecretData(secret, ALAUDA_DEVOPS_SECRETS_DATA_USERNAME, "kubernetes.io/ssh-auth credential is missing the username");
         String privateKey = SecretUtils.getNonNullSecretData(secret, ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY, "kubernetes.io/ssh-auth credential is missing the ssh-privatekey");
 
+        Optional<String> optUsername = SecretUtils.getOptionalSecretData(secret, ALAUDA_DEVOPS_SECRETS_DATA_USERNAME, "kubernetes.io/ssh-auth credential is missing the username");
         Optional<String> optPassphrase = SecretUtils.getOptionalSecretData(secret, ALAUDA_DEVOPS_SECRETS_DATA_PASSPHRASE, "basicSSHUserPrivateKey credential: failed to retrieve passphrase, assuming private key has an empty passphrase");
         String passphrase = null;
 
@@ -36,7 +36,7 @@ public class SSHAuthCredentialsConverter extends SecretToCredentialConverter {
 
         return new BasicSSHUserPrivateKey(CredentialsScope.GLOBAL,
                 SecretUtils.getCredentialId(secret),
-                username,
+                optUsername.orElse(""),
                 new BasicSSHUserPrivateKey.DirectEntryPrivateKeySource(privateKey),
                 passphrase,
                 SecretUtils.getCredentialDescription(secret));
