@@ -11,10 +11,7 @@ import hudson.model.Item;
 import hudson.model.TopLevelItem;
 import hudson.security.ACL;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
-import io.alauda.devops.java.client.models.V1alpha1Condition;
-import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
-import io.alauda.devops.java.client.models.V1alpha1PipelineConfigList;
-import io.alauda.devops.java.client.models.V1alpha1PipelineConfigStatus;
+import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.devops.java.client.utils.PatchGenerator;
 import io.alauda.jenkins.devops.support.controller.Controller;
@@ -116,18 +113,18 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
         pipelineConfigInformer.addEventHandler(new ResourceEventHandler<V1alpha1PipelineConfig>() {
             @Override
             public void onAdd(V1alpha1PipelineConfig pipelineConfig) {
-                List<String> namespaces = JenkinsBindingController.getCurrentJenkinsBindingController().getBindingNamespaces();
                 String pipelineConfigName = pipelineConfig.getMetadata().getName();
                 String pipelineConfigNamespace = pipelineConfig.getMetadata().getNamespace();
+
+                if (!JenkinsBindingController.isBindResource(pipelineConfig.getSpec().getJenkinsBinding().getName())) {
+                    logger.log(Level.FINE,
+                            String.format("PipelineConfig '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineConfigNamespace, pipelineConfigName));
+                    return;
+                }
+
                 logger.log(Level.FINE,
                         String.format("PipelineConfigController receives event: Add; PipelineConfig '%s/%s'",
                                 pipelineConfigNamespace, pipelineConfigName));
-
-                if (!namespaces.contains(pipelineConfig.getMetadata().getNamespace())) {
-                    logger.log(Level.WARNING,
-                            String.format("PipelineConfig '%s/%s' not exists in namespace that has correct jenkinsbinding, will skip it", pipelineConfigNamespace, pipelineConfigName));
-                    return;
-                }
 
                 try {
                     pipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
@@ -141,20 +138,18 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
 
             @Override
             public void onUpdate(V1alpha1PipelineConfig oldPipelineConfig, V1alpha1PipelineConfig newPipelineConfig) {
-                List<String> namespaces = JenkinsBindingController.getCurrentJenkinsBindingController().getBindingNamespaces();
                 String pipelineConfigName = newPipelineConfig.getMetadata().getName();
                 String pipelineConfigNamespace = newPipelineConfig.getMetadata().getNamespace();
+
+                if (!JenkinsBindingController.isBindResource(newPipelineConfig.getSpec().getJenkinsBinding().getName())) {
+                    logger.log(Level.FINE,
+                            String.format("PipelineConfig '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineConfigNamespace, pipelineConfigName));
+                    return;
+                }
 
                 logger.log(Level.FINE,
                         String.format("PipelineConfigController receives event: Update; PipelineConfig '%s/%s'",
                                 pipelineConfigNamespace, pipelineConfigName));
-
-                if (!namespaces.contains(newPipelineConfig.getMetadata().getNamespace())) {
-                    logger.log(Level.FINE,
-                            String.format("PipelineConfig '%s/%s' not exists in namespace has correct jenkinsbinding, will skip it", pipelineConfigNamespace, pipelineConfigName));
-                    return;
-                }
-
                 try {
                     newPipelineConfig = DeepCopyUtils.deepCopy(newPipelineConfig);
                     modifyEventToJenkinsJob(newPipelineConfig);
@@ -167,6 +162,12 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
             public void onDelete(V1alpha1PipelineConfig pipelineConfig, boolean deletedFinalStateUnknown) {
                 String pipelineConfigName = pipelineConfig.getMetadata().getName();
                 String pipelineConfigNamespace = pipelineConfig.getMetadata().getNamespace();
+
+                if (!JenkinsBindingController.isBindResource(pipelineConfig.getSpec().getJenkinsBinding().getName())) {
+                    logger.log(Level.FINE,
+                            String.format("PipelineConfig '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineConfigNamespace, pipelineConfigName));
+                    return;
+                }
 
                 TopLevelItem item = PipelineConfigToJobMap.getItemByPC(pipelineConfig);
                 if (item != null) {
