@@ -15,7 +15,6 @@ import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.List;
@@ -105,11 +104,13 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
         }.getType();
     }
 
-    @Nullable
+    @Nonnull
     public List<V1alpha1JenkinsBinding> getJenkinsBindings() {
+        String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+
         if (jenkinsBindingInformer == null) {
             logger.log(Level.SEVERE, "JenkinsBinding controller may stopped, unable to get jenkinsbinding list");
-            return null;
+            return Collections.emptyList();
         }
 
 //        try {
@@ -123,10 +124,14 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
 
         if (!hasSynced()) {
             logger.log(Level.FINE, "JenkinsBindingController has not synced now, won't be able to get jenkinsbinding list");
-            return null;
+            return Collections.emptyList();
         }
 
-        return jenkinsBindingInformer.getIndexer().list();
+        return jenkinsBindingInformer.getIndexer()
+                .list()
+                .stream()
+                .filter(jenkinsBinding -> jenkinsBinding.getSpec().getJenkins().getName().equals(jenkinsService))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -143,15 +148,9 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
 
     @Nonnull
     public List<String> getBindingNamespaces() {
-        String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
         List<V1alpha1JenkinsBinding> jenkinsBindings = getJenkinsBindings();
-        if (jenkinsBindings == null) {
-            return Collections.emptyList();
-        }
-
 
         return jenkinsBindings.stream()
-                .filter(jenkinsBinding -> jenkinsBinding.getSpec().getJenkins().getName().equals(jenkinsService))
                 .map(jenkinsBinding -> jenkinsBinding.getMetadata().getNamespace())
                 .distinct()
                 .collect(Collectors.toList());
@@ -170,5 +169,12 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
         }
 
         return jenkinsBindingControllers.get(0);
+    }
+
+    public static boolean isBindResource(String bindingName) {
+        return getCurrentJenkinsBindingController()
+                .getJenkinsBindings()
+                .stream()
+                .anyMatch(binding -> binding.getMetadata().getName().equals(bindingName));
     }
 }
