@@ -98,21 +98,17 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         pipelineInformer.addEventHandler(new ResourceEventHandler<V1alpha1Pipeline>() {
             @Override
             public void onAdd(V1alpha1Pipeline pipeline) {
-                pipeline = DeepCopyUtils.deepCopy(pipeline);
-
                 String pipelineName = pipeline.getMetadata().getName();
                 String pipelineNamespace = pipeline.getMetadata().getNamespace();
+                if (!JenkinsBindingController.isBindResource(pipeline.getSpec().getJenkinsBinding().getName())) {
+                    logger.log(Level.FINE,
+                            String.format("Pipeline '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineNamespace, pipelineName));
+                    return;
+                }
 
                 logger.log(Level.FINE, String.format("PipelineController: received event: ADD, Pipeline '%s/%s'", pipelineNamespace, pipelineName));
                 if (!isNewPipeline(pipeline)) {
                     logger.log(Level.FINE, String.format("Pipeline '%s/%s phase is %s, will not add it", pipelineNamespace, pipelineName, pipeline.getStatus().getPhase()));
-                    return;
-                }
-
-                List<String> namespaces = JenkinsBindingController.getCurrentJenkinsBindingController().getBindingNamespaces();
-                if (!namespaces.contains(pipeline.getMetadata().getNamespace())) {
-                    logger.log(Level.FINE,
-                            String.format("Pipeline '%s/%s' not exists in namespace has correct jenkinsbinding, will skip it", pipelineNamespace, pipelineName));
                     return;
                 }
 
@@ -123,6 +119,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
                 }
 
                 try {
+                    pipeline = DeepCopyUtils.deepCopy(pipeline);
                     addEventToJenkinsJobRun(pipeline);
                 } catch (IOException e) {
                     logger.log(Level.WARNING, String.format("Failde to add pipeline '%s/%s, reason: %s'", pipelineNamespace, pipelineName, e.getMessage()), e);
@@ -131,7 +128,16 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
 
             @Override
             public void onUpdate(V1alpha1Pipeline oldPipeline, V1alpha1Pipeline newPipeline) {
-                logger.log(Level.FINE, String.format("PipelineController: received event: Update, Pipeline '%s/%s'", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
+                String pipelineName = newPipeline.getMetadata().getName();
+                String pipelineNamespace = newPipeline.getMetadata().getNamespace();
+                if (!JenkinsBindingController.isBindResource(newPipeline.getSpec().getJenkinsBinding().getName())) {
+                    logger.log(Level.FINE,
+                            String.format("Pipeline '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineNamespace, pipelineName));
+                    return;
+                }
+
+
+                logger.log(Level.FINE, String.format("PipelineController: received event: Update, Pipeline '%s/%s'", pipelineNamespace, pipelineName));
                 modifyEventToJenkinsJobRun(newPipeline);
             }
 
@@ -139,6 +145,12 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
             public void onDelete(V1alpha1Pipeline pipeline, boolean deletedFinalStateUnknown) {
                 String pipelineName = pipeline.getMetadata().getName();
                 String pipelineNamespace = pipeline.getMetadata().getNamespace();
+                if (!JenkinsBindingController.isBindResource(pipeline.getSpec().getJenkinsBinding().getName())) {
+                    logger.log(Level.FINE,
+                            String.format("Pipeline '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineNamespace, pipelineName));
+                    return;
+                }
+
                 logger.log(Level.FINE, String.format("PipelineController: received event: DELETE, Pipeline '%s/%s'", pipelineNamespace, pipelineName));
                 try {
                     deleteEventToJenkinsJobRun(pipeline);
