@@ -42,7 +42,16 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
         this.syncEnable = AlaudaSyncGlobalConfiguration.get().isEnabled();
         this.syncServiceName = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
 
-        return !jenkinsController.hasSynced();
+        if (!jenkinsController.hasSynced()) {
+            message = String.format("JenkinsController has not synced, reason: %s", jenkinsController.getControllerStatus());
+            return true;
+        }
+
+        if (!jenkinsController.isValidJenkinsInstance()) {
+            message = String.format("JenkinsController cannot sync with a invalid Jenkins, reason: %s", jenkinsController.getControllerStatus());
+            return true;
+        }
+        return false;
     }
 
     @RequirePOST
