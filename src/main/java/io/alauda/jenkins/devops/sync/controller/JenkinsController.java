@@ -209,4 +209,8 @@ public class JenkinsController implements Controller<V1alpha1Jenkins, V1alpha1Je
             controllerManagers.get(0).onConfigChange(cluster, Configuration.getDefaultApiClient());
         }
     }
+
+    public String getControllerStatus() {
+        return controllerStatus;
+    }
 }
