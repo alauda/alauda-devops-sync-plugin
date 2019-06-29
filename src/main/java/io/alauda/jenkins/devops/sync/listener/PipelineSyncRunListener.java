@@ -32,8 +32,10 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineStatus;
 import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkins;
 import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkinsBuilder;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
+import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.controller.PipelineController;
@@ -753,8 +755,25 @@ public class PipelineSyncRunListener extends RunListener<Run> {
      * @return true if the should poll the status of this build run
      */
     private boolean shouldPollRun(Run run) {
-        return run instanceof WorkflowRun && //run.getCause(JenkinsPipelineCause.class) != null &&
-                AlaudaSyncGlobalConfiguration.get().isEnabled();
+        if (!AlaudaSyncGlobalConfiguration.get().isEnabled()) {
+            return false;
+        }
+
+        if (!(run instanceof WorkflowRun)) {
+            return false;
+        }
+
+        WorkflowJob job = ((WorkflowRun) run).getParent();
+        ItemGroup parent = job.getParent();
+
+        if (parent instanceof WorkflowMultiBranchProject) {
+            WorkflowMultiBranchProject multiBranchProject = ((WorkflowMultiBranchProject) parent);
+            AlaudaJobProperty alaudaJobProperty = multiBranchProject.getProperties().get(MultiBranchProperty.class);
+            return alaudaJobProperty != null;
+        }
+
+        AlaudaJobProperty alaudaJobProperty = WorkflowJobUtils.getAlaudaProperty(job);
+        return alaudaJobProperty != null;
     }
 
     /**
