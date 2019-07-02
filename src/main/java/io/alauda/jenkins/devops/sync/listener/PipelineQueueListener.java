@@ -18,10 +18,7 @@ package io.alauda.jenkins.devops.sync.listener;
 import hudson.Extension;
 import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
-import io.alauda.devops.java.client.models.V1alpha1Pipeline;
-import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
-import io.alauda.jenkins.devops.sync.controller.PipelineController;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 
 import java.util.logging.Logger;
@@ -43,13 +40,8 @@ public class PipelineQueueListener extends QueueListener {
             String namespace = pipelineCause.getNamespace();
             String name = pipelineCause.getName();
 
-            V1alpha1Pipeline pipe = PipelineController.getCurrentPipelineController().getPipeline(namespace, name);
-            V1alpha1Pipeline newPipe = DeepCopyUtils.deepCopy(pipe);
-
-            newPipe.getStatus().aborted(true);
-
-            PipelineController.updatePipeline(pipe, newPipe);
-            logger.info("Item " + leftItem + " already sync with alauda'resource.");
+            PipelineUtils.delete(namespace, name);
+            logger.info(String.format("Pipeline %s-%s was deleted.", namespace, name));
         } else {
             String itemUrl = leftItem.getUrl();
             logger.warning("Can not found JenkinsPipelineCause, item url: " + itemUrl);
