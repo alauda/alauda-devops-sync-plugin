@@ -19,6 +19,7 @@ import hudson.Extension;
 import hudson.model.*;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
 import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
@@ -94,6 +95,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             }
 
             actions.add(new CauseAction(new JenkinsPipelineCause(pipeline, config.getMetadata().getUid())));
+            actions.add(new AlaudaQueueAction());
 
             ParametersAction params = dumpParams(actions);
             if (params != null) {
