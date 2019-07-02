@@ -32,8 +32,7 @@ public class PipelineQueueListener extends QueueListener {
 
     @Override
     public void onLeft(Queue.LeftItem leftItem) {
-        super.onLeft(leftItem);
-
+        logger.info(leftItem + " was left");
         boolean isCancelled = leftItem.isCancelled();
         if (!isCancelled) {
             return;

@@ -9,6 +9,7 @@ import hudson.util.XStream2;
 import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
+import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.constants.PipelineRunPolicy;
 import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
