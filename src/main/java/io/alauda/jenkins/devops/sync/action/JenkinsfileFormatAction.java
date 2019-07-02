@@ -6,10 +6,10 @@ import hudson.util.HttpResponses;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.interceptor.RequirePOST;
-import org.parboiled.common.StringUtils;
 
 import javax.annotation.CheckForNull;
 

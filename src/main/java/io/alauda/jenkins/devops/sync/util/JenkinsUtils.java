@@ -549,9 +549,11 @@ public abstract class JenkinsUtils {
 	    LOGGER.info("cancelling queued pipeline: "+pipeline.getMetadata().getName());
         String pipelineUid = pipeline.getMetadata().getUid();
         final Queue pipelineQueue = Jenkins.getInstance().getQueue();
+        boolean foundInQueue = false;
         for (final Queue.Item item : pipelineQueue.getItems()) {
-            for (Cause cause : item.getCauses()) {
-                if (cause instanceof JenkinsPipelineCause && ((JenkinsPipelineCause) cause).getUid().equals(pipelineUid)) {
+            for (JenkinsPipelineCause cause : PipelineUtils.findAllAlaudaCauses(item)) {
+                if (cause.getUid().equals(pipelineUid)) {
+                    foundInQueue = true;
                     return ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Boolean, RuntimeException>() {
                         @Override
                         public Boolean call() throws RuntimeException {
@@ -562,6 +564,11 @@ public abstract class JenkinsUtils {
                 }
             }
         }
+
+        if(!foundInQueue) {
+            LOGGER.info("Not found pipeline: %s" + pipeline.getMetadata().getName());
+        }
+
 		return cancelNotYetStartedPipeline(job, pipeline);
 	}
 
