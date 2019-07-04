@@ -19,6 +19,7 @@ import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
+import org.codehaus.groovy.control.MultipleCompilationErrorsException;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
@@ -168,21 +169,26 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
             return;
         }
 
-        String formattedJenkinsfile;
+        String formattedJenkinsfile = null;
         try {
             formattedJenkinsfile = JenkinsUtils.formatJenkinsfile(jenkinsfile);
         } catch (IOException e) {
             // format error, could be pipeline syntax error
-            return;
+            logger.log(Level.WARNING, "Failed to format Pipeline.", e);
+        } catch (MultipleCompilationErrorsException e) {
+            logger.log(Level.WARNING, "Pipeline syntax has errors.", e);
         }
 
-        V1ObjectMeta metadata = pipelineConfig.getMetadata();
-        String name = metadata.getName();
+        if (StringUtils.isNotEmpty(formattedJenkinsfile)) {
+            V1ObjectMeta metadata = pipelineConfig.getMetadata();
+            String name = metadata.getName();
 
-        V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
-        pipelineConfig.getSpec().getStrategy().getJenkins().jenkinsfile(formattedJenkinsfile);
-        PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
+            V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
+            pipelineConfig.getSpec().getStrategy().getJenkins().jenkinsfile(formattedJenkinsfile);
 
-        logger.fine(String.format("Format PipelineConfig's jenkinsfile %s, name: %s", formattedJenkinsfile, name));
+            PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
+
+            logger.fine(String.format("Format PipelineConfig's jenkinsfile %s, name: %s", formattedJenkinsfile, name));
+        }
     }
 }
