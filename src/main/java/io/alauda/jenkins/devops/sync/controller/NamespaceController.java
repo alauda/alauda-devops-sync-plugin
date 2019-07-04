@@ -6,6 +6,7 @@ import hudson.Extension;
 import hudson.security.ACL;
 import io.alauda.jenkins.devops.support.controller.Controller;
 import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.kubernetes.client.ApiClient;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.apis.CoreV1Api;
@@ -19,6 +20,7 @@ import jenkins.security.NotReallyRoleSensitiveCallable;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,7 +54,7 @@ public class NamespaceController implements Controller<V1Namespace, V1NamespaceL
                     } catch (ApiException e) {
                         throw new RuntimeException(e);
                     }
-                }, V1Namespace.class, V1NamespaceList.class);
+                }, V1Namespace.class, V1NamespaceList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
 
         namespaceInformer.addEventHandler(new ResourceEventHandler<V1Namespace>() {
             @Override
