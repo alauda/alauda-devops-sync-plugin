@@ -252,6 +252,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
 
     private void pollLoop() {
+        List<Run> completedRuns = new ArrayList<>();
         for (Run run : runsToPoll) {
             try {
                 pollRun(run);
@@ -263,12 +264,13 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                     case NOT_EXECUTED:
                         continue;
                     default:
-                        runsToPoll.remove(run);
+                        completedRuns.add(run);
                 }
             } catch (TimeoutException | InterruptedException e) {
                 e.printStackTrace();
             }
         }
+        runsToPoll.removeAll(completedRuns);
     }
 
     private synchronized void pollRun(Run run) throws TimeoutException, InterruptedException {
@@ -290,9 +292,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         try {
             upsertPipeline(run, wfRunExt, blueRun);
         } catch (Exception e) {
-            runsToPoll.remove(run);
             logger.log(WARNING, "Cannot update status: {0}", e.getMessage());
-
         }
     }
 
