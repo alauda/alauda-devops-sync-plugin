@@ -30,6 +30,7 @@ import io.kubernetes.client.models.V1OwnerReference;
 import io.kubernetes.client.models.V1Status;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
@@ -332,22 +333,31 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
     // order
     private static synchronized void deleteEventToJenkinsJobRun(
             final V1alpha1Pipeline pipeline) throws Exception {
-        logger.info("Pipeline delete: " + pipeline.getMetadata().getName());
+        final String ns = pipeline.getMetadata().getNamespace();
+        final String name = pipeline.getMetadata().getName();
+        logger.info("Pipeline delete: " + name);
         List<V1OwnerReference> ownerRefs = pipeline.getMetadata().getOwnerReferences();
+        boolean hasPCRef = false;
         for (V1OwnerReference ref : ownerRefs) {
-            if ("PipelineConfig".equals(ref.getKind()) && ref.getUid() != null
-                    && ref.getUid().length() > 0) {
+            if ("PipelineConfig".equals(ref.getKind()) && StringUtils.isNotEmpty(ref.getUid())) {
+                hasPCRef = true;
+
                 // employ intern to facilitate sync'ing on the same actual
                 // object
                 String pcUid = ref.getUid().intern();
-                synchronized (pcUid) {
-                    // if entire job already deleted via bc delete, just return
-                    if (PipelineConfigToJobMap.getJobFromPipelineConfigUid(pcUid) == null)
-                        return;
-                    innerDeleteEventToJenkinsJobRun(pipeline);
+                // if entire job already deleted via bc delete, just return
+                if (PipelineConfigToJobMap.getJobFromPipelineConfigUid(pcUid) == null) {
+                    logger.fine("PipelineConfig can not found by uid " + ref.getUid());
                     return;
                 }
+
+                innerDeleteEventToJenkinsJobRun(pipeline);
+                return;
             }
+        }
+
+        if(!hasPCRef) {
+            logger.warning(String.format("No PipelineConfig as the ownerRef for Pipeline %s-%s", ns, name));
         }
         // otherwise, if something odd is up and there is no parent BC, just
         // clean up

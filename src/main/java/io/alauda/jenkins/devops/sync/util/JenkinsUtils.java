@@ -28,6 +28,7 @@ import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.controller.PipelineController;
@@ -112,48 +113,6 @@ public abstract class JenkinsUtils {
         }
 	    return true;
 	}
-
-//	public static Map<String, ParameterDefinition> addJobParamForBuildEnvs(@Nonnull WorkflowJob job,
-//            @Nonnull JenkinsPipelineBuildStrategy strat,
-//			boolean replaceExisting) throws IOException {
-//		List<EnvVar> envs = strat.getEnv();
-//        Map<String, ParameterDefinition> paramMap = null;
-//		if (envs != null && envs.size() > 0) {
-//			// build list of current env var names for possible deletion of env
-//			// vars currently stored
-//			// as job params
-//			List<String> envKeys = new ArrayList<>();
-//			for (EnvVar env : envs) {
-//				envKeys.add(env.getName());
-//			}
-//
-//			// get existing property defs, including any manually added from the
-//			// jenkins console independent of BC
-//			ParametersDefinitionProperty params = job.removeProperty(ParametersDefinitionProperty.class);
-//			paramMap = new HashMap<>();
-//			// store any existing parameters in map for easy key lookup
-//			if (params != null) {
-//				List<ParameterDefinition> existingParamList = params.getParameterDefinitions();
-//				for (ParameterDefinition param : existingParamList) {
-//                    paramMap.put(param.getName(), param);
-//				}
-//			}
-//
-//			for (EnvVar env : envs) {
-//				if (replaceExisting || !paramMap.containsKey(env.getName())) {
-//					StringParameterDefinition envVar = new StringParameterDefinition(env.getName(), env.getValue(),
-//							PARAM_FROM_ENV_DESCRIPTION);
-//					paramMap.put(env.getName(), envVar);
-//				}
-//			}
-//
-//			List<ParameterDefinition> newParamList = new ArrayList<>(paramMap.values());
-//			job.addProperty(new ParametersDefinitionProperty(newParamList));
-//		}
-//		// force save here ... seen some timing issues with concurrent job updates and run initiations
-//		job.save();
-//		return paramMap;
-//	}
 
     public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(WorkflowJob job,
                                                                                     List<V1alpha1PipelineParameter> params, boolean replaceExisting) throws IOException {
@@ -296,7 +255,7 @@ public abstract class JenkinsUtils {
     }
 
     @CheckForNull
-	public static List<Action> putJobRunParamsFromEnvAndUIParams(List<V1alpha1PipelineParameter> pipelineParameters,
+	private static List<Action> putJobRunParamsFromEnvAndUIParams(List<V1alpha1PipelineParameter> pipelineParameters,
                                                                  List<Action> buildActions) {
         if(buildActions == null || pipelineParameters == null) {
             return buildActions;
@@ -313,7 +272,7 @@ public abstract class JenkinsUtils {
 	}
 
 	@Nonnull
-    public static List<ParameterValue> getParameterValues(List<V1alpha1PipelineParameter> pipelineParameters) {
+    private static List<ParameterValue> getParameterValues(List<V1alpha1PipelineParameter> pipelineParameters) {
         List<ParameterValue> envVarList = new ArrayList<>();
         if (pipelineParameters == null) {
             return envVarList;
@@ -408,6 +367,7 @@ public abstract class JenkinsUtils {
             List<Action> pipelineActions = new ArrayList<>();
             CauseAction bCauseAction = new CauseAction(newCauses);
             pipelineActions.add(bCauseAction);
+            pipelineActions.add(new AlaudaQueueAction());
 
             V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
             String commit = null;
@@ -516,14 +476,14 @@ public abstract class JenkinsUtils {
 		return null;
 	}
 
-	private static WorkflowRun getRun(WorkflowJob job, String pipelineUid) {
-		for (WorkflowRun run : job.getBuilds()) {
-			JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
-			if (cause != null && cause.getUid().equals(pipelineUid)) {
-				return run;
-			}
-		}
-		return null;
+    private static WorkflowRun getRun(WorkflowJob job, String pipelineUid) {
+        for (WorkflowRun run : job.getBuilds()) {
+            JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
+            if (cause != null && cause.getUid().equals(pipelineUid)) {
+                return run;
+            }
+        }
+        return null;
 	}
 
 	public static void deleteRun(WorkflowJob workflowJob, V1alpha1Pipeline pipeline) {
@@ -533,9 +493,9 @@ public abstract class JenkinsUtils {
         }
     }
 
-	public synchronized static void deleteRun(WorkflowRun run) {
+	private synchronized static void deleteRun(WorkflowRun run) {
         try {
-          LOGGER.info("Deleting run: " + run.toString());
+            LOGGER.info("Deleting run: " + run.toString());
             run.delete();
         } catch (IOException e) {
             LOGGER.warning(() -> "Unable to delete run " + run.toString() + ":" + e.getMessage());
@@ -585,23 +545,30 @@ public abstract class JenkinsUtils {
 	}
 
 	@SuppressFBWarnings("SE_BAD_FIELD")
-	public static boolean cancelQueuedPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
-	  LOGGER.info("cancelling queued pipeline: "+pipeline.getMetadata().getName());
-		String pipelineUid = pipeline.getMetadata().getUid();
-		final Queue pipelineQueue = Jenkins.getInstance().getQueue();
-		for (final Queue.Item item : pipelineQueue.getItems()) {
-			for (Cause cause : item.getCauses()) {
-				if (cause instanceof JenkinsPipelineCause && ((JenkinsPipelineCause) cause).getUid().equals(pipelineUid)) {
-					return ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Boolean, RuntimeException>() {
-						@Override
-						public Boolean call() throws RuntimeException {
-							pipelineQueue.cancel(item);
-							return true;
-						}
-					});
-				}
-			}
-		}
+	private static boolean cancelQueuedPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
+	    LOGGER.info("cancelling queued pipeline: "+pipeline.getMetadata().getName());
+        String pipelineUid = pipeline.getMetadata().getUid();
+        final Queue pipelineQueue = Jenkins.getInstance().getQueue();
+        boolean foundInQueue = false;
+        for (final Queue.Item item : pipelineQueue.getItems()) {
+            for (JenkinsPipelineCause cause : PipelineUtils.findAllAlaudaCauses(item)) {
+                if (cause.getUid().equals(pipelineUid)) {
+                    foundInQueue = true;
+                    return ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Boolean, RuntimeException>() {
+                        @Override
+                        public Boolean call() throws RuntimeException {
+                            pipelineQueue.cancel(item);
+                            return true;
+                        }
+                    });
+                }
+            }
+        }
+
+        if(!foundInQueue) {
+            LOGGER.info("Not found pipeline: %s" + pipeline.getMetadata().getName());
+        }
+
 		return cancelNotYetStartedPipeline(job, pipeline);
 	}
 

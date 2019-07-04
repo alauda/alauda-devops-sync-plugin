@@ -99,34 +99,9 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     public PipelineSyncRunListener() {
     }
 
-    /**
-     * It might has multiple JenkinsPipelineCause which could leads the wrong status of pipeline
-     * @param run build item from the Jenkins
-     */
-    private void cleanupDuplicatePipelineCauses(Run run) {
-        TreeSet<JenkinsPipelineCause> pipelineCauses = PipelineUtils.findAllAlaudaCauses(run);
-
-        int count = pipelineCauses.size();
-        if(count > 1) {
-            logger.log(Level.INFO, String.format("Found %d pipeline causes.", count));
-            pipelineCauses.pollFirst();
-            Iterator<JenkinsPipelineCause> it = pipelineCauses.iterator();
-            while(it.hasNext()) {
-                JenkinsPipelineCause pipeline = it.next();
-                String namespace = pipeline.getNamespace();
-                String name = pipeline.getName();
-
-                PipelineController.deletePipeline(namespace, name);
-                logger.log(Level.INFO, String.format("Going to delete pipeline %s-%s", namespace, name));
-            }
-        }
-    }
-
 
     @Override
     public void onStarted(Run run, TaskListener listener) {
-        cleanupDuplicatePipelineCauses(run);
-
         if (shouldPollRun(run)) {
             if (runsToPoll.add(run)) {
                 logger.info("starting polling build " + run.getUrl());

@@ -10,7 +10,7 @@ import io.alauda.jenkins.plugins.credentials.convertor.SecretToCredentialConvert
 import io.kubernetes.client.models.V1Secret;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.parboiled.common.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
