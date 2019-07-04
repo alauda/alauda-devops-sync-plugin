@@ -31,6 +31,11 @@
              description="The regular expression to match pipeline job names which should be sync'd to PipelineConfigs in Alauda DevOps - leave blank to not sync Jenkins Jobs to Alauda DevOps PipelineConfigs.">
       <f:textbox/>
     </f:invisibleEntry>
+    <f:advanced>
+      <f:entry title="${%Resync Period}" field="resyncPeriod" description="Period(Minute) to resync resources from server to Jenkins. 0 presents never resync resources. This action might be costly, please use large period.">
+        <f:textbox/>
+      </f:entry>
+    </f:advanced>
     <f:invisibleEntry title="Skip organization prefix" field="skipOrganizationPrefix"
              description="What organization name prefix should we omit from the generated Alauda DevOps PipelineConfigs resources created by the sync plugin. Its common for one user/team to use the same git organization so prefixing all PipelineConfig names with the organization name can be noisy.">
       <f:textbox/>

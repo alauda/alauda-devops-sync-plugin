@@ -54,7 +54,7 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
                     } catch (ApiException e) {
                         throw new RuntimeException(e);
                     }
-                }, V1alpha1JenkinsBinding.class, V1alpha1JenkinsBindingList.class);
+                }, V1alpha1JenkinsBinding.class, V1alpha1JenkinsBindingList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
     }
 
     @Override

@@ -14,6 +14,7 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineStatus;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.devops.java.client.utils.PatchGenerator;
 import io.alauda.jenkins.devops.support.controller.Controller;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
@@ -39,6 +40,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -76,7 +78,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
                     } catch (ApiException e) {
                         throw new RuntimeException(e);
                     }
-                }, V1alpha1Pipeline.class, V1alpha1PipelineList.class);
+                }, V1alpha1Pipeline.class, V1alpha1PipelineList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
     }
 
     @Override
@@ -130,6 +132,12 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
             public void onUpdate(V1alpha1Pipeline oldPipeline, V1alpha1Pipeline newPipeline) {
                 String pipelineName = newPipeline.getMetadata().getName();
                 String pipelineNamespace = newPipeline.getMetadata().getNamespace();
+                if (oldPipeline.getMetadata().getResourceVersion().equals(newPipeline.getMetadata().getResourceVersion())) {
+                    logger.log(Level.FINE,
+                            String.format("ResourceVersion of Pipeline '%s/%s' is equal, will skip update event for it", pipelineNamespace, pipelineName));
+                    return;
+                }
+
                 if (!JenkinsBindingController.isBindResource(newPipeline.getSpec().getJenkinsBinding().getName())) {
                     logger.log(Level.FINE,
                             String.format("Pipeline '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineNamespace, pipelineName));
