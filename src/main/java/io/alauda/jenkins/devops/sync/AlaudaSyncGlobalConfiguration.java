@@ -18,6 +18,7 @@ package io.alauda.jenkins.devops.sync;
 import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import hudson.Extension;
 import hudson.security.ACL;
+import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import io.alauda.jenkins.devops.sync.controller.JenkinsController;
 import jenkins.model.GlobalConfiguration;
@@ -26,6 +27,7 @@ import net.sf.json.JSONObject;
 import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.plaincredentials.StringCredentials;
 import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
@@ -40,6 +42,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private static final Logger LOGGER = Logger.getLogger(AlaudaSyncGlobalConfiguration.class.getName());
     private boolean enabled = true;
     private String jenkinsService;
+    private int resyncPeriod = 0;
     private transient String errorMsg;
     private String jobNamePattern;
     private String skipOrganizationPrefix;
@@ -128,9 +131,26 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         this.skipBranchSuffix = skipBranchSuffix;
     }
 
-    @SuppressWarnings("unused")
-    public static ListBoxModel doFillCredentialsIdItems(String credentialsId) {
-        Jenkins jenkins = Jenkins.getInstance();
-        return !jenkins.hasPermission(Jenkins.ADMINISTER) ? (new StandardListBoxModel()).includeCurrentValue(credentialsId) : (new StandardListBoxModel()).includeEmptyValue().includeAs(ACL.SYSTEM, jenkins, StringCredentials.class).includeCurrentValue(credentialsId);
+
+    public int getResyncPeriod() {
+        return resyncPeriod;
     }
+
+    @DataBoundSetter
+    public void setResyncPeriod(int resyncPeriod) {
+        this.resyncPeriod = resyncPeriod;
+    }
+
+    public FormValidation doCheckResyncPeriod(@QueryParameter String value) {
+        try {
+            int minute = Integer.parseInt(value);
+            if (minute < 0) {
+                return FormValidation.error("Should be greater than or equal to 0");
+            }
+            return FormValidation.ok();
+        } catch (NumberFormatException e) {
+            return FormValidation.error("Not a number");
+        }
+    }
+
 }

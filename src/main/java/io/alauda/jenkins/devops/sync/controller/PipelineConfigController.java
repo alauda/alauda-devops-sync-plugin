@@ -16,6 +16,7 @@ import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.devops.java.client.utils.PatchGenerator;
 import io.alauda.jenkins.devops.support.controller.Controller;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.PipelineConfigConvert;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
@@ -81,7 +82,7 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
                     } catch (ApiException e) {
                         throw new RuntimeException(e);
                     }
-                }, V1alpha1PipelineConfig.class, V1alpha1PipelineConfigList.class);
+                }, V1alpha1PipelineConfig.class, V1alpha1PipelineConfigList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
     }
 
     @Override
@@ -140,6 +141,12 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
             public void onUpdate(V1alpha1PipelineConfig oldPipelineConfig, V1alpha1PipelineConfig newPipelineConfig) {
                 String pipelineConfigName = newPipelineConfig.getMetadata().getName();
                 String pipelineConfigNamespace = newPipelineConfig.getMetadata().getNamespace();
+
+                if (oldPipelineConfig.getMetadata().getResourceVersion().equals(newPipelineConfig.getMetadata().getResourceVersion())) {
+                    logger.log(Level.FINE,
+                            String.format("ResourceVersion of PipelineConfig '%s/%s' is equal, will skip update event for it", pipelineConfigNamespace, pipelineConfigName));
+                    return;
+                }
 
                 if (!JenkinsBindingController.isBindResource(newPipelineConfig.getSpec().getJenkinsBinding().getName())) {
                     logger.log(Level.FINE,
