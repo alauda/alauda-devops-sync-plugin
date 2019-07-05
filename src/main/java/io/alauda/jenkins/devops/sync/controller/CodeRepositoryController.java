@@ -7,6 +7,7 @@ import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepositoryList;
 import io.alauda.jenkins.devops.support.controller.Controller;
+import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.controller.util.Wait;
 import io.kubernetes.client.ApiClient;
 import io.kubernetes.client.ApiException;
@@ -49,8 +50,7 @@ public class CodeRepositoryController implements Controller<V1alpha1CodeReposito
                     } catch (ApiException e) {
                         throw new RuntimeException(e);
                     }
-                }, V1alpha1CodeRepository.class, V1alpha1CodeRepositoryList.class
-        );
+                }, V1alpha1CodeRepository.class, V1alpha1CodeRepositoryList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
     }
 
     @Override

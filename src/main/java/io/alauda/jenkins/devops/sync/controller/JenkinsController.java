@@ -71,7 +71,7 @@ public class JenkinsController implements Controller<V1alpha1Jenkins, V1alpha1Je
                     } catch (ApiException e) {
                         throw new RuntimeException(e);
                     }
-                }, V1alpha1Jenkins.class, V1alpha1JenkinsList.class);
+                }, V1alpha1Jenkins.class, V1alpha1JenkinsList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
     }
 
     @Override
