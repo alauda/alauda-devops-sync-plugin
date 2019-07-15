@@ -75,7 +75,9 @@ public final class Constants {
     public static final String ALAUDA_PROJECT_ENV_VAR_NAME = "PROJECT_NAME";
     public static final String KUBERNETES_SERVICE_ACCOUNT_NAMESPACE = "/run/secrets/kubernetes.io/serviceaccount/namespace";
 
+    @Deprecated
     public static final String PIPELINE_PARAMETER_TYPE_STRING = "string";
+    @Deprecated
     public static final String PIPELINE_PARAMETER_TYPE_BOOLEAN = "boolean";
 
     public static final String PIPELINE_TRIGGER_TYPE_MANUAL = "manual";
