@@ -96,7 +96,16 @@ public class CodeRepositoryController implements Controller<V1alpha1CodeReposito
 
     public V1alpha1CodeRepository getCodeRepository(String namespace, String name) {
         Lister<V1alpha1CodeRepository> lister = new Lister<>(codeRepositoryInformer.getIndexer());
-        return lister.namespace(namespace).get(name);
+        V1alpha1CodeRepository repository = lister.namespace(namespace).get(name);
+        if (repository == null) {
+            logger.log(Level.FINE, String.format("Unable to find CodeRepository '%s/%s' from local lister, will try to retrieve it from server", namespace, name));
+            try {
+                repository = CodeRepositoryController.getRepositoryFromServer(namespace, name);
+            } catch (ApiException e) {
+                logger.log(Level.FINE, String.format("Unable to find CodeRepository '%s/%s' from server, reason %s", namespace, name, e.getMessage()));
+            }
+        }
+        return repository;
     }
 
     /**
@@ -111,5 +120,11 @@ public class CodeRepositoryController implements Controller<V1alpha1CodeReposito
         }
 
         return codeRepositoryControllers.get(0);
+    }
+
+    //TODO move to client class for each resource type
+    public static V1alpha1CodeRepository getRepositoryFromServer(String namespace, String name) throws ApiException {
+        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+        return api.readNamespacedCodeRepository(name, namespace, null, null, null);
     }
 }
