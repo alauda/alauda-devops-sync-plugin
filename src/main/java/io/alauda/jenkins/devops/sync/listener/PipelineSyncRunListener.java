@@ -67,9 +67,7 @@ import javax.validation.constraints.NotNull;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -90,7 +88,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     private long delayPollPeriodMs = 1000; // 1 seconds
     private static final long maxDelay = 30000;
 
-    private transient Set<Run> runsToPoll = new CopyOnWriteArraySet<>();
+    private transient LinkedBlockingQueue<Run> runs = new LinkedBlockingQueue<>();
 
     private transient AtomicBoolean timerStarted = new AtomicBoolean(false);
     private transient AtomicBoolean unSyncedTimerStarted = new AtomicBoolean(false);
@@ -103,9 +101,11 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     @Override
     public void onStarted(Run run, TaskListener listener) {
         if (shouldPollRun(run)) {
-            if (runsToPoll.add(run)) {
+            if (!runs.contains(run)) {
+                runs.add(run);
                 logger.info("starting polling build " + run.getUrl());
             }
+
             checkTimerStarted();
         } else {
             logger.fine("not polling polling pipeline " + run.getUrl() + " as its not a WorkflowJob");
@@ -151,7 +151,9 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
                 job.getBuilds().filter(new UnSyncedBuild()).forEach((run) -> {
                     if (run instanceof Run) {
-                        runsToPoll.add((Run) run);
+                        if (!runs.contains(run)) {
+                            runs.add((Run) run);
+                        }
                     }
                 });
             });
@@ -177,15 +179,12 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     @Override
     public void onCompleted(Run run, @Nonnull TaskListener listener) {
         if (shouldPollRun(run)) {
-            try {
-                pollRun(run);
-
-                runsToPoll.remove(run);
-                logger.fine("onCompleted " + run.getUrl());
-                JenkinsUtils.maybeScheduleNext(((WorkflowRun) run).getParent());
-            } catch (TimeoutException | InterruptedException e) {
-                e.printStackTrace();
+            if (!runs.contains(run)) {
+                runs.add(run);
             }
+
+            logger.fine("onCompleted " + run.getUrl());
+            JenkinsUtils.maybeScheduleNext(((WorkflowRun) run).getParent());
         } else {
             logger.fine(() -> "this build is not WorkflowRun, " + run);
         }
@@ -209,7 +208,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             logger.fine("Delete `Pipeline` result is: " + result + "; name is: " + pipelineName + "; buildNum is: " + buildNum);
         }
 
-        runsToPoll.remove(run);
+        runs.remove(run);
 
         logger.fine("onDeleted " + run.getUrl());
     }
@@ -217,40 +216,42 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     @Override
     public synchronized void onFinalized(Run run) {
         if (shouldPollRun(run)) {
-            try {
-                pollRun(run);
-
-                runsToPoll.remove(run);
-                logger.fine("onFinalized " + run.getUrl());
-            } catch (TimeoutException | InterruptedException e) {
-                e.printStackTrace();
+            if (!runs.contains(run)) {
+                runs.add(run);
             }
+
+            logger.fine("onFinalized " + run.getUrl());
         }
     }
 
     private void pollLoop() {
-        List<Run> completedRuns = new ArrayList<>();
-        for (Run run : runsToPoll) {
-            try {
-                pollRun(run);
+        try {
+            while (true) {
+                Run runToPoll = runs.take();
+                pollRun(runToPoll);
 
-                StatusExt status = RunExt.create((WorkflowRun) run).getStatus();
+                StatusExt status = RunExt.create((WorkflowRun) runToPoll).getStatus();
                 switch (status) {
                     case IN_PROGRESS:
                     case PAUSED_PENDING_INPUT:
+                        runs.add(runToPoll);
+                        break;
                     case NOT_EXECUTED:
-                        continue;
+                        if (runToPoll.isBuilding()) {
+                            runs.add(runToPoll);
+                        }
+                        break;
                     default:
-                        completedRuns.add(run);
+                        break;
                 }
-            } catch (TimeoutException | InterruptedException e) {
-                e.printStackTrace();
+
             }
+        } catch (InterruptedException e) {
+            logger.log(SEVERE, "Unable to poll status of runs, reason %s", e.getMessage());
         }
-        runsToPoll.removeAll(completedRuns);
     }
 
-    private synchronized void pollRun(Run run) throws TimeoutException, InterruptedException {
+    private synchronized void pollRun(Run run) {
         if (!(run instanceof WorkflowRun)) {
             throw new IllegalStateException("Cannot poll a non-workflow run");
         }
