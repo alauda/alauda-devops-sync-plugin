@@ -121,61 +121,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 }
             }, delayPollPeriodMs, pollPeriodMs, TimeUnit.MILLISECONDS);
         }
-
-        if (unSyncedTimerStarted.compareAndSet(false, true)) {
-            Timer.get().scheduleAtFixedRate(new SafeTimerTask() {
-                @Override
-                protected void doRun() throws Exception {
-                    findUnSyncedRecords();
-                }
-            }, delayPollPeriodMs, pollPeriodMs * 20, TimeUnit.MILLISECONDS);
-        }
     }
-
-    private void findUnSyncedRecords() {
-        List<Folder> folders = Jenkins.getInstance().getItems(Folder.class);
-        if (folders == null) {
-            return;
-        }
-
-        folders.forEach(folder -> {
-            Collection<? extends Job> jobs = folder.getAllJobs();
-            if (jobs == null) {
-                return;
-            }
-
-            jobs.forEach(job -> {
-                if (WorkflowJobUtils.hasNotAlaudaProperty(job)) {
-                    return;
-                }
-
-                job.getBuilds().filter(new UnSyncedBuild()).forEach((run) -> {
-                    if (run instanceof Run) {
-                        if (!runs.contains(run)) {
-                            runs.add((Run) run);
-                        }
-                    }
-                });
-            });
-        });
-    }
-
-    class UnSyncedBuild implements Predicate<Run> {
-        @Override
-        public boolean apply(@Nullable Run run) {
-            if (run == null) {
-                return false;
-            }
-
-            JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
-            if (cause == null) {
-                return false;
-            }
-
-            return !cause.isSynced();
-        }
-    }
-
     @Override
     public void onCompleted(Run run, @Nonnull TaskListener listener) {
         if (shouldPollRun(run)) {
@@ -539,7 +485,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         logger.log(INFO, "Patching pipeline {0}/{1}: setting phase to {2}", new Object[]{cause.getNamespace(), cause.getName(), phase});
         V1alpha1Pipeline pipeline = PipelineController.getCurrentPipelineController().getPipeline(cause.getNamespace(), cause.getName());
         if (pipeline == null) {
-            cause.setSynced(false);
             logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
             return;
         }
@@ -569,13 +514,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         V1alpha1PipelineStatus status = createPipelineStatus(newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
         newPipeline.setStatus(status);
 
-        try {
-            PipelineController.updatePipeline(pipeline, newPipeline);
-            logger.fine(String.format("updated pipeline: '%s/%s", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
-        } catch (Exception e) {
-            cause.setSynced(false);
-            throw e;
-        }
+        PipelineController.updatePipeline(pipeline, newPipeline);
+        logger.fine(String.format("updated pipeline: '%s/%s", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
 
         cause.setNumFlowNodes(newNumFlowNodes);
         cause.setNumStages(newNumStages);

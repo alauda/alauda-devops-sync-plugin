@@ -32,7 +32,6 @@ public class JenkinsPipelineCause extends Cause {
     private int numStages = -1;
     private int numFlowNodes = -1;
     private long lastUpdateToAlaudaDevOps = -1;
-    private boolean synced = true;
 
     public JenkinsPipelineCause(String uid, String namespace, String name, String gitUri,
                                 String commit, String pipelineConfigUid) {
@@ -138,14 +137,6 @@ public class JenkinsPipelineCause extends Cause {
 
     public void setLastUpdateToAlaudaDevOps(long lastUpdateToAlaudaDevOps) {
         this.lastUpdateToAlaudaDevOps = lastUpdateToAlaudaDevOps;
-    }
-
-    public boolean isSynced() {
-        return synced;
-    }
-
-    public void setSynced(boolean synced) {
-        this.synced = synced;
     }
 
     @Override
