@@ -77,8 +77,10 @@ public final class Constants {
 
     @Deprecated
     public static final String PIPELINE_PARAMETER_TYPE_STRING = "string";
+    public static final String PIPELINE_PARAMETER_TYPE_STRING_DEF = "StringParameterDefinition";
     @Deprecated
     public static final String PIPELINE_PARAMETER_TYPE_BOOLEAN = "boolean";
+    public static final String PIPELINE_PARAMETER_TYPE_BOOLEAN_DEF = "BooleanParameterDefinition";
 
     public static final String PIPELINE_TRIGGER_TYPE_MANUAL = "manual";
     public static final String PIPELINE_TRIGGER_TYPE_CRON = "cron";

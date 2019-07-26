@@ -150,11 +150,11 @@ public abstract class JenkinsUtils {
             for (V1alpha1PipelineParameter param : params) {
                 ParameterDefinition jenkinsParam = null;
                 switch (param.getType()) {
-                    case "StringParameterDefinition":
+                    case PIPELINE_PARAMETER_TYPE_STRING_DEF:
                     case PIPELINE_PARAMETER_TYPE_STRING:
                         jenkinsParam = new StringParameterDefinition(param.getName(), param.getValue(), param.getDescription());
                         break;
-                    case "BooleanParameterDefinition":
+                    case PIPELINE_PARAMETER_TYPE_BOOLEAN_DEF:
                     case PIPELINE_PARAMETER_TYPE_BOOLEAN:
                         jenkinsParam = new BooleanParameterDefinition(param.getName(), Boolean.valueOf(param.getValue()), param.getDescription());
                         break;
@@ -288,12 +288,12 @@ public abstract class JenkinsUtils {
             }
 
             switch (type) {
-                case "StringParameterDefinition":
+                case PIPELINE_PARAMETER_TYPE_STRING_DEF:
                 case PIPELINE_PARAMETER_TYPE_STRING:
                     paramValue = new StringParameterValue(pipeParam.getName(),
                             pipeParam.getValue(), pipeParam.getDescription());
                     break;
-                case "BooleanParameterDefinition":
+                case PIPELINE_PARAMETER_TYPE_BOOLEAN_DEF:
                 case PIPELINE_PARAMETER_TYPE_BOOLEAN:
                     paramValue = new BooleanParameterValue(pipeParam.getName(),
                             Boolean.valueOf(pipeParam.getValue()), pipeParam.getDescription());
