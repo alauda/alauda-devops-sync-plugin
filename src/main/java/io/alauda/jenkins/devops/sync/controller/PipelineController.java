@@ -6,61 +6,57 @@ import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import hudson.Extension;
 import hudson.ExtensionList;
-import hudson.security.ACL;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
+import io.alauda.devops.java.client.extend.workqueue.WorkQueue;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineList;
-import io.alauda.devops.java.client.models.V1alpha1PipelineStatus;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.devops.java.client.utils.PatchGenerator;
-import io.alauda.jenkins.devops.support.controller.Controller;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
-import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
+import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.kubernetes.client.ApiClient;
 import io.kubernetes.client.ApiException;
-import io.kubernetes.client.informer.ResourceEventHandler;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
 import io.kubernetes.client.models.V1DeleteOptions;
-import io.kubernetes.client.models.V1OwnerReference;
 import io.kubernetes.client.models.V1Status;
-import jenkins.security.NotReallyRoleSensitiveCallable;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.updatePipelinePhase;
 
 @Extension
-public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1PipelineList> {
-    private static final Logger logger = Logger.getLogger(PipelineController.class.getName());
+public class PipelineController extends BaseController<V1alpha1Pipeline, V1alpha1PipelineList> {
+    private static final Logger logger = LoggerFactory.getLogger(PipelineController.class);
 
-    private static final HashSet<V1alpha1Pipeline> pipelinesWithNoPCList = new HashSet<>();
     private SharedIndexInformer<V1alpha1Pipeline> pipelineInformer;
 
+    private JenkinsClient jenkinsClient = JenkinsClient.getInstance();
+
     @Override
-    public void initialize(ApiClient apiClient, SharedInformerFactory sharedInformerFactory) {
+    public SharedIndexInformer<V1alpha1Pipeline> newInformer(ApiClient client, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
-        pipelineInformer = sharedInformerFactory.sharedIndexInformerFor(
+        pipelineInformer = factory.sharedIndexInformerFor(
                 callGeneratorParams -> {
                     try {
                         return api.listPipelineForAllNamespacesCall(
@@ -80,108 +76,151 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
                         throw new RuntimeException(e);
                     }
                 }, V1alpha1Pipeline.class, V1alpha1PipelineList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+        return pipelineInformer;
     }
 
     @Override
-    public void start() {
+    public void waitControllerReady() throws Exception {
         try {
             PipelineConfigController pipelineConfigController = PipelineConfigController.getCurrentPipelineConfigController();
             if (pipelineConfigController == null) {
-                logger.log(Level.SEVERE, "Unable to start PipelineController, PipelineConfigController must be initialized first");
+                logger.error("Unable to start PipelineController, PipelineConfigController must be initialized first");
                 return;
             }
 
             pipelineConfigController.waitUntilPipelineConfigControllerSyncedAndValid(1000 * 60);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            logger.log(Level.SEVERE, String.format("Unable to start PipelineController, reason %s", e.getMessage()), e);
-            return;
+            logger.error("Unable to start PipelineController, reason {}", e.getMessage());
+            throw e;
         }
-        PipelineController.flushPipelinesWithNoPCList();
-
-        pipelineInformer.addEventHandler(new ResourceEventHandler<V1alpha1Pipeline>() {
-            @Override
-            public void onAdd(V1alpha1Pipeline pipeline) {
-                String pipelineName = pipeline.getMetadata().getName();
-                String pipelineNamespace = pipeline.getMetadata().getNamespace();
-                if (!JenkinsBindingController.isBindResource(pipeline.getSpec().getJenkinsBinding().getName())) {
-                    logger.log(Level.FINE,
-                            String.format("Pipeline '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineNamespace, pipelineName));
-                    return;
-                }
-
-                logger.log(Level.FINE, String.format("PipelineController: received event: ADD, Pipeline '%s/%s'", pipelineNamespace, pipelineName));
-                if (!isNewPipeline(pipeline)) {
-                    logger.log(Level.FINE, String.format("Pipeline '%s/%s phase is %s, will not add it", pipelineNamespace, pipelineName, pipeline.getStatus().getPhase()));
-                    return;
-                }
-
-                if (isCreateByJenkins(pipeline)) {
-                    updatePipelinePhase(pipeline, QUEUED);
-                    logger.fine(() -> "Pipeline created by Jenkins. It should be triggered, skip create event.");
-                    return;
-                }
-
-                try {
-                    pipeline = DeepCopyUtils.deepCopy(pipeline);
-                    addEventToJenkinsJobRun(pipeline);
-                } catch (IOException e) {
-                    logger.log(Level.WARNING, String.format("Failde to add pipeline '%s/%s, reason: %s'", pipelineNamespace, pipelineName, e.getMessage()), e);
-                }
-            }
-
-            @Override
-            public void onUpdate(V1alpha1Pipeline oldPipeline, V1alpha1Pipeline newPipeline) {
-                String pipelineName = newPipeline.getMetadata().getName();
-                String pipelineNamespace = newPipeline.getMetadata().getNamespace();
-                if (oldPipeline.getMetadata().getResourceVersion().equals(newPipeline.getMetadata().getResourceVersion())) {
-                    logger.log(Level.FINE,
-                            String.format("ResourceVersion of Pipeline '%s/%s' is equal, will skip update event for it", pipelineNamespace, pipelineName));
-                    return;
-                }
-
-                if (!JenkinsBindingController.isBindResource(newPipeline.getSpec().getJenkinsBinding().getName())) {
-                    logger.log(Level.FINE,
-                            String.format("Pipeline '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineNamespace, pipelineName));
-                    return;
-                }
-
-
-                logger.log(Level.FINE, String.format("PipelineController: received event: Update, Pipeline '%s/%s'", pipelineNamespace, pipelineName));
-                modifyEventToJenkinsJobRun(newPipeline);
-            }
-
-            @Override
-            public void onDelete(V1alpha1Pipeline pipeline, boolean deletedFinalStateUnknown) {
-                String pipelineName = pipeline.getMetadata().getName();
-                String pipelineNamespace = pipeline.getMetadata().getNamespace();
-                if (!JenkinsBindingController.isBindResource(pipeline.getSpec().getJenkinsBinding().getName())) {
-                    logger.log(Level.FINE,
-                            String.format("Pipeline '%s/%s' is not bind to correct jenkinsbinding, will skip it", pipelineNamespace, pipelineName));
-                    return;
-                }
-
-                logger.log(Level.FINE, String.format("PipelineController: received event: DELETE, Pipeline '%s/%s'", pipelineNamespace, pipelineName));
-                try {
-                    deleteEventToJenkinsJobRun(pipeline);
-                } catch (Exception e) {
-                    logger.log(Level.WARNING, String.format("Failde to delete pipeline '%s/%s, reason: %s'", pipelineNamespace, pipelineName, e.getMessage()), e);
-                }
-            }
-        });
     }
 
     @Override
-    public void shutDown(Throwable throwable) {
-        if (pipelineInformer == null) {
-            return;
+    public EnqueueResourceEventHandler<V1alpha1Pipeline, NamespaceName> newHandler() {
+        return new EnqueueResourceEventHandler<V1alpha1Pipeline, NamespaceName>() {
+            @Override
+            public void onAdd(V1alpha1Pipeline pipeline, WorkQueue<NamespaceName> queue) {
+                String pipelineName = pipeline.getMetadata().getName();
+                String pipelineNamespace = pipeline.getMetadata().getNamespace();
+
+
+                logger.debug("PipelineController: received event: ADD, Pipeline '{}/{}'", pipelineNamespace, pipelineName);
+
+                queue.add(new NamespaceName(pipelineNamespace, pipelineName));
+            }
+
+            @Override
+            public void onUpdate(V1alpha1Pipeline oldPipeline, V1alpha1Pipeline newPipeline, WorkQueue<NamespaceName> queue) {
+                String pipelineName = newPipeline.getMetadata().getName();
+                String pipelineNamespace = newPipeline.getMetadata().getNamespace();
+                if (oldPipeline.getMetadata().getResourceVersion().equals(newPipeline.getMetadata().getResourceVersion())) {
+                    logger.debug("ResourceVersion of Pipeline '{}/{}' is equal, will skip update event for it", pipelineNamespace, pipelineName);
+                    return;
+                }
+
+                logger.debug("PipelineController: received event: Update, Pipeline '{}/{}'", pipelineNamespace, pipelineName);
+                queue.add(new NamespaceName(pipelineNamespace, pipelineName));
+            }
+
+            @Override
+            public void onDelete(V1alpha1Pipeline pipeline, boolean deletedFinalStateUnknown, WorkQueue<NamespaceName> queue) {
+                String pipelineName = pipeline.getMetadata().getName();
+                String pipelineNamespace = pipeline.getMetadata().getNamespace();
+
+                logger.debug("PipelineController: received event: DELETE, Pipeline '{}/{}'", pipelineNamespace, pipelineName);
+                queue.add(new NamespaceName(pipelineNamespace, pipelineName));
+            }
+        };
+    }
+
+    @Override
+    public ReconcileResult reconcile(NamespaceName namespaceName) throws Exception {
+        String namespace = namespaceName.getNamespace();
+        String name = namespaceName.getName();
+        ReconcileResult result = new ReconcileResult(false);
+
+        V1alpha1Pipeline pipeline = getPipeline(namespace, name);
+        if (pipeline == null) {
+            logger.debug("[{}] Cannot found Pipeline '{}/{}' in local lister, will try to remove it's correspondent Jenkins build", getControllerName(), namespace, name);
+
+            boolean deleteSucceed;
+            try {
+                deleteSucceed = jenkinsClient.deletePipeline(namespaceName);
+                if (!deleteSucceed) {
+                    logger.warn("[{}] Failed to delete job for Pipeline '{}/{}'", getControllerName(), namespace, name);
+                }
+            } catch (Exception e) {
+                logger.warn("[{}] Failed to delete job for Pipeline '{}/{}', reason {}", getControllerName(), namespace, name, e.getMessage());
+            }
+            return result;
         }
 
-        try {
-            pipelineInformer.stop();
-            pipelineInformer = null;
-        } catch (Throwable e) {
-            logger.log(Level.WARNING, String.format("Unable to stop PipelineController, reason: %s", e.getMessage()));
+
+        if (!JenkinsBindingController.isBindResource(pipeline.getSpec().getJenkinsBinding().getName())) {
+            logger.debug("Pipeline '{}/{}' is not bind to correct jenkinsbinding, will skip it", namespace, name);
+            return result;
         }
+
+        V1alpha1PipelineConfig pipelineConfig = PipelineConfigController.getCurrentPipelineConfigController()
+                .getPipelineConfig(namespace, pipeline.getSpec().getPipelineConfig().getName());
+        if (pipelineConfig == null) {
+            logger.error("Unable to find PipelineConfig for Pipeline '{}/{}'", namespace, name);
+            return result.setRequeue(true);
+        }
+
+        synchronized (pipeline.getMetadata().getUid().intern()) {
+            V1alpha1Pipeline pipelineCopy = DeepCopyUtils.deepCopy(pipeline);
+            if (isNewPipeline(pipelineCopy)) {
+                logger.debug("Pipeline '{}/{} phase is {}, will trigger a new build", namespace, name, pipeline.getStatus().getPhase());
+
+                if (isCreateByJenkins(pipelineCopy)) {
+                    logger.debug("Pipeline created by Jenkins. It should be triggered, skip create event.");
+                    pipelineCopy.getStatus().setPhase(QUEUED);
+                    boolean succeed = updatePipeline(pipeline, pipelineCopy);
+                    return result.setRequeue(!succeed);
+                }
+
+
+                if (AlaudaUtils.isCancellable(pipelineCopy.getStatus()) && AlaudaUtils.isCancelled(pipelineCopy.getStatus())) {
+                    pipelineCopy.getStatus().setPhase(CANCELLED);
+                    boolean succeed = updatePipeline(pipeline, pipelineCopy);
+                    return result.setRequeue(!succeed);
+                }
+
+                WorkflowJob job = jenkinsClient.getJob(pipelineCopy, pipelineConfig);
+                if (job == null) {
+                    logger.error("Unable to find Jenkins job for PipelineConfig '{}/{}'", namespace, pipelineConfig.getMetadata().getName());
+                    return result.setRequeue(true);
+                }
+                boolean succeed = JenkinsUtils.triggerJob(job, pipelineCopy);
+                if (succeed) {
+                    succeed = updatePipeline(pipeline, pipelineCopy);
+                    return result.setRequeue(!succeed);
+                } else {
+                    updatePipeline(pipeline, pipelineCopy);
+                    return result.setRequeue(true);
+                }
+            }
+
+            if (AlaudaUtils.isCancellable(pipelineCopy.getStatus()) && AlaudaUtils.isCancelled(pipeline.getStatus())) {
+                logger.debug("Starting cancel Pipeline '{}/{}'", namespace, name);
+                boolean succeed = jenkinsClient.cancelPipeline(namespaceName);
+                if (succeed) {
+                    succeed = updatePipeline(pipeline, pipelineCopy);
+                    return result.setRequeue(!succeed);
+                } else {
+                    updatePipeline(pipeline, pipelineCopy);
+                    return result.setRequeue(true);
+                }
+            }
+
+            return result;
+        }
+    }
+
+    @Override
+    public String getControllerName() {
+        return "PipelineController";
     }
 
     @Override
@@ -195,45 +234,6 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         }.getType();
     }
 
-
-    // trigger any builds whose watch events arrived before the
-    // corresponding build config watch events
-    public static void flushPipelinesWithNoPCList() {
-        HashSet<V1alpha1Pipeline> clone = (HashSet<V1alpha1Pipeline>) pipelinesWithNoPCList.clone();
-        clearNoPCList();
-        for (V1alpha1Pipeline pipeline : clone) {
-            WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-            logger.fine("Pipeline flush: " + pipeline.getMetadata().getName() + " - job: " + job);
-            if (job != null) {
-                try {
-                    logger.info("triggering job run for previously skipped pipeline "
-                            + pipeline.getMetadata().getName());
-                    JenkinsUtils.triggerJob(job, pipeline);
-                } catch (IOException e) {
-                    logger.log(Level.WARNING, "flushCachedPipelines", e);
-                }
-            } else {
-                addPipelineToNoPCList(pipeline);
-            }
-        }
-
-    }
-
-    public static void addPipelineToNoPCList(V1alpha1Pipeline pipeline) {
-        // should have been caught upstack, but just in case since public method
-        if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline))
-            return;
-        pipelinesWithNoPCList.add(pipeline);
-    }
-
-    private static synchronized void removePipelineFromNoPCList(V1alpha1Pipeline pipeline) {
-        pipelinesWithNoPCList.remove(pipeline);
-    }
-
-    private static synchronized void clearNoPCList() {
-        pipelinesWithNoPCList.clear();
-    }
-
     private boolean isNewPipeline(@NotNull V1alpha1Pipeline pipeline) {
         return pipeline.getStatus().getPhase().equals(PipelinePhases.PENDING);
     }
@@ -244,7 +244,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
     }
 
 
-    public static void updatePipeline(V1alpha1Pipeline oldPipeline, V1alpha1Pipeline newPipeline) {
+    public static boolean updatePipeline(V1alpha1Pipeline oldPipeline, V1alpha1Pipeline newPipeline) {
         String name = oldPipeline.getMetadata().getName();
         String namespace = newPipeline.getMetadata().getNamespace();
 
@@ -252,9 +252,9 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         try {
             patch = new PatchGenerator().generatePatchBetween(oldPipeline, newPipeline);
         } catch (IOException e) {
-            logger.log(Level.WARNING, String.format("Unable to generate patch for Pipeline '%s/%s', reason: %s",
-                    namespace, name, e.getMessage()), e);
-            return;
+            logger.warn("Unable to generate patch for Pipeline '{}/{}', reason: {}",
+                    namespace, name, e.getMessage());
+            return false;
         }
         List<JsonObject> body = new LinkedList<>();
         JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
@@ -269,132 +269,12 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
                     null,
                     null);
         } catch (ApiException e) {
-            logger.log(Level.WARNING, String.format("Unable to patch Pipeline '%s/%s', reason: %s",
-                    namespace, name, e.getMessage()), e);
-        }
-    }
-
-
-    public static synchronized boolean addEventToJenkinsJobRun(V1alpha1Pipeline pipeline)
-            throws IOException {
-        String pipelineName = pipeline.getMetadata().getName();
-        String pipelineNamespace = pipeline.getMetadata().getNamespace();
-
-        // should have been caught upstack, but just in case since public method
-        if (!AlaudaUtils.isPipelineStrategyPipeline(pipeline))
+            logger.warn("Unable to patch Pipeline '{}/{}', reason: {}",
+                    namespace, name, e.getMessage());
             return false;
-        V1alpha1PipelineStatus status = pipeline.getStatus();
-        if (status != null) {
-            logger.info(String.format("Pipeline %s/%s Status is not null: %s", pipelineNamespace, pipelineName, status));
-            if (AlaudaUtils.isCancelled(status)) {
-                logger.info(String.format("Pipeline %s/%s Status is Cancelled... updating pipeline: %s", pipelineNamespace, pipelineName, status));
-                AlaudaUtils.updatePipelinePhase(pipeline, PipelinePhases.CANCELLED);
-                return false;
-            }
-            if (!AlaudaUtils.isNew(status)) {
-                logger.info(String.format("Pipeline %s/%s is not new... cancelling... %s", pipelineName, pipelineNamespace, status));
-                return false;
-            }
         }
 
-        WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-        logger.info("Pipeline got job... " + job);
-        if (job != null) {
-            logger.info(String.format("Pipeline job will trigger... %s pipeline: %s/%s", job.getName(), pipelineNamespace, pipelineName));
-            return JenkinsUtils.triggerJob(job, pipeline);
-        }
-
-        logger.info(String.format("skipping watch event for pipeline %s/%s no job at this time", pipelineNamespace, pipelineName));
-        addPipelineToNoPCList(pipeline);
-        return false;
-    }
-
-    private static void modifyEventToJenkinsJobRun(V1alpha1Pipeline pipeline) {
-        String pipelineNamespace = pipeline.getMetadata().getNamespace();
-        String pipelineName = pipeline.getMetadata().getName();
-
-        V1alpha1PipelineStatus status = pipeline.getStatus();
-        logger.info(String.format("Modified pipeline %s/%s", pipelineNamespace, pipelineName));
-        if (status != null && AlaudaUtils.isCancellable(status) && AlaudaUtils.isCancelled(status)) {
-            logger.info(String.format("Pipeline %s/%s was cancelled", pipelineNamespace, pipelineName));
-            WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-            if (job != null) {
-                JenkinsUtils.cancelPipeline(job, pipeline);
-            } else {
-                removePipelineFromNoPCList(pipeline);
-            }
-        } else {
-            logger.info(String.format("Pipeline changed... flusing pipelines... %s/%s", pipelineNamespace, pipelineName));
-            // see if any pre-BC cached builds can now be flushed
-            flushPipelinesWithNoPCList();
-        }
-    }
-
-    // in response to receiving an Alauda DevOps delete pipeline event, this method
-    // will drive
-    // the clean up of the Jenkins job run the pipeline is mapped one to one with;
-    // as part of that
-    // clean up it will synchronize with the pipeline config event watcher to
-    // handle pipeline config
-    // delete events and pipeline delete events that arrive concurrently and in a
-    // nondeterministic
-    // order
-    private static synchronized void deleteEventToJenkinsJobRun(
-            final V1alpha1Pipeline pipeline) throws Exception {
-        final String ns = pipeline.getMetadata().getNamespace();
-        final String name = pipeline.getMetadata().getName();
-        logger.info("Pipeline delete: " + name);
-        List<V1OwnerReference> ownerRefs = pipeline.getMetadata().getOwnerReferences();
-        boolean hasPCRef = false;
-        for (V1OwnerReference ref : ownerRefs) {
-            if ("PipelineConfig".equals(ref.getKind()) && StringUtils.isNotEmpty(ref.getUid())) {
-                hasPCRef = true;
-
-                // employ intern to facilitate sync'ing on the same actual
-                // object
-                String pcUid = ref.getUid().intern();
-                // if entire job already deleted via bc delete, just return
-                if (PipelineConfigToJobMap.getJobFromPipelineConfigUid(pcUid) == null) {
-                    logger.fine("PipelineConfig can not found by uid " + ref.getUid());
-                    return;
-                }
-
-                innerDeleteEventToJenkinsJobRun(pipeline);
-                return;
-            }
-        }
-
-        if(!hasPCRef) {
-            logger.warning(String.format("No PipelineConfig as the ownerRef for Pipeline %s-%s", ns, name));
-        }
-        // otherwise, if something odd is up and there is no parent BC, just
-        // clean up
-        innerDeleteEventToJenkinsJobRun(pipeline);
-    }
-
-    // innerDeleteEventToJenkinsJobRun is the actual delete logic at the heart
-    // of deleteEventToJenkinsJobRun
-    // that is either in a sync block or not based on the presence of a BC uid
-    private static synchronized void innerDeleteEventToJenkinsJobRun(
-            final V1alpha1Pipeline pipeline) throws Exception {
-        final WorkflowJob job = JenkinsUtils.getJobFromPipeline(pipeline);
-        if (job != null) {
-            ACL.impersonate(ACL.SYSTEM,
-                    new NotReallyRoleSensitiveCallable<Void, Exception>() {
-                        @Override
-                        public Void call() throws Exception {
-                            JenkinsUtils.cancelPipeline(job, pipeline, true);
-
-                            JenkinsUtils.deleteRun(job, pipeline);
-
-                            return null;
-                        }
-                    });
-        } else {
-            // in case pipeline was created and deleted quickly, prior to seeing BC
-            // event, clear out from pre-BC cache
-            removePipelineFromNoPCList(pipeline);
-        }
+        return true;
     }
 
     public V1alpha1Pipeline getPipeline(String namespace, String name) {
@@ -416,7 +296,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         ExtensionList<PipelineController> pipelineControllers = ExtensionList.lookup(PipelineController.class);
 
         if (pipelineControllers.size() > 1) {
-            logger.log(Level.WARNING, "There are more than two PipelineController exist, maybe a potential bug");
+            logger.warn("There are more than two PipelineController exist, maybe a potential bug");
         }
 
         return pipelineControllers.get(0);
@@ -432,7 +312,7 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
         try {
             return api.deleteNamespacedPipeline(name, namespace, new V1DeleteOptions(), null, null, null, null, null);
         } catch (ApiException e) {
-            logger.log(Level.WARNING, String.format("Unable to delete pipeline '%s/%s', reason: %s", namespace, name, e.getMessage()), e);
+            logger.warn("Unable to delete pipeline '{}/{}', reason: {}", namespace, name, e.getMessage());
             return null;
         }
     }

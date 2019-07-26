@@ -6,7 +6,6 @@ import hudson.ExtensionList;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepositoryList;
-import io.alauda.jenkins.devops.support.controller.Controller;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.controller.util.Wait;
 import io.kubernetes.client.ApiClient;
@@ -23,15 +22,15 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Extension
-public class CodeRepositoryController implements Controller<V1alpha1CodeRepository, V1alpha1CodeRepositoryList> {
+public class CodeRepositoryController extends BaseController<V1alpha1CodeRepository, V1alpha1CodeRepositoryList> {
     private static final Logger logger = Logger.getLogger(CodeRepositoryController.class.getName());
 
     private SharedIndexInformer<V1alpha1CodeRepository> codeRepositoryInformer;
 
     @Override
-    public void initialize(ApiClient apiClient, SharedInformerFactory sharedInformerFactory) {
+    public SharedIndexInformer<V1alpha1CodeRepository> newInformer(ApiClient client, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-        codeRepositoryInformer = sharedInformerFactory.sharedIndexInformerFor(
+        codeRepositoryInformer = factory.sharedIndexInformerFor(
                 callGeneratorParams -> {
                     try {
                         return api.listCodeRepositoryForAllNamespacesCall(
@@ -51,24 +50,13 @@ public class CodeRepositoryController implements Controller<V1alpha1CodeReposito
                         throw new RuntimeException(e);
                     }
                 }, V1alpha1CodeRepository.class, V1alpha1CodeRepositoryList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+
+        return codeRepositoryInformer;
     }
 
     @Override
-    public void start() {
-    }
-
-    @Override
-    public void shutDown(Throwable throwable) {
-        if (codeRepositoryInformer == null) {
-            return;
-        }
-
-        try {
-            codeRepositoryInformer.stop();
-            codeRepositoryInformer = null;
-        } catch (Throwable e) {
-            logger.log(Level.WARNING, String.format("Unable to stop CodeRepositoryController, reason: %s", e.getMessage()));
-        }
+    public String getControllerName() {
+        return "CodeRepositoryController";
     }
 
     @Override

@@ -371,7 +371,6 @@
 //
 //                try {
 //                    Calendar expireTime = Calendar.getInstance();
-//                    expireTime.setTime(TimeUtils.getUTCTime());
 //                    expireTime.add(Calendar.HOUR_OF_DAY, -2);
 //
 //                    expire = format.parse(createTime).after(expireTime.getTime());

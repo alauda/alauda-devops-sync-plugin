@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 /**
  * Listens to {@link WorkflowJob} objects being updated via the web console or
  * Jenkins REST API and replicating the changes back to the Alauda DevOps
- * {@link V1alpha1PipelineConfig} for the case where folks edit inline Jenkinsfile flows
+ * {@link io.alauda.devops.java.client.models.V1alpha1PipelineConfig} for the case where folks edit inline Jenkinsfile flows
  * inside the Jenkins UI
  */
 @Extension
@@ -111,8 +111,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public String toString() {
-        return "JenkinsPipelineJobListener{"  + ", jenkinsService='" +
-                jenkinsService + '\'' +  ", jobNamePattern='" +
+        return "JenkinsPipelineJobListener{" + ", jenkinsService='" +
+                jenkinsService + '\'' + ", jobNamePattern='" +
                 jobNamePattern + '\'' + '}';
     }
 }

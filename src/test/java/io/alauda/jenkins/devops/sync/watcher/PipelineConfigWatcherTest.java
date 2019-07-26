@@ -27,7 +27,7 @@
 //
 //import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_PARAMETER_TYPE_BOOLEAN;
 //import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_PARAMETER_TYPE_STRING;
-//import static io.alauda.jenkins.devops.sync.util.JobUtils.findJob;
+//import static io.alauda.jenkins.devops.sync.util.JobUtils.getItem;
 //import static io.alauda.jenkins.devops.sync.util.JobUtils.findWorkflowJob;
 //import static org.hamcrest.Matchers.containsString;
 //import static org.junit.Assert.*;
@@ -43,7 +43,7 @@
 //        final String folderName = j.getDevOpsInit().getNamespace();
 //        final String jobName = config.getMetadata().getName();
 //
-//        Job jobItem = findJob(j.jenkins, folderName, jobName);
+//        Job jobItem = getItem(j.jenkins, folderName, jobName);
 //        assertNotNull(jobItem);
 //        assertEquals(jobItem.getClass(), WorkflowJob.class);
 //
@@ -125,7 +125,7 @@
 //        final String folderName = j.getDevOpsInit().getNamespace();
 //        String jobName = config.getMetadata().getName();
 //
-//        final Job job = findJob(j.jenkins, folderName, jobName);
+//        final Job job = getItem(j.jenkins, folderName, jobName);
 //        assertNotNull(job);
 //
 //        // delete from jenkins
@@ -136,16 +136,16 @@
 //        // delete from k8s
 //        config = j.getDevOpsInit().createPipelineConfig(j.getClient());
 //        jobName = config.getMetadata().getName();
-//        assertNotNull(findJob(j.jenkins, folderName, jobName));
+//        assertNotNull(getItem(j.jenkins, folderName, jobName));
 //
 //        j.getDevOpsInit().deletePipelineConfig(j.getClient(), jobName);
 //        untilDeleted(folderName, jobName);
-//        assertNull(findJob(j.jenkins, folderName, jobName));
+//        assertNull(getItem(j.jenkins, folderName, jobName));
 //    }
 //
 //    private void untilDeleted(String folderName, String jobName) throws InterruptedException {
 //        for(int i = 0; i < j.getRetryCount(); i++) {
-//            Job job = findJob(j.jenkins, folderName, jobName);
+//            Job job = getItem(j.jenkins, folderName, jobName);
 //            if(job == null) {
 //                return;
 //            }
@@ -181,7 +181,7 @@
 //        final String folderName = j.getDevOpsInit().getNamespace();
 //        final String jobName = config.getMetadata().getName();
 //
-//        Job jobItem = findJob(j.jenkins, folderName, jobName);
+//        Job jobItem = getItem(j.jenkins, folderName, jobName);
 //        assertNotNull(jobItem);
 //        final String randomName = System.currentTimeMillis() + "-alauda";
 //        paramMap.put(paramName, randomName);
@@ -319,7 +319,7 @@
 //    private CpsFlowDefinition getCpsFlowDefinition(String folderName, String jobName) throws Exception {
 //        Thread.sleep(3000);
 //        j.waitUntilNoActivity();
-//        Job jobItem = findJob(j.jenkins, folderName, jobName);
+//        Job jobItem = getItem(j.jenkins, folderName, jobName);
 //        assertNotNull(jobItem);
 //        assertEquals(jobItem.getClass(), WorkflowJob.class);
 //

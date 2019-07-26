@@ -8,14 +8,11 @@ import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
-import io.alauda.jenkins.devops.sync.constants.Annotations;
+import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.controller.JenkinsBindingController;
 import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
-import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
-import io.alauda.jenkins.devops.sync.util.PipelineConfigToJobMap;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.models.V1ObjectMeta;
-import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import io.kubernetes.client.models.V1Status;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -27,10 +24,11 @@ import java.util.logging.Logger;
 @Extension
 public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
     private static final Logger logger = Logger.getLogger(WorkflowEventHandler.class.getName());
+    private JenkinsClient jenkinsClient = JenkinsClient.getInstance();
 
     @Override
     public boolean accept(Item item) {
-        if(!(item instanceof WorkflowJob)) {
+        if (!(item instanceof WorkflowJob)) {
             return false;
         }
 
@@ -39,7 +37,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
     }
 
     @Override
-    public void onCreated(WorkflowJob item){
+    public void onCreated(WorkflowJob item) {
         upsertWorkflowJob(item);
     }
 
@@ -51,6 +49,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
 
     @Override
     public void onDeleted(WorkflowJob item) {
+
         WorkflowJobProperty property = pipelineConfigProjectForJob(item);
         if (property != null) {
             final String namespace = property.getNamespace();
@@ -60,13 +59,10 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
             if (pipelineConfig != null) {
                 logger.info(() -> "Got pipeline config for  " + namespace + "/" + pipelineConfigName);
 
-                try {
-                    V1Status result = PipelineConfigController.deletePipelineConfig(namespace, pipelineConfigName);
+                V1Status result = PipelineConfigController.deletePipelineConfig(namespace, pipelineConfigName);
 
-                    logger.info(() -> "Deleting PipelineConfig " + namespace + "/" + pipelineConfigName);
-                } finally {
-                    PipelineConfigToJobMap.removeJobWithPipelineConfig(pipelineConfig);
-                }
+                logger.info(() -> "Deleting PipelineConfig " + namespace + "/" + pipelineConfigName);
+
             } else {
                 logger.info(() -> "No pipeline config for " + namespace + "/" + pipelineConfigName);
             }
@@ -75,6 +71,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
 
     /**
      * Update or insert target workflow job
+     *
      * @param job target workflow job
      */
     private void upsertWorkflowJob(WorkflowJob job) {
@@ -107,78 +104,58 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
     }
 
     private boolean isNotDeleteInProgress(WorkflowJobProperty property) {
-        return !PipelineConfigController.isDeleteInProgress(property.getNamespace() + property.getName());
+        return !jenkinsClient.isDeleteInProgress(property.getNamespace(), property.getName());
     }
 
     private void upsertPipelineConfigForJob(WorkflowJob job, WorkflowJobProperty workflowJobProperty) {
-        boolean create = false;
         final String namespace = workflowJobProperty.getNamespace();
         final String jobName = workflowJobProperty.getName();
 
+
         V1alpha1PipelineConfig jobPipelineConfig = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, jobName);
         if (jobPipelineConfig == null) {
-            boolean hasMappedNs = JenkinsBindingController.getCurrentJenkinsBindingController().getBindingNamespaces().contains(namespace);
-            String msg = String.format("There's not namespace with name: %s. Can't create PipelineConfig.", namespace);
-            if(!hasMappedNs) {
-                logger.severe(msg);
-                return;
-            }
+            logger.log(Level.WARNING, String.format("Unable to found mapped PipelineConfig '%s/%s' for Jenkins job %s, may have a potential bug", namespace, jobName, job.getFullDisplayName()));
+            return;
+        }
 
-            logger.info("Can't find PipelineConfig, will create. namespace:" + namespace + "; name: " + jobName);
+        if (JenkinsBindingController.isBindResource(jobPipelineConfig.getSpec().getJenkinsBinding().getName())) {
+            logger.log(Level.WARNING, String.format(" PipelineConfigController: '%s/%s' is not bind to correct jenkinsbinding, will skip it", namespace, jobName));
+            return;
+        }
 
-            create = true;
-            // TODO: Adjust this part
-            jobPipelineConfig = new V1alpha1PipelineConfigBuilder().withMetadata(new V1ObjectMetaBuilder().withName(jobName)
-                    .withNamespace(namespace)
-                    .addToAnnotations(Annotations.GENERATED_BY, Annotations.GENERATED_BY_JENKINS)
-                    .build()).withNewSpec()
-                    .withNewStrategy().withNewJenkins().endJenkins()
-                    .endStrategy().endSpec().build();
-        } else {
+        // Use lock to avoid conflict between PipelineConfigController and listener
+        synchronized (jobPipelineConfig.getMetadata().getUid().intern()) {
             V1ObjectMeta metadata = jobPipelineConfig.getMetadata();
-            if (metadata == null) {
-                logger.warning("PipelineConfig's metadata is missing.");
-                return;
-            }
 
             String uid = workflowJobProperty.getUid();
             if (StringUtils.isEmpty(uid)) {
                 workflowJobProperty.setUid(metadata.getUid());
             } else if (!Objects.equal(uid, metadata.getUid())) {
                 // the UUIDs are different so lets ignore this PipelineConfig
+                logger.log(Level.WARNING, String.format("PipelineConfig '%s/%s' 's UUID %s is different from local %s, will skip it", namespace, job, metadata.getUid(), uid));
                 return;
             }
-        }
 
-        V1alpha1PipelineConfig newJobPipelineConfig = DeepCopyUtils.deepCopy(jobPipelineConfig);
-        PipelineConfigToJobMapper.updatePipelineConfigFromJob(job, newJobPipelineConfig);
 
-        if (!hasEmbeddedPipelineOrValidSource(newJobPipelineConfig)) {
-            // this pipeline has not yet been populated with the git source or
-            // an embedded
-            // pipeline so lets not create/update a PipelineConfig yet
-            return;
-        }
+            V1alpha1PipelineConfig newJobPipelineConfig = DeepCopyUtils.deepCopy(jobPipelineConfig);
+            PipelineConfigToJobMapper.updatePipelineConfigFromJob(job, newJobPipelineConfig);
 
-        if (create) {
-            newJobPipelineConfig.getMetadata().getAnnotations().put(Annotations.JENKINS_JOB_PATH, JenkinsUtils.getFullJobName(job));
-            try {
-                V1alpha1PipelineConfig pc = PipelineConfigController.createPipelineConfig(namespace, newJobPipelineConfig);
-                String uid = pc.getMetadata().getUid();
-                workflowJobProperty.setUid(uid);
-            } catch (Exception e) {
-                logger.log(Level.WARNING, "Failed to create PipelineConfig: " + namespace + jobName + ". " + e, e);
+            if (!hasEmbeddedPipelineOrValidSource(newJobPipelineConfig)) {
+                // this pipeline has not yet been populated with the git source or
+                // an embedded
+                // pipeline so lets not create/update a PipelineConfig yet
+                return;
             }
-        } else {
-            try {
-                V1alpha1PipelineConfigSpec spec = newJobPipelineConfig.getSpec();
 
+
+            try {
                 PipelineConfigController.updatePipelineConfig(jobPipelineConfig, newJobPipelineConfig);
                 logger.info("PipelineConfig update success, " + jobName);
             } catch (Exception e) {
                 logger.log(Level.WARNING, "Failed to update PipelineConfig: " + namespace + jobName + ". " + e, e);
             }
         }
+
     }
 
     private boolean hasEmbeddedPipelineOrValidSource(V1alpha1PipelineConfig pipelineConfig) {

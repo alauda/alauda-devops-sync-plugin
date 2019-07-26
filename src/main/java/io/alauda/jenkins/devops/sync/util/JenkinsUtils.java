@@ -17,7 +17,6 @@ package io.alauda.jenkins.devops.sync.util;
 
 import antlr.ANTLRException;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import hudson.model.Queue;
 import hudson.model.*;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.plugins.git.RevisionParameterAction;
@@ -29,17 +28,13 @@ import hudson.triggers.Trigger;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
-import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
-import io.alauda.jenkins.devops.sync.controller.PipelineController;
 import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.MultiBranchProject;
 import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.Timer;
-import org.acegisecurity.context.SecurityContext;
-import org.acegisecurity.context.SecurityContextHolder;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.transport.URIish;
 import org.jenkinsci.plugins.pipeline.modeldefinition.ast.ModelASTPipelineDef;
@@ -54,18 +49,18 @@ import javax.annotation.Nonnull;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.*;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.isCancelled;
 import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.updatePipelinePhase;
 import static java.util.logging.Level.SEVERE;
-import static java.util.logging.Level.WARNING;
 
 /**
  * @author suren
@@ -391,15 +386,13 @@ public abstract class JenkinsUtils {
 
             putJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
 
-            //no reason add it again in here
-            //PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
             LOGGER.info(() -> "pipeline config update with job: "+pipelineName+" pipeline config "+pipelineConfig.getMetadata().getName());
 
             Action[] actionArray;
             if(pipelineActions.size() == 0) {
                 actionArray = new Action[]{};
             } else {
-                actionArray = pipelineActions.toArray(new Action[pipelineActions.size()]);
+                actionArray = pipelineActions.toArray(new Action[0]);
             }
 
             QueueTaskFuture<WorkflowRun> queueTaskFuture = job.scheduleBuild2(0, actionArray);
@@ -424,25 +417,25 @@ public abstract class JenkinsUtils {
                         }
                     }
 
-                    if(revisionAction != null && factory != null) {
+                    if(revisionAction != null) {
                         factory.setRevisionHash(job, revisionAction.getRevision());
                     }
                 }
 
-                updatePipelinePhase(pipeline, QUEUED);
+                pipeline.getStatus().setPhase(QUEUED);
+
                 // If builds are queued too quickly, Jenkins can add the cause
                 // to the previous queued pipeline so let's add a tiny
                 // sleep.
                 try {
-                    Thread.sleep(50l);
+                    Thread.sleep(50);
                 } catch (InterruptedException e) {
                     LOGGER.log(Level.SEVERE, "updatePipelinePhase Interrupted", e);
                     Thread.currentThread().interrupt();
                 }
                 return true;
             }
-
-            updatePipelinePhase(pipeline, FAILED);
+            pipeline.getStatus().setPhase(FAILED);
             LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipelineName);
 
             return false;
@@ -486,14 +479,7 @@ public abstract class JenkinsUtils {
         return null;
 	}
 
-	public static void deleteRun(WorkflowJob workflowJob, V1alpha1Pipeline pipeline) {
-        WorkflowRun run = JenkinsUtils.getRun(workflowJob, pipeline);
-        if(run != null) {
-            JenkinsUtils.deleteRun(run);
-        }
-    }
-
-	private synchronized static void deleteRun(WorkflowRun run) {
+	public synchronized static void deleteRun(WorkflowRun run) {
         try {
             LOGGER.info("Deleting run: " + run.toString());
             run.delete();
@@ -522,7 +508,7 @@ public abstract class JenkinsUtils {
 		return false;
 	}
 
-	private static void terminateRun(final WorkflowRun run) {
+	public static void terminateRun(final WorkflowRun run) {
 		ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, RuntimeException>() {
 			@Override
 			public Void call() throws RuntimeException {
@@ -589,157 +575,70 @@ public abstract class JenkinsUtils {
 		}
 	}
 
-    /**
-     * Find the workflow job. The job could be normal or multi-branch pipeline job.
-     * @param pipeline pipeline is the build history for pipelineJob
-     * @return workflow job
-     */
-	public static WorkflowJob getJobFromPipeline(@Nonnull V1alpha1Pipeline pipeline) {
-		String configName = pipeline.getSpec().getPipelineConfig().getName();
-        V1alpha1PipelineConfig pipelineConfig =
-                PipelineConfigController.getCurrentPipelineConfigController()
-                        .getPipelineConfig(pipeline.getMetadata().getNamespace(), configName);
-		if (pipelineConfig == null) {
-		    LOGGER.log(WARNING, String.format("Unable to get pipelineconfig '%s/%s' from pipeline '%s/%s'",
-                    pipeline.getMetadata().getNamespace(), configName, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()));
-			return null;
-		}
 
-        if(PipelineConfigUtils.isMultiBranch(pipelineConfig)) {
-            Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
-            if(annotations == null) {
-                V1ObjectMeta meta = pipeline.getMetadata();
-                LOGGER.severe(String.format("Pipeline [%s,%s] don't have annotations, can't find the Workflow.",
-                        meta.getNamespace(), meta.getName()));
-                return null;
-            }
 
-            String branchName = annotations.get(Annotations.MULTI_BRANCH_NAME);
-            WorkflowMultiBranchProject project = PipelineConfigToJobMap.getMultiBranchByPC(pipelineConfig);
-            if(project != null) {
-                final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
-                try {
-                    WorkflowJob item = project.getItem(branchName);
-                    if(item == null) {
-                        LOGGER.warning(String.format("Can't find item by branchName %s", branchName));
-                    }
-                    return item;
-                } finally {
-                    SecurityContextHolder.setContext(previousContext);
-                }
-            } else {
-                LOGGER.warning(String.format("Can't find multiBranchProject %s", pipelineConfig.getMetadata().getName()));
-            }
-        } else {
-            return PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
-        }
-
-        return null;
-	}
-
-    public static void maybeScheduleNext(WorkflowJob job) {
-        WorkflowJobProperty pcp = WorkflowJobUtils.getAlaudaProperty(job);
-        if (pcp == null) {
-            return;
-        }
-
-        List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController()
-                .listPipelines(pcp.getNamespace())
-                .stream()
-                .filter(pipe -> {
-                    Map<String, String> labels = pipe.getMetadata().getLabels();
-                    if (labels == null) {
-                        return false;
-                    }
-                    return pcp.getName().equals(labels.get(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG)) && pipe.getStatus().getPhase().equals(PENDING);
-                }).collect(Collectors.toList());
-
-        handlePipelineList(job, pipelines);
-    }
-
-	public static void handlePipelineList(WorkflowJob job, List<V1alpha1Pipeline> pipelines) {
-		if (pipelines.isEmpty()) {
-			return;
-		}
-        Collections.sort(pipelines, new PipelineComparator());
-		boolean isSerial = !job.isConcurrentBuild();
-		boolean jobIsBuilding = job.isBuilding();
-		for (int i = 0; i < pipelines.size(); i++) {
-            V1alpha1Pipeline p = pipelines.get(i);
-			if (!AlaudaUtils.isPipelineStrategyPipeline(p))
-				continue;
-			// For SerialLatestOnly we should try to cancel all pipelines before
-			// the latest one requested.
-            if (jobIsBuilding && !isCancelled(p.getStatus())) {
-                return;
-            }
-
-            if (i < pipelines.size() - 1) {
-                cancelQueuedPipeline(job, p);
-                // TODO: maybe not necessary?
-                updatePipelinePhase(p, CANCELLED);
-                continue;
-            }
-
-			boolean buildAdded = false;
-			try {
-				buildAdded = PipelineController.addEventToJenkinsJobRun(p);
-			} catch (IOException e) {
-				V1ObjectMeta meta = p.getMetadata();
-				LOGGER.log(WARNING, "Failed to add new build " + meta.getNamespace() + "/" + meta.getName(), e);
-			}
-			// If it's a serial build then we only need to schedule the first
-			// build request.
-			if (isSerial && buildAdded) {
-				return;
-			}
-		}
-	}
+//    public static void maybeScheduleNext(WorkflowJob job) {
+//        WorkflowJobProperty pcp = WorkflowJobUtils.getAlaudaProperty(job);
+//        if (pcp == null) {
+//            return;
+//        }
+//
+//        List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController()
+//                .listPipelines(pcp.getNamespace())
+//                .stream()
+//                .filter(pipe -> {
+//                    Map<String, String> labels = pipe.getMetadata().getLabels();
+//                    if (labels == null) {
+//                        return false;
+//                    }
+//                    return pcp.getName().equals(labels.get(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG)) && pipe.getStatus().getPhase().equals(PENDING);
+//                }).collect(Collectors.toList());
+//
+//        handlePipelineList(job, pipelines);
+//    }
+//
+//	public static void handlePipelineList(WorkflowJob job, List<V1alpha1Pipeline> pipelines) {
+//		if (pipelines.isEmpty()) {
+//			return;
+//		}
+//        pipelines.sort(new PipelineComparator());
+//		boolean isSerial = !job.isConcurrentBuild();
+//		boolean jobIsBuilding = job.isBuilding();
+//		for (int i = 0; i < pipelines.size(); i++) {
+//            V1alpha1Pipeline p = pipelines.get(i);
+//			if (!AlaudaUtils.isPipelineStrategyPipeline(p))
+//				continue;
+//			// For SerialLatestOnly we should try to cancel all pipelines before
+//			// the latest one requested.
+//            if (jobIsBuilding && !isCancelled(p.getStatus())) {
+//                return;
+//            }
+//
+//            if (i < pipelines.size() - 1) {
+//                cancelQueuedPipeline(job, p);
+//                // TODO: maybe not necessary?
+//                updatePipelinePhase(p, CANCELLED);
+//                continue;
+//            }
+//
+//			boolean buildAdded = false;
+//			try {
+//				buildAdded = PipelineController.addEventToJenkinsJobRun(p);
+//			} catch (IOException e) {
+//				V1ObjectMeta meta = p.getMetadata();
+//				LOGGER.log(WARNING, "Failed to add new build " + meta.getNamespace() + "/" + meta.getName(), e);
+//			}
+//			// If it's a serial build then we only need to schedule the first
+//			// build request.
+//			if (isSerial && buildAdded) {
+//				return;
+//			}
+//		}
+//	}
 
     @Nonnull
     public static String getFullJobName(@Nonnull WorkflowJob job) {
 		return job.getRelativeNameFrom(Jenkins.getInstance());
-	}
-
-	@Nonnull
-	public static String getBuildConfigName(@Nonnull WorkflowJob job) {
-		String name = getFullJobName(job);
-		AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
-		String[] paths = name.split("/");
-		if (paths.length > 1) {
-			String orgName = paths[0];
-			if (StringUtils.isNotBlank(orgName)) {
-				if (config != null) {
-					String skipOrganizationPrefix = config.getSkipOrganizationPrefix();
-					if (StringUtils.isEmpty(skipOrganizationPrefix)) {
-						config.setSkipOrganizationPrefix(orgName);
-						skipOrganizationPrefix = config.getSkipOrganizationPrefix();
-					}
-
-					// if the default organization lets strip the organization name from the prefix
-					int prefixLength = orgName.length() + 1;
-					if (orgName.equals(skipOrganizationPrefix) && name.length() > prefixLength) {
-						name = name.substring(prefixLength);
-					}
-				}
-			}
-		}
-
-		// lets avoid the .master postfixes as we treat master as the default branch
-		// name
-		String masterSuffix = "/master";
-		if (config != null) {
-			String skipBranchSuffix = config.getSkipBranchSuffix();
-			if (StringUtils.isEmpty(skipBranchSuffix)) {
-				config.setSkipBranchSuffix("master");
-				skipBranchSuffix = config.getSkipBranchSuffix();
-			}
-			masterSuffix = "/" + skipBranchSuffix;
-		}
-		if (name.endsWith(masterSuffix) && name.length() > masterSuffix.length()) {
-			name = name.substring(0, name.length() - masterSuffix.length());
-		}
-		return name;
 	}
 
 	@Nonnull

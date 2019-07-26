@@ -179,7 +179,7 @@ public abstract class AlaudaUtils {
      * @param namespace namespace
      * @return item
      */
-    public static ItemGroup getOrCreateFullNameParent(Jenkins activeJenkins, String fullName, String namespace)
+    public static ItemGroup  getOrCreateFullNameParent(Jenkins activeJenkins, String fullName, String namespace)
             throws IOException {
         int idx = fullName.lastIndexOf('/');
         if (idx > 0) {

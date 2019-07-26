@@ -82,68 +82,6 @@ public class PipelineUtils {
         return PipelineController.deletePipeline(namespace, name);
     }
 
-    public static void pipelinesCheck(V1alpha1PipelineConfig config) {
-        V1ObjectMeta configMetadata = config.getMetadata();
-        String namespace = configMetadata.getNamespace();
-
-        List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController().listPipelines(namespace)
-                .stream().filter(p -> configMetadata.getName().equals(p.getMetadata().getLabels().get(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG)))
-                .collect(Collectors.toList());
-
-
-        WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(config);
-        if (job == null) {
-            return;
-        }
-
-        pipelines.forEach(pipeline -> {
-            String uid = pipeline.getMetadata().getUid();
-            RunList<WorkflowRun> runList = job.getBuilds().filter(run -> {
-                JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
-
-                return cause != null && cause.getUid().equals(uid);// && phase.equals(pipeline.getStatus().getPhase());
-            });//.isEmpty();
-
-            if (runList.isEmpty()) {
-                if (PipelinePhases.QUEUED.equals(pipeline.getStatus().getPhase())) {
-                    Map<String, String> labels = pipeline.getMetadata().getLabels();
-                    String retry = null;
-                    if (labels != null) {
-                        retry = labels.get("retry");
-                    }
-
-                    if (retry == null) {
-                        retry = "1";
-                    } else {
-                        try {
-                            retry = String.valueOf(Integer.parseInt(retry) + 1);
-                        } catch (NumberFormatException e) {
-                            retry = "1";
-                        }
-                    }
-
-                    PipelineController.addPipelineToNoPCList(pipeline);
-                    V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
-
-                    newPipeline.getMetadata().putLabelsItem("retry", retry);
-                    PipelineController.updatePipeline(pipeline, newPipeline);
-
-                } else {
-                    PipelineController.deletePipeline(namespace, pipeline.getMetadata().getName());
-                }
-            } else {
-                WorkflowRun build = runList.getLastBuild();
-                String phase = runToPipelinePhase(build);
-
-                if (!phase.equals(pipeline.getStatus().getPhase())) {
-                    V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
-                    newPipeline.getStatus().phase(phase);
-
-                    PipelineController.updatePipeline(pipeline, newPipeline);
-                }
-            }
-        });
-    }
 
     public static String runToPipelinePhase(Run run) {
         if (run != null && !run.hasntStartedYet()) {

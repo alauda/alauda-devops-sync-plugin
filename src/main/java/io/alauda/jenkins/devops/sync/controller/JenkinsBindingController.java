@@ -6,7 +6,6 @@ import hudson.ExtensionList;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1JenkinsBinding;
 import io.alauda.devops.java.client.models.V1alpha1JenkinsBindingList;
-import io.alauda.jenkins.devops.support.controller.Controller;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.controller.util.Wait;
 import io.kubernetes.client.ApiClient;
@@ -26,16 +25,16 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @Extension
-public class JenkinsBindingController implements Controller<V1alpha1JenkinsBinding, V1alpha1JenkinsBindingList> {
+public class JenkinsBindingController extends BaseController<V1alpha1JenkinsBinding, V1alpha1JenkinsBindingList> {
     private static final Logger logger = Logger.getLogger(JenkinsBindingController.class.getName());
 
     private SharedIndexInformer<V1alpha1JenkinsBinding> jenkinsBindingInformer;
     private volatile boolean dependentControllerSynced = false;
 
     @Override
-    public void initialize(ApiClient apiClient, SharedInformerFactory sharedInformerFactory) {
+    public SharedIndexInformer<V1alpha1JenkinsBinding> newInformer(ApiClient client, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-        jenkinsBindingInformer = sharedInformerFactory.sharedIndexInformerFor(
+        jenkinsBindingInformer = factory.sharedIndexInformerFor(
                 callGeneratorParams -> {
                     try {
                         return api.listJenkinsBindingForAllNamespacesCall(
@@ -55,10 +54,13 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
                         throw new RuntimeException(e);
                     }
                 }, V1alpha1JenkinsBinding.class, V1alpha1JenkinsBindingList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+
+        return jenkinsBindingInformer;
     }
 
+
     @Override
-    public void start() {
+    public void waitControllerReady() throws Exception {
         JenkinsController jenkinsController = JenkinsController.getCurrentJenkinsController();
         if (jenkinsController == null) {
             logger.log(Level.SEVERE, "Unable to start JenkinsBindingController, JenkinsController must be initialized first");
@@ -76,17 +78,8 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
     }
 
     @Override
-    public void shutDown(Throwable throwable) {
-        if (jenkinsBindingInformer == null) {
-            return;
-        }
-
-        try {
-            jenkinsBindingInformer.stop();
-            jenkinsBindingInformer = null;
-        } catch (Throwable e) {
-            logger.log(Level.WARNING, String.format("Unable to stop JenkinsBindingController, reason: %s", e.getMessage()));
-        }
+    public String getControllerName() {
+        return "JenkinsBindingController";
     }
 
     @Override
@@ -112,15 +105,6 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
             logger.log(Level.SEVERE, "JenkinsBinding controller may stopped, unable to get jenkinsbinding list");
             return Collections.emptyList();
         }
-
-//        try {
-//            if (InformerUtils.isStopped(jenkinsBindingInformer, this.getClass())) {
-//                return null;
-//            }
-//        } catch (IllegalAccessException e) {
-//            logger.log(Level.SEVERE, String.format("Unable to know whether JenkinsBindingController stopped, reason %s", e.getMessage()), e);
-//            return null;
-//        }
 
         if (!hasSynced()) {
             logger.log(Level.FINE, "JenkinsBindingController has not synced now, won't be able to get jenkinsbinding list");

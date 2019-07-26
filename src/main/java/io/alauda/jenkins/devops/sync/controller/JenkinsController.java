@@ -40,19 +40,18 @@ import java.util.logging.Logger;
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY;
 
 @Extension
-public class JenkinsController implements Controller<V1alpha1Jenkins, V1alpha1JenkinsList> {
+public class JenkinsController extends BaseController<V1alpha1Jenkins, V1alpha1JenkinsList> {
     private static final Logger logger = Logger.getLogger(JenkinsController.class.getName());
 
     private SharedIndexInformer<V1alpha1Jenkins> jenkinsInformer;
-    private volatile boolean started = false;
     private String controllerStatus = "";
 
     @Override
-    public void initialize(ApiClient apiClient, SharedInformerFactory sharedInformerFactory) {
+    public SharedIndexInformer<V1alpha1Jenkins> newInformer(ApiClient client, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
         controllerStatus = "Initializing JenkinsController";
-        jenkinsInformer = sharedInformerFactory.sharedIndexInformerFor(
+        jenkinsInformer = factory.sharedIndexInformerFor(
                 callGeneratorParams -> {
                     try {
                         return api.listJenkinsCall(
@@ -72,26 +71,12 @@ public class JenkinsController implements Controller<V1alpha1Jenkins, V1alpha1Je
                         throw new RuntimeException(e);
                     }
                 }, V1alpha1Jenkins.class, V1alpha1JenkinsList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+        return jenkinsInformer;
     }
 
     @Override
-    public void start() {
-        started = true;
-    }
-
-    @Override
-    public void shutDown(Throwable throwable) {
-        controllerStatus = "JenkinsController is stopped";
-        if (jenkinsInformer == null) {
-            return;
-        }
-
-        try {
-            jenkinsInformer.stop();
-            jenkinsInformer = null;
-        } catch (Throwable e) {
-            logger.log(Level.WARNING, String.format("Unable to stop JenkinsController, reason: %s", e.getMessage()));
-        }
+    public String getControllerName() {
+        return "JenkinsController";
     }
 
     @Override
@@ -196,8 +181,7 @@ public class JenkinsController implements Controller<V1alpha1Jenkins, V1alpha1Je
     }
 
     public synchronized void notifyJenkinsServiceChanged() {
-        if (started) {
-            started = false;
+        if (hasSynced()) {
             ExtensionList<ControllerManager> controllerManagers = ExtensionList.lookup(ControllerManager.class);
             if (controllerManagers.size() == 0) {
                 logger.log(Level.SEVERE, "Failed to restart controllers to reapply jenkin service, reason: Unable to find ControllerManager");

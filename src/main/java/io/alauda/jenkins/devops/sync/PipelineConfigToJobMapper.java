@@ -65,6 +65,7 @@ public abstract class PipelineConfigToJobMapper {
      * @throws IOException in case of io exception
      */
     public static FlowDefinition mapPipelineConfigToFlow(V1alpha1PipelineConfig pc) throws IOException {
+        // TODO move to converter
         if (!AlaudaUtils.isPipelineStrategyPipelineConfig(pc)) {
             return null;
         }
