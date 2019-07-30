@@ -56,7 +56,6 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         String resourceVer = pipelineConfig.getMetadata().getResourceVersion();
         WorkflowJob job = PipelineConfigToJobMap.getJobFromPipelineConfig(pipelineConfig);
         Jenkins activeInstance = Jenkins.getInstance();
-        formatJenkinsfile(pipelineConfig);
         ItemGroup parent = activeInstance;
         if (job == null) {
             job = (WorkflowJob) activeInstance.getItemByFullName(jobFullName);
@@ -161,34 +160,5 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         }
 
         return workflowJob;
-    }
-
-    private void formatJenkinsfile(final V1alpha1PipelineConfig pipelineConfig) {
-        String jenkinsfile = pipelineConfig.getSpec().getStrategy().getJenkins().getJenkinsfile();
-        if (StringUtils.isEmpty(jenkinsfile)) {
-            return;
-        }
-
-        String formattedJenkinsfile = null;
-        try {
-            formattedJenkinsfile = JenkinsUtils.formatJenkinsfile(jenkinsfile);
-        } catch (IOException e) {
-            // format error, could be pipeline syntax error
-            logger.log(Level.WARNING, "Failed to format Pipeline.", e);
-        } catch (MultipleCompilationErrorsException e) {
-            logger.log(Level.WARNING, "Pipeline syntax has errors.", e);
-        }
-
-        if (StringUtils.isNotEmpty(formattedJenkinsfile)) {
-            V1ObjectMeta metadata = pipelineConfig.getMetadata();
-            String name = metadata.getName();
-
-            V1alpha1PipelineConfig oldPipelineConfig = DeepCopyUtils.deepCopy(pipelineConfig);
-            pipelineConfig.getSpec().getStrategy().getJenkins().jenkinsfile(formattedJenkinsfile);
-
-            PipelineConfigController.updatePipelineConfig(oldPipelineConfig, pipelineConfig);
-
-            logger.fine(String.format("Format PipelineConfig's jenkinsfile %s, name: %s", formattedJenkinsfile, name));
-        }
     }
 }
