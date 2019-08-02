@@ -6,7 +6,7 @@
 
 ### Unit Test
 
-If you hope to run junit case in a k8s environment, you need add an env variable named 'IN_K8S', 
+If you hope to run junit case in k8s environment, you need add an env variable named 'IN_K8S', 
 then set the value as 'true'.
 
 ## Upload plugin
