@@ -12,7 +12,6 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineConfigStatus;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
-import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.icons.AlaudaFolderIcon;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
@@ -31,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.xml.transform.stream.StreamSource;
 import java.io.IOException;
 import java.io.InputStream;
@@ -225,7 +223,7 @@ public class JenkinsClient {
                 logger.warn("Unable to find correspondent Jenkins job for '{}/{}', not job found in jenkins, will try to create a job", namespaceName.getNamespace(), namespaceName.getName());
                 V1alpha1PipelineConfig pipelineConfigCopy = DeepCopyUtils.deepCopy(pipelineConfig);
                 pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.SYNCING);
-                PipelineConfigController.updatePipelineConfig(pipelineConfig, pipelineConfigCopy);
+                Clients.get(V1alpha1PipelineConfig.class).update(pipelineConfig, pipelineConfigCopy);
                 return;
             }
 
@@ -430,8 +428,7 @@ public class JenkinsClient {
 
         String pipelineConfigName = pipelineConfigNameMatcher.group(1);
 
-        return PipelineConfigController.getCurrentPipelineConfigController()
-                .getPipelineConfig(namespace, pipelineConfigName);
+        return Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(pipelineConfigName);
 
     }
 

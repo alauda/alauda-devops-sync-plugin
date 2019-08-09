@@ -28,7 +28,7 @@ import hudson.triggers.Trigger;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
-import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.MultiBranchProject;
@@ -328,7 +328,7 @@ public abstract class JenkinsUtils {
         }
 
         final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
-        V1alpha1PipelineConfig pipelineConfig = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, pipelineConfigName);
+        V1alpha1PipelineConfig pipelineConfig = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(pipelineConfigName);
         if (pipelineConfig == null) {
             LOGGER.info(() -> "pipeline config not found....: "+pipelineName+" - config name "+pipelineConfigName);
             return false;
@@ -583,7 +583,7 @@ public abstract class JenkinsUtils {
 //            return;
 //        }
 //
-//        List<V1alpha1Pipeline> pipelines = PipelineController.getCurrentPipelineController()
+//        List<V1alpha1Pipeline> pipelines = PipelineResourceSyncController.getCurrentPipelineController()
 //                .listPipelines(pcp.getNamespace())
 //                .stream()
 //                .filter(pipe -> {
@@ -623,7 +623,7 @@ public abstract class JenkinsUtils {
 //
 //			boolean buildAdded = false;
 //			try {
-//				buildAdded = PipelineController.addEventToJenkinsJobRun(p);
+//				buildAdded = PipelineResourceSyncController.addEventToJenkinsJobRun(p);
 //			} catch (IOException e) {
 //				V1ObjectMeta meta = p.getMetadata();
 //				LOGGER.log(WARNING, "Failed to add new build " + meta.getNamespace() + "/" + meta.getName(), e);

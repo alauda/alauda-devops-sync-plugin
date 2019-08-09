@@ -8,7 +8,8 @@ import hudson.model.TaskListener;
 import hudson.security.ACL;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
-import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
+import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.ApiException;
 import jenkins.model.Jenkins;
@@ -39,19 +40,20 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
         final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
         try {
-            PipelineConfigController pipelineConfigController = PipelineConfigController.getCurrentPipelineConfigController();
-            if (!pipelineConfigController.isValid()) {
-                LOGGER.log(Level.INFO, "PipelineConfigController has not synced or is not valid, will skip this Orphan Job check");
+            ResourceSyncManager resourceSyncManager = ResourceSyncManager.getSyncManager();
+
+            if (!resourceSyncManager.isStarted()) {
+                LOGGER.log(Level.INFO, String.format("SyncManager has not started yet, reason %s, will skip this Orphan Job check", resourceSyncManager.getPluginStatus()));
                 return;
             }
 
-            scanOrphanItems(pipelineConfigController);
+            scanOrphanItems();
         } finally {
             SecurityContextHolder.setContext(previousContext);
         }
     }
 
-    private void scanOrphanItems(PipelineConfigController pipelineConfigController) {
+    private void scanOrphanItems() {
         Jenkins jenkins = Jenkins.getInstance();
         List<Folder> folders = jenkins.getItems(Folder.class);
 
@@ -70,7 +72,7 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                 String name = pro.getName();
                 String uid = pro.getUid();
 
-                V1alpha1PipelineConfig pc = pipelineConfigController.getPipelineConfig(ns, name);
+                V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(ns).get(name);
                 if(pc == null) {
                     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
                     V1alpha1PipelineConfig newer = null;

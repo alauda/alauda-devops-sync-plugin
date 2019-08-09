@@ -15,17 +15,12 @@
  */
 package io.alauda.jenkins.devops.sync;
 
-import com.cloudbees.plugins.credentials.common.StandardListBoxModel;
 import hudson.Extension;
-import hudson.security.ACL;
 import hudson.util.FormValidation;
-import hudson.util.ListBoxModel;
-import io.alauda.jenkins.devops.sync.controller.JenkinsController;
+import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
 import jenkins.model.GlobalConfiguration;
-import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.jenkinsci.Symbol;
-import org.jenkinsci.plugins.plaincredentials.StringCredentials;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -92,7 +87,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         }
 
         this.jenkinsService = jenkinsService;
-        JenkinsController.getCurrentJenkinsController().notifyJenkinsServiceChanged();
+        ResourceSyncManager.getSyncManager().notifyJenkinsServiceChanged();
     }
 
     public String getErrorMsg() {

@@ -3,13 +3,13 @@ package io.alauda.jenkins.devops.sync.mapper.converter;
 import antlr.ANTLRException;
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
+import hudson.Extension;
 import hudson.model.Item;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
-import io.alauda.jenkins.devops.sync.controller.CodeRepositoryController;
-import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
@@ -36,6 +36,7 @@ import java.util.*;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
+@Extension
 public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMultiBranchProject> {
     private static final Logger logger = LoggerFactory.getLogger(MultibranchWorkflowJobConverter.class);
 
@@ -43,7 +44,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     private PipelineConfigMapper mapper;
 
     public MultibranchWorkflowJobConverter() {
-
+        mapper = new PipelineConfigMapper();
+        jenkinsClient = JenkinsClient.getInstance();
     }
 
     @Override
@@ -115,7 +117,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
             // cases for git provider
             String codeRepoName = codeRepoRef.getName();
 
-            V1alpha1CodeRepository codeRep = CodeRepositoryController.getCurrentCodeRepositoryController().getCodeRepository(namespace, codeRepoRef.getName());
+            V1alpha1CodeRepository codeRep = Clients.get(V1alpha1CodeRepository.class).lister().namespace(namespace).get(codeRepoRef.getName());
             if(codeRep != null) {
                 V1alpha1CodeRepositorySpec codeRepoSpec = codeRep.getSpec();
                 V1alpha1OriginCodeRepository codeRepo = codeRepoSpec.getRepository();
@@ -230,6 +232,6 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
 
         annotations.forEach((key, value) -> pc.getMetadata().putAnnotationsItem(key, value));
-        PipelineConfigController.updatePipelineConfig(oldPc, pc);
+        Clients.get(V1alpha1PipelineConfig.class).update(oldPc, pc);
     }
 }

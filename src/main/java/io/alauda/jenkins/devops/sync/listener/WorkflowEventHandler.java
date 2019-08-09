@@ -8,9 +8,9 @@ import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
-import io.alauda.jenkins.devops.sync.controller.JenkinsBindingController;
-import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
+import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.models.V1ObjectMeta;
 import io.kubernetes.client.models.V1Status;
@@ -55,11 +55,11 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
             final String namespace = property.getNamespace();
             final String pipelineConfigName = property.getName();
 
-            V1alpha1PipelineConfig pipelineConfig = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, pipelineConfigName);
+            V1alpha1PipelineConfig pipelineConfig = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(pipelineConfigName);
             if (pipelineConfig != null) {
                 logger.info(() -> "Got pipeline config for  " + namespace + "/" + pipelineConfigName);
 
-                V1Status result = PipelineConfigController.deletePipelineConfig(namespace, pipelineConfigName);
+                V1Status result = Clients.get(V1alpha1PipelineConfig.class).delete(namespace, pipelineConfigName);
 
                 logger.info(() -> "Deleting PipelineConfig " + namespace + "/" + pipelineConfigName);
 
@@ -112,13 +112,13 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
         final String jobName = workflowJobProperty.getName();
 
 
-        V1alpha1PipelineConfig jobPipelineConfig = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, jobName);
+        V1alpha1PipelineConfig jobPipelineConfig = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(jobName);
         if (jobPipelineConfig == null) {
             logger.log(Level.WARNING, String.format("Unable to found mapped PipelineConfig '%s/%s' for Jenkins job %s, may have a potential bug", namespace, jobName, job.getFullDisplayName()));
             return;
         }
 
-        if (JenkinsBindingController.isBindResource(jobPipelineConfig.getSpec().getJenkinsBinding().getName())) {
+        if (new BindResourcePredicate().test(jobPipelineConfig.getSpec().getJenkinsBinding().getName())) {
             logger.log(Level.WARNING, String.format(" PipelineConfigController: '%s/%s' is not bind to correct jenkinsbinding, will skip it", namespace, jobName));
             return;
         }
@@ -149,7 +149,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
 
 
             try {
-                PipelineConfigController.updatePipelineConfig(jobPipelineConfig, newJobPipelineConfig);
+                Clients.get(V1alpha1PipelineConfig.class).update(jobPipelineConfig, newJobPipelineConfig);
                 logger.info("PipelineConfig update success, " + jobName);
             } catch (Exception e) {
                 logger.log(Level.WARNING, "Failed to update PipelineConfig: " + namespace + jobName + ". " + e, e);

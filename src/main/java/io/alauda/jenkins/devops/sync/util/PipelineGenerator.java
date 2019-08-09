@@ -4,9 +4,9 @@ import hudson.model.*;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import io.alauda.devops.java.client.models.*;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.controller.PipelineController;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import jenkins.branch.Branch;
@@ -143,7 +143,7 @@ public abstract class PipelineGenerator {
                         .addToLabels(labels).build()).withSpec(pipelineSpec).build();
 
 
-        return PipelineController.createPipeline(namespace, pipe);
+        return Clients.get(V1alpha1Pipeline.class).create(pipe);
 
     }
 

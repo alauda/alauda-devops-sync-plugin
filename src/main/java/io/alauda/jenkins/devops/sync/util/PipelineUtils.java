@@ -1,23 +1,16 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import hudson.model.*;
-import hudson.util.RunList;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
-import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
-import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.controller.PipelineController;
-import io.kubernetes.client.models.V1ObjectMeta;
 import io.kubernetes.client.models.V1Status;
-import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeSet;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG;
 
 public class PipelineUtils {
     private static final Logger logger = Logger.getLogger(PipelineUtils.class.getName());
@@ -79,7 +72,7 @@ public class PipelineUtils {
     }
 
     public static V1Status delete(String namespace, String name) {
-        return PipelineController.deletePipeline(namespace, name);
+        return Clients.get(V1alpha1Pipeline.class).delete(namespace, name);
     }
 
 

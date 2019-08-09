@@ -3,7 +3,7 @@ package io.alauda.jenkins.devops.sync;
 import hudson.Extension;
 import hudson.model.AdministrativeMonitor;
 import hudson.util.HttpResponses;
-import io.alauda.jenkins.devops.sync.controller.JenkinsController;
+import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.Symbol;
@@ -18,8 +18,6 @@ import java.io.IOException;
 @Symbol("alaudaSyncSetting")
 public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
     public static final String ID = "AlaudaSyncSetting";
-    private String syncServiceName;
-    private boolean syncEnable;
     private String message;
 
     static AlaudaSyncSettingMonitor get(Jenkins j) {
@@ -37,21 +35,10 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
 
     @Override
     public boolean isActivated() {
-        JenkinsController jenkinsController = JenkinsController.getCurrentJenkinsController();
 
-        this.syncEnable = AlaudaSyncGlobalConfiguration.get().isEnabled();
-        this.syncServiceName = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+        message = ResourceSyncManager.getSyncManager().getPluginStatus();
 
-        if (!jenkinsController.hasSynced()) {
-            message = String.format("JenkinsController has not synced, reason: %s", jenkinsController.getControllerStatus());
-            return true;
-        }
-
-        if (!jenkinsController.isValidJenkinsInstance()) {
-            message = String.format("JenkinsController cannot sync with a invalid Jenkins, reason: %s", jenkinsController.getControllerStatus());
-            return true;
-        }
-        return false;
+        return !StringUtils.isEmpty(message);
     }
 
     @RequirePOST
@@ -64,13 +51,6 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
         }
     }
 
-    public String getSyncServiceName() {
-        return syncServiceName;
-    }
-
-    public boolean isSyncEnable() {
-        return syncEnable;
-    }
 
     public String getMessage() {
         return message;

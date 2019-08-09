@@ -22,13 +22,18 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.jenkinsci.plugins.badge.action.BadgeAction;
 import hudson.Extension;
 import hudson.PluginManager;
-import hudson.model.*;
+import hudson.model.Action;
+import hudson.model.Cause;
+import hudson.model.ItemGroup;
+import hudson.model.Job;
+import hudson.model.Run;
+import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
+import io.alauda.devops.java.client.extend.controller.reconciler.Result;
 import io.alauda.devops.java.client.extend.workqueue.DefaultRateLimitingQueue;
 import io.alauda.devops.java.client.extend.workqueue.RateLimitingQueue;
 import io.alauda.devops.java.client.extend.workqueue.ratelimiter.BucketRateLimiter;
-import io.alauda.devops.java.client.extend.workqueue.ratelimiter.DefaultControllerRateLimiter;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineStatus;
 import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkins;
@@ -38,10 +43,9 @@ import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.controller.PipelineController;
-import io.alauda.jenkins.devops.sync.controller.ReconcileResult;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
@@ -175,7 +179,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             while (true) {
                 Run runToPoll = runs.get();
                 try {
-                    ReconcileResult result = pollRun(runToPoll);
+                    Result result = pollRun(runToPoll);
 
                     boolean shouldPollAgain = false;
                     StatusExt status = RunExt.create((WorkflowRun) runToPoll).getStatus();
@@ -195,7 +199,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                     }
 
                     if (shouldPollAgain) {
-                        if (result.requeue) {
+                        if (result.isRequeue()) {
                             logger.log(FINE, String.format("[PipelineSyncRun] Requeue Run %s", runToPoll.getFullDisplayName()));
                             runs.addRateLimited(runToPoll);
                         } else {
@@ -203,7 +207,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                             runs.addAfter(runToPoll, Duration.ofSeconds(2));
                         }
                     } else {
-                        if (result.requeue) {
+                        if (result.isRequeue()) {
                             logger.log(FINE, String.format("[PipelineSyncRun] Requeue Run %s", runToPoll.getFullDisplayName()));
                             runs.addRateLimited(runToPoll);
                         } else {
@@ -219,21 +223,19 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         }
     }
 
-    private synchronized ReconcileResult pollRun(Run run) {
-        ReconcileResult result = new ReconcileResult(false);
+    private synchronized Result pollRun(Run run) {
 
         if (!(run instanceof WorkflowRun)) {
             throw new IllegalStateException("Cannot poll a non-workflow run");
         }
 
         logger.log(FINE, String.format("Polling run %s", run.getFullDisplayName()));
-        RunExt wfRunExt;
+        RunExt wfRunExt = null;
         try {
             wfRunExt = RunExt.create((WorkflowRun) run);
         } catch (Throwable e) {
             logger.log(FINE, String.format("Failed to create RunExt for run %s, reason: %s", run.getDisplayName(), e.getMessage()));
-            result.setRequeue(true);
-            return result;
+            new Result(true);
         }
 
         // try blue run
@@ -241,19 +243,17 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         try {
             blueRun = BlueRunFactory.getRun(run, null);
         } catch (Throwable t) {
-            result.setRequeue(true);
             logger.log(Level.WARNING, String.format("Unable to poll run %s, reason: %s", run.getDisplayName(), t.getMessage()));
 
-            return result;
+            return new Result(true);
         }
 
         try {
-            result = upsertPipeline(run, wfRunExt, blueRun);
+            return upsertPipeline(run, wfRunExt, blueRun);
         } catch (Exception e) {
             logger.log(WARNING, "Cannot update status: {0}", e.getMessage());
-            result.setRequeue(true);
+            return new Result(true);
         }
-        return result;
     }
 
     private boolean shouldUpdatePipeline(JenkinsPipelineCause cause, int latestStageNum, int latestNumFlowNodes, StatusExt status) {
@@ -298,7 +298,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         return null;
     }
 
-    private ReconcileResult upsertPipeline(@NotNull Run run, RunExt wfRunExt, BlueRun blueRun) {
+    private Result upsertPipeline(@NotNull Run run, RunExt wfRunExt, BlueRun blueRun) {
         List<Cause> causes = run.getCauses();
         causes.forEach(causeItem -> {
             logger.fine(() -> "run " + run + " caused by " + causeItem);
@@ -306,7 +306,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
         if (cause == null) {
             logger.warning("run " + run + " do not have JenkinsPipelineCause");
-            return new ReconcileResult(false);
+            return new Result(false);
         }
 
         String namespace = cause.getNamespace();
@@ -494,7 +494,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         boolean needToUpdate = this.shouldUpdatePipeline(cause, newNumStages, newNumFlowNodes, wfRunExt.getStatus());
         if (!needToUpdate) {
             logger.fine("run " + run + " do not need to update.");
-            return new ReconcileResult(true);
+            return new Result(true);
         }
 
         String json = null;
@@ -519,10 +519,10 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         }
 
         logger.log(INFO, "Patching pipeline {0}/{1}: setting phase to {2}", new Object[]{cause.getNamespace(), cause.getName(), phase});
-        V1alpha1Pipeline pipeline = PipelineController.getCurrentPipelineController().getPipeline(cause.getNamespace(), cause.getName());
+        V1alpha1Pipeline pipeline = Clients.get(V1alpha1Pipeline.class).lister().namespace(cause.getNamespace()).get(cause.getName());
         if (pipeline == null) {
             logger.warning(() -> String.format("Pipeline name[%s], namesapce[%s] don't exists", cause.getName(), cause.getNamespace()));
-            return new ReconcileResult(false);
+            return new Result(false);
         }
         V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
 
@@ -550,11 +550,10 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         V1alpha1PipelineStatus status = createPipelineStatus(newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
         newPipeline.setStatus(status);
 
-
-        boolean succeed = PipelineController.updatePipeline(pipeline, newPipeline);
+        boolean succeed = Clients.get(V1alpha1Pipeline.class).update(pipeline, newPipeline);
         if (!succeed) {
             logger.fine(String.format("Failed updated pipeline: '%s/%s", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
-            return new ReconcileResult(true);
+            return new Result(true);
         } else {
             logger.fine(String.format("updated pipeline: '%s/%s", newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
         }
@@ -563,7 +562,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         cause.setNumFlowNodes(newNumFlowNodes);
         cause.setNumStages(newNumStages);
         cause.setLastUpdateToAlaudaDevOps(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
-        return new ReconcileResult(false);
+        return new Result(false);
     }
 
     private void badgeHandle(@NotNull Run run, Map<String, String> annotations) {
@@ -659,15 +658,15 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             if (run.isBuilding()) {
                 return PipelinePhases.RUNNING;
             } else {
-                Result result = run.getResult();
+                hudson.model.Result result = run.getResult();
                 if (result != null) {
-                    if (result.equals(Result.SUCCESS)) {
+                    if (result.equals(hudson.model.Result.SUCCESS)) {
                         return PipelinePhases.COMPLETE;
-                    } else if (result.equals(Result.ABORTED)) {
+                    } else if (result.equals(hudson.model.Result.ABORTED)) {
                         return PipelinePhases.CANCELLED;
-                    } else if (result.equals(Result.FAILURE)) {
+                    } else if (result.equals(hudson.model.Result.FAILURE)) {
                         return PipelinePhases.FAILED;
-                    } else if (result.equals(Result.UNSTABLE)) {
+                    } else if (result.equals(hudson.model.Result.UNSTABLE)) {
                         return PipelinePhases.FAILED;
                     } else {
                         return PipelinePhases.QUEUED;
@@ -679,11 +678,11 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
 
     private String getRunResult(Run run) {
-        Result result = run.getResult();
+        hudson.model.Result result = run.getResult();
         if (result != null) {
             return result.toString();
         }
-        return Result.NOT_BUILT.toString();
+        return hudson.model.Result.NOT_BUILT.toString();
     }
 
     private String getRunStatus(Run run) {

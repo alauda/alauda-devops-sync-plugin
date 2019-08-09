@@ -4,11 +4,7 @@ import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.model.UnprotectedRootAction;
 import hudson.util.HttpResponses;
-import io.alauda.jenkins.devops.sync.controller.JenkinsBindingController;
 import io.alauda.jenkins.devops.sync.util.CronUtils;
-import jenkins.model.Jenkins;
-import net.sf.json.JSONArray;
-import org.acegisecurity.AccessDeniedException;
 import org.apache.http.HttpRequest;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.HttpResponse;
@@ -64,17 +60,17 @@ public class KubernetesClientAction implements UnprotectedRootAction {
         return HttpResponses.errorJSON("no debug file");
     }
 
-    public HttpResponse doAllNamespaces() {
-        try {
-            Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
-        } catch (AccessDeniedException e) {
-            return HttpResponses.errorJSON("No administer");
-        }
-
-        JSONArray array = new JSONArray();
-        array.addAll(JenkinsBindingController.getCurrentJenkinsBindingController().getBindingNamespaces());
-        return HttpResponses.okJSON(array);
-    }
+//    public HttpResponse doAllNamespaces() {
+//        try {
+//            Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
+//        } catch (AccessDeniedException e) {
+//            return HttpResponses.errorJSON("No administer");
+//        }
+//
+//        JSONArray array = new JSONArray();
+//        array.addAll(JenkinsBindingController.getCurrentJenkinsBindingController().getBindingNamespaces());
+//        return HttpResponses.okJSON(array);
+//    }
 
     /**
      * Do check cronTab text

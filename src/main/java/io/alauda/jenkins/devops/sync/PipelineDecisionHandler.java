@@ -20,7 +20,7 @@ import hudson.model.*;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
-import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.alauda.jenkins.devops.sync.util.PipelineToActionMapper;
@@ -76,7 +76,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             // TODO: Add trigger API for pipelineconfig (like above)
 
             V1alpha1PipelineConfig config = null;
-            config = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+            config = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
             if (config == null) {
                 return false;
             } else if (config.getMetadata() == null) {

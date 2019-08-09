@@ -6,10 +6,14 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.security.ACL;
-import io.alauda.jenkins.devops.sync.controller.JenkinsBindingController;
+import io.alauda.devops.java.client.models.V1alpha1JenkinsBinding;
+import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
+import io.kubernetes.client.models.V1Namespace;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
+import org.eclipse.jgit.util.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
 import java.io.IOException;
@@ -39,12 +43,13 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
                 return;
             }
 
-            JenkinsBindingController controller = JenkinsBindingController.getCurrentJenkinsBindingController();
-            if (!controller.isValid()) {
-                logger.log(Level.INFO, "JenkinsBidingController is not synced or is not valid, will skip this empty folder check");
+            ResourceSyncManager resourceSyncManager = ResourceSyncManager.getSyncManager();
+
+            if (!resourceSyncManager.isStarted()) {
+                logger.log(Level.INFO, String.format("SyncManager has not started yet, reason %s, will skip this Empty Folder Check", resourceSyncManager.getPluginStatus()));
                 return;
             }
-            List<String> allNamespaces = controller.getBindingNamespaces();
+
 
             // when the folder is dirty and there is not any custom itemJenkinsPipelineJobListener
             folders.stream().filter(folder -> folder.getProperties().stream().anyMatch(
@@ -53,8 +58,7 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
                         // delay to remove folder
                         // target namespace doesn't exists anymore
                         return pro instanceof AlaudaFolderProperty && (((AlaudaFolderProperty) pro).isDirty()
-                                || noneMatch(allNamespaces, folderName) ||
-                                noJenkinsBinding(allNamespaces, folderName));  // namespaces exists but no binding
+                                || noneMatch(folderName) || noJenkinsBinding(folderName));  // namespaces exists but no binding
                     }
             )).filter(folder -> {
                 Collection<TopLevelItem> items = folder.getItems();
@@ -81,12 +85,24 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
         }
     }
 
-    private boolean noJenkinsBinding(List<String> namespaces, String target) {
-        return !namespaces.contains(target);
+    private boolean noJenkinsBinding(String target) {
+        String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+        return Clients.get(V1alpha1JenkinsBinding.class)
+                .lister()
+                .list()
+                .stream()
+                .filter(jenkinsBinding -> jenkinsBinding.getSpec().getJenkins().getName().equals(jenkinsService))
+                .map(jenkinsBinding -> jenkinsBinding.getMetadata().getNamespace())
+                .distinct()
+                .noneMatch(namespace -> StringUtils.equalsIgnoreCase(name, target));
     }
 
-    private boolean noneMatch(List<String> list, String target) {
-        return list.stream().noneMatch(ns -> ns.equalsIgnoreCase(target));
+    private boolean noneMatch(String target) {
+        return Clients.get(V1Namespace.class)
+                .lister()
+                .list()
+                .stream()
+                .noneMatch(namespace -> StringUtils.equalsIgnoreCase(name, target));
     }
 
     @Override

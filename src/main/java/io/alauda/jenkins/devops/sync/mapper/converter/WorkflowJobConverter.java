@@ -96,7 +96,7 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
 
         FlowDefinition flowDefinition = PipelineConfigToJobMapper.mapPipelineConfigToFlow(pipelineConfig);
         if (flowDefinition == null) {
-            throw new PipelineConfigConvertException("Unable to convert PipelineConfig to Jenkins job '%s/%s'");
+            throw new PipelineConfigConvertException(String.format("Unable to convert PipelineConfig to Jenkins job '%s/%s'", namespace, name));
         }
 
 

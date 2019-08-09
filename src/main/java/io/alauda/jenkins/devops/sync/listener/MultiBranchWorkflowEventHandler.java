@@ -7,7 +7,7 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
-import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.kubernetes.client.models.V1ObjectMeta;
 import net.sf.json.JSONArray;
@@ -120,7 +120,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String name = pro.getName();
 
 
-        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         if(pc == null) {
             logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
             return;
@@ -128,7 +128,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
         addStaleBranchAnnotation(newPc, branchName);
-        PipelineConfigController.updatePipelineConfig(pc, newPc);
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void addStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -141,12 +141,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         addStalePRAnnotation(newPc, branchName);
-        PipelineConfigController.updatePipelineConfig(pc, newPc);
-
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void addBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -159,12 +158,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         addBranchAnnotation(newPc, branchName);
-        PipelineConfigController.updatePipelineConfig(pc, newPc);
-
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -178,11 +176,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String name = pro.getName();
 
 
-        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         addPRAnnotation(newPc, branchName);
-        PipelineConfigController.updatePipelineConfig(pc, newPc);
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void addBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
@@ -238,11 +236,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         delPRAnnotation(newPc, branchName);
-        PipelineConfigController.updatePipelineConfig(pc, newPc);
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void delBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -255,11 +253,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         delBranchAnnotation(newPc, branchName);
-        PipelineConfigController.updatePipelineConfig(pc, newPc);
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void delStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -273,11 +271,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String name = pro.getName();
 
 
-        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         delStalePRAnnotation(newPc, branchName);
-        PipelineConfigController.updatePipelineConfig(pc, newPc);
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void delStaleBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -290,11 +288,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String namespace = pro.getNamespace();
         String name = pro.getName();
 
-        V1alpha1PipelineConfig pc = PipelineConfigController.getCurrentPipelineConfigController().getPipelineConfig(namespace, name);
+        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         delStaleBranchAnnotation(newPc, branchName);
-        PipelineConfigController.updatePipelineConfig(pc, newPc);
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void delBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
