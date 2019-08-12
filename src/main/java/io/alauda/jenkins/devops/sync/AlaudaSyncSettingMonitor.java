@@ -36,9 +36,14 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
     @Override
     public boolean isActivated() {
 
-        message = ResourceSyncManager.getSyncManager().getPluginStatus();
+        boolean isStarted = ResourceSyncManager.getSyncManager().isStarted();
 
-        return !StringUtils.isEmpty(message);
+        message = ResourceSyncManager.getSyncManager().getPluginStatus();
+        if (!isStarted && StringUtils.isEmpty(message)) {
+            message = "Resource Sync Manger has not start yet";
+        }
+
+        return !isStarted || !StringUtils.isEmpty(message);
     }
 
     @RequirePOST

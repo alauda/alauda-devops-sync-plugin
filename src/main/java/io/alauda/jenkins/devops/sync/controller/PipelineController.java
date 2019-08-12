@@ -107,7 +107,7 @@ public class PipelineController implements ResourceSyncController {
                                 .build())
                         .withReconciler(new PipelineReconciler(new Lister<>(informer.getIndexer())))
                         .withName(CONTROLLER_NAME)
-                        .withReadyFunc(ResourceSyncManager::allRegisteredResourcesSynced)
+                        .withReadyFunc(Clients::allRegisteredResourcesSynced)
                         .withWorkerCount(4)
                         .withWorkQueue(rateLimitingQueue)
                         .build();
@@ -148,7 +148,7 @@ public class PipelineController implements ResourceSyncController {
             }
 
 
-            if (!new BindResourcePredicate().test(pipeline.getSpec().getJenkinsBinding().getName())) {
+            if (!BindResourcePredicate.isBindedResource(namespace, pipeline.getSpec().getJenkinsBinding().getName())) {
                 logger.debug("[{}] Pipeline '{}/{}' is not bind to correct jenkinsbinding, will skip it", getControllerName(), namespace, name);
                 return new Result(false);
             }

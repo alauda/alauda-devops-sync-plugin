@@ -13,7 +13,7 @@ import io.kubernetes.client.models.V1Namespace;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
-import org.eclipse.jgit.util.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 
 import java.io.IOException;
@@ -94,7 +94,7 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
                 .filter(jenkinsBinding -> jenkinsBinding.getSpec().getJenkins().getName().equals(jenkinsService))
                 .map(jenkinsBinding -> jenkinsBinding.getMetadata().getNamespace())
                 .distinct()
-                .noneMatch(namespace -> StringUtils.equalsIgnoreCase(name, target));
+                .noneMatch(namespace -> namespace.equalsIgnoreCase(target));
     }
 
     private boolean noneMatch(String target) {
@@ -102,7 +102,7 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
                 .lister()
                 .list()
                 .stream()
-                .noneMatch(namespace -> StringUtils.equalsIgnoreCase(name, target));
+                .noneMatch(namespace -> namespace.getMetadata().getName().equalsIgnoreCase(target));
     }
 
     @Override

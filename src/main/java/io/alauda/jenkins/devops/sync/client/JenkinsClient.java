@@ -20,11 +20,11 @@ import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import jenkins.model.Jenkins;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
-import org.parboiled.common.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,7 +143,11 @@ public class JenkinsClient {
             WorkflowMultiBranchProject project = (WorkflowMultiBranchProject) item;
             String branchName = pipeline.getMetadata().getAnnotations().get(MULTI_BRANCH_NAME);
 
-            if (!StringUtils.isEmpty(branchName)) {
+            if (StringUtils.isEmpty(branchName)) {
+                return null;
+            }
+
+            try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
                 return project.getItemByBranchName(branchName);
             }
         }
@@ -152,7 +156,7 @@ public class JenkinsClient {
     }
 
     /**
-     * Weather has synced job in Jenkins
+     * whether has synced job in Jenkins
      *
      * @param pipelineConfig PipelineConfig
      * @return true if PipelineConfig has synced Jenkins job
@@ -196,6 +200,7 @@ public class JenkinsClient {
     public WorkflowJobProperty getWorkflowJobProperty(@Nonnull WorkflowJob job) {
         WorkflowJobProperty wfJobProperty = job.getProperty(WorkflowJobProperty.class);
         if (wfJobProperty == null) {
+            // if cannot found WorkflowJobProperty from job, try to find PipelineConfigProjectProperty
             return job.getProperty(PipelineConfigProjectProperty.class);
         }
         return wfJobProperty;
@@ -206,7 +211,7 @@ public class JenkinsClient {
         return job.getProperties().get(MultiBranchProperty.class);
     }
 
-    public void upsertJob(V1alpha1PipelineConfig pipelineConfig) throws IOException, PipelineConfigConvertException {
+    public boolean upsertJob(V1alpha1PipelineConfig pipelineConfig) throws IOException, PipelineConfigConvertException {
         String namespace = pipelineConfig.getMetadata().getNamespace();
         String name = pipelineConfig.getMetadata().getName();
         NamespaceName namespaceName = new NamespaceName(namespace, name);
@@ -224,7 +229,7 @@ public class JenkinsClient {
                 V1alpha1PipelineConfig pipelineConfigCopy = DeepCopyUtils.deepCopy(pipelineConfig);
                 pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.SYNCING);
                 Clients.get(V1alpha1PipelineConfig.class).update(pipelineConfig, pipelineConfigCopy);
-                return;
+                return false;
             }
 
 
@@ -237,7 +242,7 @@ public class JenkinsClient {
             if (cachedJobMap.putIfAbsent(namespaceName, job) == null) {
                 logger.debug("Added PipelineConfig '{}/{}', phase {} to in-memory cache map", namespace, name, status != null ? status.getPhase() : "Unknown");
             }
-            return;
+            return false;
         }
 
         logger.debug("Will upsertJob");
@@ -275,6 +280,7 @@ public class JenkinsClient {
                 logger.debug("Added PipelineConfig '{}/{}', phase {} to in-memory cache map", namespace, name, status.getPhase() != null ? status.getPhase() : "Unknown");
             }
         }
+        return true;
     }
 
     public boolean deleteJob(NamespaceName namespaceName) throws IOException, InterruptedException {
@@ -327,8 +333,10 @@ public class JenkinsClient {
             }
 
             boolean canceled = false;
-            for (WorkflowJob job : multiBranchProject.getItems()) {
-                canceled = deletePipeline(pipelineNamespaceName, job);
+            try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
+                for (WorkflowJob job : multiBranchProject.getItems()) {
+                    canceled = deletePipeline(pipelineNamespaceName, job);
+                }
             }
             return canceled;
         } else {
@@ -386,8 +394,10 @@ public class JenkinsClient {
             }
 
             boolean canceled = false;
-            for (WorkflowJob job : multiBranchProject.getItems()) {
-                canceled = cancelPipeline(pipelineNamespaceName, job);
+            try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
+                for (WorkflowJob job : multiBranchProject.getItems()) {
+                    canceled = cancelPipeline(pipelineNamespaceName, job);
+                }
             }
             return canceled;
         } else {

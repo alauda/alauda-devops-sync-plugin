@@ -115,14 +115,14 @@ public class PipelineConfigController implements ResourceSyncController {
                                     return true;
                                 })
                                 .withOnDeleteFilter((pipelineConfig, aBoolean) -> {
-                                    logger.debug("[{}] receives event: Add; PipelineConfig '{}/{}'",
+                                    logger.debug("[{}] receives event: Delete; PipelineConfig '{}/{}'",
                                             CONTROLLER_NAME,
                                             pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName());
                                     return true;
                                 }).build())
                         .withReconciler(new PipelineConfigReconciler(new Lister<>(informer.getIndexer())))
                         .withName(CONTROLLER_NAME)
-                        .withReadyFunc(ResourceSyncManager::allRegisteredResourcesSynced)
+                        .withReadyFunc(Clients::allRegisteredResourcesSynced)
                         .withWorkerCount(4)
                         .withWorkQueue(rateLimitingQueue)
                         .build();
@@ -160,7 +160,7 @@ public class PipelineConfigController implements ResourceSyncController {
             }
 
 
-            if (!new BindResourcePredicate().test(pc.getSpec().getJenkinsBinding().getName())) {
+            if (!BindResourcePredicate.isBindedResource(namespace, pc.getSpec().getJenkinsBinding().getName())) {
                 logger.debug("[{}] PipelineConfigController: {}/{}' is not bind to correct jenkinsbinding, will skip it", getControllerName(), namespace, name);
                 return new Result(false);
             }
@@ -179,7 +179,9 @@ public class PipelineConfigController implements ResourceSyncController {
                         return new Result(false);
                     }
 
-                    jenkinsClient.upsertJob(pipelineConfigCopy);
+                    if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
+                        return new Result(false);
+                    }
                 } catch (PipelineConfigConvertException e) {
                     logger.warn("[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}", getControllerName(), namespace, name, StringUtils.join(e.getCauses(), " or "));
                     conditions.addAll(ConditionsUtils.convertToConditions(e.getCauses()));

@@ -118,7 +118,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
             return;
         }
 
-        if (new BindResourcePredicate().test(jobPipelineConfig.getSpec().getJenkinsBinding().getName())) {
+        if (!BindResourcePredicate.isBindedResource(namespace, jobPipelineConfig.getSpec().getJenkinsBinding().getName())) {
             logger.log(Level.WARNING, String.format(" PipelineConfigController: '%s/%s' is not bind to correct jenkinsbinding, will skip it", namespace, jobName));
             return;
         }

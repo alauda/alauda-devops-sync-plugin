@@ -32,7 +32,6 @@ import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY;
 
@@ -42,12 +41,11 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
 
     private ControllerManager controllerManager;
     private String pluginStatus;
-
-    private AtomicBoolean started = new AtomicBoolean(false);
+    private boolean started = false;
 
     @Override
     public synchronized void onConfigChange(KubernetesCluster cluster, ApiClient client) {
-        started.set(false);
+        started = false;
         if (controllerManager != null) {
             logger.debug("[ResourceSyncManager] The previous controller manager is not null, will try to stop it");
             controllerManager.shutdown();
@@ -76,21 +74,19 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
         resourceSyncControllers.forEach(resourceSyncController -> resourceSyncController.add(controllerManagerBuilder, informerFactory));
 
         controllerManager = controllerManagerBuilder.build();
-        controllerManager.run();
 
-        Wait.poll(Duration.ofSeconds(1), Duration.ofHours(1), ResourceSyncManager::allRegisteredResourcesSynced);
-
-        started.set(true);
         pluginStatus = "";
+        started = true;
+        controllerManager.run();
     }
 
     @Override
     public synchronized void onConfigError(KubernetesCluster cluster, Throwable reason) {
+        started = false;
         shutdown(reason);
     }
 
     public synchronized void shutdown(Throwable reason) {
-        started.set(false);
         if (controllerManager != null) {
             controllerManager.shutdown();
             controllerManager = null;
@@ -176,7 +172,7 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
     }
 
     public boolean isStarted() {
-        return started.get();
+        return started && Clients.allRegisteredResourcesSynced();
     }
 
     public synchronized void notifyJenkinsServiceChanged() {
@@ -186,13 +182,5 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
 
     public static ResourceSyncManager getSyncManager() {
         return ExtensionList.lookup(ResourceSyncManager.class).get(0);
-    }
-
-    static boolean allRegisteredResourcesSynced() {
-        return Clients.getClients()
-                .entrySet()
-                .stream()
-                .allMatch(client -> client.getValue().informer().hasSynced());
-
     }
 }
