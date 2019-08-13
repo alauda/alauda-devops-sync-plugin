@@ -92,8 +92,12 @@ public class PipelineController implements Controller<V1alpha1Pipeline, V1alpha1
             }
 
             pipelineConfigController.waitUntilPipelineConfigControllerSyncedAndValid(1000 * 60);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        } catch (ExecutionException | TimeoutException e) {
             logger.log(Level.SEVERE, String.format("Unable to start PipelineController, reason %s", e.getMessage()), e);
+            return;
+        } catch (InterruptedException e) {
+            logger.log(Level.SEVERE, String.format("Unable to start PipelineController, reason %s", e.getMessage()), e);
+            Thread.currentThread().interrupt();
             return;
         }
         PipelineController.flushPipelinesWithNoPCList();

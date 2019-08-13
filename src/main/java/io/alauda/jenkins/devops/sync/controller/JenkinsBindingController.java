@@ -67,8 +67,13 @@ public class JenkinsBindingController implements Controller<V1alpha1JenkinsBindi
 
         try {
             jenkinsController.waitUntilJenkinsControllerSyncedAndValid(1000 * 60 * 60);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        } catch (ExecutionException | TimeoutException e) {
             logger.log(Level.SEVERE, String.format("Unable to start JenkinsController, reason %s", e.getMessage()), e);
+            return;
+        }
+        catch (InterruptedException e) {
+            logger.log(Level.SEVERE, String.format("Unable to start JenkinsController, reason %s", e.getMessage()), e);
+            Thread.currentThread().interrupt();
             return;
         }
 

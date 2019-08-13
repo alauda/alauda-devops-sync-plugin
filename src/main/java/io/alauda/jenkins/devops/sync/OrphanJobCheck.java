@@ -101,8 +101,11 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                 item.delete();
 
                 LOGGER.info(String.format("Remove orphan item [%s].", item.getFullName()));
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                Thread.currentThread().interrupt();
             }
         });
     }
