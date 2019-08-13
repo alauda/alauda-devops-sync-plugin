@@ -102,8 +102,12 @@ public class PipelineConfigController implements Controller<V1alpha1PipelineConf
             jenkinsBindingController.waitUntilJenkinsBindingControllerSyncedAndValid(1000 * 60);
             codeRepositoryController.waitUntilCodeRepositoryControllerSynced(1000 * 60);
             dependentControllerSynced = true;
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        } catch (ExecutionException | TimeoutException e) {
             logger.log(Level.SEVERE, String.format("Unable to start PipelineConfigController, reason %s", e.getMessage()), e);
+            return;
+        }catch (InterruptedException e) {
+            logger.log(Level.SEVERE, String.format("Unable to start PipelineConfigController, reason %s", e.getMessage()), e);
+            Thread.currentThread().interrupt();
             return;
         }
 

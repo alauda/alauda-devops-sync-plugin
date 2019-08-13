@@ -101,8 +101,12 @@ public class NamespaceController implements Controller<V1Namespace, V1NamespaceL
 
                             try {
                                 folder.delete();
-                            } catch (InterruptedException | IOException e) {
+                            } catch (IOException e) {
                                 logger.log(Level.WARNING, String.format("Failed to delete folder [%s]", folderName, e));
+                            }
+                            catch (InterruptedException e) {
+                                logger.log(Level.WARNING, String.format("Failed to delete folder [%s]", folderName, e));
+                                Thread.currentThread().interrupt();
                             }
                             return null;
                         }

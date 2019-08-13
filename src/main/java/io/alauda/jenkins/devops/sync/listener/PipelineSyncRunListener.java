@@ -171,29 +171,34 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     }
 
     private void pollLoop() {
-        try {
-            while (true) {
-                Run runToPoll = runs.take();
-                pollRun(runToPoll);
 
-                StatusExt status = RunExt.create((WorkflowRun) runToPoll).getStatus();
-                switch (status) {
-                    case IN_PROGRESS:
-                    case PAUSED_PENDING_INPUT:
-                        runs.add(runToPoll);
-                        break;
-                    case NOT_EXECUTED:
-                        if (runToPoll.isBuilding()) {
-                            runs.add(runToPoll);
-                        }
-                        break;
-                    default:
-                        break;
-                }
-
+        while (true) { //NOSONAR
+            Run runToPoll;
+            try{
+                runToPoll = runs.take();
+            }catch (InterruptedException e) {
+                logger.log(SEVERE, "Unable to poll status of runs, reason %s", e.getMessage());
+                Thread.currentThread().interrupt();
+                break;
             }
-        } catch (InterruptedException e) {
-            logger.log(SEVERE, "Unable to poll status of runs, reason %s", e.getMessage());
+
+            pollRun(runToPoll);
+
+            StatusExt status = RunExt.create((WorkflowRun) runToPoll).getStatus();
+            switch (status) {
+                case IN_PROGRESS:
+                case PAUSED_PENDING_INPUT:
+                    runs.add(runToPoll);
+                    break;
+                case NOT_EXECUTED:
+                    if (runToPoll.isBuilding()) {
+                        runs.add(runToPoll);
+                    }
+                    break;
+                default:
+                    break;
+            }
+            Thread.yield();
         }
     }
 

@@ -434,7 +434,9 @@ public abstract class JenkinsUtils {
                 // to the previous queued pipeline so let's add a tiny
                 // sleep.
                 try {
-                    Thread.sleep(50l);
+//                  Thread.sleep(50l);
+                    pipelineConfig.getMetadata().getUid().wait(50l);
+
                 } catch (InterruptedException e) {
                     LOGGER.log(Level.SEVERE, "updatePipelinePhase Interrupted", e);
                     Thread.currentThread().interrupt();
