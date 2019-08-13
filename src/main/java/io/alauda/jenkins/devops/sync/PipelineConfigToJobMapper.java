@@ -329,16 +329,11 @@ public abstract class PipelineConfigToJobMapper {
     }
 
     /**
-     * TODO need to optimize
      * @param parameterDefinition ParameterDefinition
      * @return param type
      */
-    public static String paramType(@Nonnull ParameterDefinition parameterDefinition) {
-        Map<String, String> map = new HashMap<String, String>();
-        map.put(new StringParameterDefinition("", "").getType(), Constants.PIPELINE_PARAMETER_TYPE_STRING);
-        map.put(new BooleanParameterDefinition("", false, "").getType(), Constants.PIPELINE_PARAMETER_TYPE_BOOLEAN);
-
-        return map.get(parameterDefinition.getType());
+    private static String paramType(@Nonnull ParameterDefinition parameterDefinition) {
+        return parameterDefinition.getType();
     }
 
     private static boolean populateFromGitSCM(V1alpha1PipelineConfig pipelineConfig, V1alpha1PipelineSource source, GitSCM gitSCM, String ref) {
