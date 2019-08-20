@@ -15,6 +15,7 @@ import javax.annotation.Nonnull;
 
 /**
  * 0.2.28
+ * @deprecated use WorkflowJobProperty instead
  */
 @Deprecated
 public class PipelineConfigProjectProperty extends WorkflowJobProperty {

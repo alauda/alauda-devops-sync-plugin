@@ -1,42 +1,42 @@
 package io.alauda.jenkins.devops.sync.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public class Clients {
-    private static Logger logger = LoggerFactory.getLogger(Clients.class);
-    private static ConcurrentHashMap<Class, ResourceClient> clients = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<Class, ResourceClient> registeredClients = new ConcurrentHashMap<>();
 
+    private Clients() {
+    }
 
     public static <ApiType> void register(Class<ApiType> apiType, ResourceClient<ApiType> client) {
-        clients.put(apiType, client);
+        registeredClients.put(apiType, client);
     }
 
     public static boolean contains(Class apiType) {
-        return clients.containsKey(apiType);
+        return registeredClients.containsKey(apiType);
     }
 
     @SuppressWarnings("unchecked")
     public static <ApiType> ResourceClient<ApiType> get(Class<ApiType> apiType) {
-        return clients.get(apiType);
+        return registeredClients.get(apiType);
     }
 
-    public static ConcurrentHashMap<Class, ResourceClient> getClients() {
-        return clients;
+    public static ConcurrentMap<Class, ResourceClient> getRegisteredClients() {
+        return registeredClients;
     }
 
     public static boolean allRegisteredResourcesSynced() {
-        return Clients.getClients()
+        return Clients.getRegisteredClients()
                 .entrySet()
                 .stream()
                 .allMatch(client -> client.getValue().informer().hasSynced());
     }
 
     public static boolean registeredResourceSynced(Class... classes) {
-        return Clients.getClients()
+        return Clients.getRegisteredClients()
                 .entrySet()
                 .stream()
                 .filter(classResourceClientEntry -> Arrays.asList(classes).contains(classResourceClientEntry.getKey()))

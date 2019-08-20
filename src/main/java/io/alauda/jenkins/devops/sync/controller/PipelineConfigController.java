@@ -155,6 +155,7 @@ public class PipelineConfigController implements ResourceSyncController {
                     }
                 } catch (IOException | InterruptedException e) {
                     logger.warn("[{}] Failed to delete job for PipelineConfig '{}/{}', reason {}", getControllerName(), namespace, name, e.getMessage());
+                    Thread.currentThread().interrupt();
                 }
                 return new Result(false);
             }

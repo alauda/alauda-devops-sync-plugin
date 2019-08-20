@@ -46,5 +46,5 @@ public interface GitProviderMultiBranch extends ExtensionPoint {
         cloneOption.setHonorRefspec(true);
 
         return new CloneOptionTrait(cloneOption);
-    };
+    }
 }

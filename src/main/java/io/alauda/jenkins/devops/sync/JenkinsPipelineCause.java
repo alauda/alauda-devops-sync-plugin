@@ -20,6 +20,8 @@ import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.kubernetes.client.models.V1ObjectMeta;
 import org.apache.commons.lang.StringUtils;
 
+import java.util.Objects;
+
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_COMMIT;
 
 public class JenkinsPipelineCause extends Cause {
@@ -138,12 +140,18 @@ public class JenkinsPipelineCause extends Cause {
     public void setLastUpdateToAlaudaDevOps(long lastUpdateToAlaudaDevOps) {
         this.lastUpdateToAlaudaDevOps = lastUpdateToAlaudaDevOps;
     }
-    @Override
-    public boolean equals(Object obj) {
-        if(obj == null) {
-            return false;
-        }
 
-        return StringUtils.equals(getName(), ((JenkinsPipelineCause) obj).getName());
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        JenkinsPipelineCause that = (JenkinsPipelineCause) o;
+        return Objects.equals(namespace, that.namespace) &&
+                Objects.equals(name, that.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(namespace, name);
     }
 }
