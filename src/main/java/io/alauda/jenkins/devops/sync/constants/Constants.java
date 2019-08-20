@@ -53,14 +53,14 @@ public final class Constants {
 
     /** secret keys */
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
-    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password"; //NOSONAR
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY = "ssh-privatekey";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_DOCKER = ".dockerconfigjson";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID = "clientID";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET = "clientSecret";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKEN = "accessToken";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKENKEY = "accessTokenKey";
-    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSPHRASE = "passphrase";
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSPHRASE = "passphrase"; //NOSONAR
 
     /** secret types */
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SSH = "kubernetes.io/ssh-auth";

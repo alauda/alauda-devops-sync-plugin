@@ -76,8 +76,11 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
             }).forEach(folder -> {
                 try {
                     folder.delete();
-                } catch (IOException | InterruptedException e) {
+                } catch (IOException e ) {
                     e.printStackTrace();
+                }catch(InterruptedException e){
+                    e.printStackTrace();
+                    Thread.currentThread().interrupt();
                 }
             });
         } finally {
