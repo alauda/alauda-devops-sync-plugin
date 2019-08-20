@@ -13,7 +13,6 @@ import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 
 
 import javax.annotation.Nonnull;
-import javax.xml.soap.SAAJResult;
 import java.util.Map;
 
 /**
