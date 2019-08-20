@@ -84,7 +84,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
 
             upsertPipelineConfigForJob(job, property);
         } else {
-            logger.log(Level.FINE, "skip job {0}, it's not created by alauda", job);
+            logger.log(Level.FINE, "skip job {0}, it is not created by alauda", job);
         }
     }
 

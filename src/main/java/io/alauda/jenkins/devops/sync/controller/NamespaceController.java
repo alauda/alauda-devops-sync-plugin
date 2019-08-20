@@ -133,9 +133,13 @@ public class NamespaceController implements ResourceSyncController {
 
                 try {
                     folder.delete();
-                } catch (InterruptedException | IOException e) {
+                } catch (IOException e) {
                     logger.warn("[{}] Failed to delete folder {}, reason: {}", CONTROLLER_NAME, folderName, e);
                     return new Result(true);
+
+                } catch (InterruptedException e) {
+                    logger.warn("[{}] Failed to delete folder {}, reason: {}", CONTROLLER_NAME, folderName, e);
+                    Thread.currentThread().interrupt();
                 }
 
             } catch (Exception e) {
