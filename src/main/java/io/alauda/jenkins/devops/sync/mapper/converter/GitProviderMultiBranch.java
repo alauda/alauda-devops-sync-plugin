@@ -1,4 +1,4 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.mapper.converter;
 
 import hudson.ExtensionPoint;
 import hudson.PluginManager;

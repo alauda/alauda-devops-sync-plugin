@@ -24,9 +24,9 @@ import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.controller.PipelineController;
 import io.alauda.jenkins.devops.sync.icons.AlaudaFolderIcon;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
@@ -179,7 +179,7 @@ public abstract class AlaudaUtils {
      * @param namespace namespace
      * @return item
      */
-    public static ItemGroup getOrCreateFullNameParent(Jenkins activeJenkins, String fullName, String namespace)
+    public static ItemGroup  getOrCreateFullNameParent(Jenkins activeJenkins, String fullName, String namespace)
             throws IOException {
         int idx = fullName.lastIndexOf('/');
         if (idx > 0) {
@@ -318,7 +318,7 @@ public abstract class AlaudaUtils {
         stats.setPhase(phase);
         pipeline.setStatus(stats);
 
-        PipelineController.updatePipeline(oldPipeline, pipeline);
+        Clients.get(V1alpha1Pipeline.class).update(oldPipeline, pipeline);
         pipeline.setStatus(stats);
     }
 

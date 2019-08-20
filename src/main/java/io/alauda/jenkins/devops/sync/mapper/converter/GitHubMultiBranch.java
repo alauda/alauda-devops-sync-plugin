@@ -1,9 +1,10 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.mapper.converter;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import hudson.model.Action;
 import hudson.model.TaskListener;
+import io.alauda.jenkins.devops.sync.SCMRevisionAction;
 import io.alauda.jenkins.devops.sync.constants.CodeRepoServiceEnum;
 import jenkins.model.Jenkins;
 import jenkins.scm.api.SCMHeadEvent;
@@ -19,9 +20,6 @@ import org.jenkinsci.plugins.github_branch_source.OriginPullRequestDiscoveryTrai
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
-import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.constants.Constants.GITHUB_FORK_PR_TRUST_TRAIT;
 
 @Extension
 public class GitHubMultiBranch implements GitProviderMultiBranch {

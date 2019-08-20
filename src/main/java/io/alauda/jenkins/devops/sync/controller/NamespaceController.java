@@ -1,145 +1,150 @@
 package io.alauda.jenkins.devops.sync.controller;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
-import com.google.gson.reflect.TypeToken;
 import hudson.Extension;
 import hudson.security.ACL;
-import io.alauda.jenkins.devops.support.controller.Controller;
+import hudson.security.ACLContext;
+import io.alauda.devops.java.client.extend.controller.Controller;
+import io.alauda.devops.java.client.extend.controller.builder.ControllerBuilder;
+import io.alauda.devops.java.client.extend.controller.builder.ControllerManangerBuilder;
+import io.alauda.devops.java.client.extend.controller.reconciler.Reconciler;
+import io.alauda.devops.java.client.extend.controller.reconciler.Request;
+import io.alauda.devops.java.client.extend.controller.reconciler.Result;
+import io.alauda.devops.java.client.extend.workqueue.DefaultRateLimitingQueue;
+import io.alauda.devops.java.client.extend.workqueue.RateLimitingQueue;
 import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
-import io.kubernetes.client.ApiClient;
+import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.client.NamespaceClient;
+import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.apis.CoreV1Api;
-import io.kubernetes.client.informer.ResourceEventHandler;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
+import io.kubernetes.client.informer.cache.Lister;
 import io.kubernetes.client.models.V1Namespace;
 import io.kubernetes.client.models.V1NamespaceList;
 import jenkins.model.Jenkins;
-import jenkins.security.NotReallyRoleSensitiveCallable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 @Extension
-public class NamespaceController implements Controller<V1Namespace, V1NamespaceList> {
-    private static final Logger logger = Logger.getLogger(NamespaceController.class.getName());
+public class NamespaceController implements ResourceSyncController {
 
-    private SharedIndexInformer<V1Namespace> namespaceInformer;
-
+    private static final Logger logger = LoggerFactory.getLogger(NamespaceController.class);
+    private static final String CONTROLLER_NAME = "NamespaceController";
 
     @Override
-    public void initialize(ApiClient apiClient, SharedInformerFactory sharedInformerFactory) {
+    public void add(ControllerManangerBuilder managerBuilder, SharedInformerFactory factory) {
         CoreV1Api api = new CoreV1Api();
 
-        namespaceInformer = sharedInformerFactory.sharedIndexInformerFor(
-                callGeneratorParams -> {
+        SharedIndexInformer<V1Namespace> informer = InformerUtils.getExistingSharedIndexInformer(factory, V1Namespace.class);
+        if (informer == null) {
+            informer = factory.sharedIndexInformerFor(
+                    callGeneratorParams -> {
+                        try {
+                            return api.listNamespaceCall(
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    null,
+                                    callGeneratorParams.resourceVersion,
+                                    callGeneratorParams.timeoutSeconds,
+                                    callGeneratorParams.watch,
+                                    null,
+                                    null
+                            );
+                        } catch (ApiException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }, V1Namespace.class, V1NamespaceList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+        }
+
+
+        NamespaceClient client = new NamespaceClient(informer);
+        Clients.register(V1Namespace.class, client);
+
+        RateLimitingQueue<Request> rateLimitingQueue = new DefaultRateLimitingQueue<>(Executors.newSingleThreadScheduledExecutor());
+
+        Controller controller =
+                ControllerBuilder.defaultBuilder(factory).watch(
+                        ControllerBuilder.controllerWatchBuilder(V1Namespace.class)
+                                .withWorkQueueKeyFunc(namespace ->
+                                        new Request(namespace.getMetadata().getName()))
+                                .withWorkQueue(rateLimitingQueue)
+                                .build())
+                        .withReconciler(new NamespaceReconciler(new Lister<>(informer.getIndexer())))
+                        .withName(CONTROLLER_NAME)
+                        .withReadyFunc(informer::hasSynced)
+                        .withWorkerCount(1)
+                        .withWorkQueue(rateLimitingQueue)
+                        .build();
+
+        managerBuilder.addController(controller);
+    }
+
+
+    static class NamespaceReconciler implements Reconciler {
+        private Lister<V1Namespace> namespaceLister;
+
+        public NamespaceReconciler(Lister<V1Namespace> namespaceLister) {
+            this.namespaceLister = namespaceLister;
+        }
+
+        @Override
+        public Result reconcile(Request request) {
+            V1Namespace namespace = namespaceLister.get(request.getName());
+            if (namespace != null) {
+                return new Result(false);
+            }
+
+            String folderName = request.getName();
+            try (ACLContext ignored = ACL.as(ACL.SYSTEM)) {
+                Folder folder = Jenkins.getInstance().getItemByFullName(folderName, Folder.class);
+                if (folder == null) {
+                    logger.warn("[{}] Folder {} can't found.", CONTROLLER_NAME, folderName);
+                    return new Result(false);
+                }
+
+                AlaudaFolderProperty alaudaFolderProperty = folder.getProperties().get(AlaudaFolderProperty.class);
+                if (alaudaFolderProperty == null) {
+                    logger.debug("[{}] Folder {} don't have AbstractFolderProperty, will skip it.", CONTROLLER_NAME, folderName);
+                    return new Result(false);
+                }
+
+                int itemCount = folder.getItems().size();
+                if (itemCount > 0) {
+                    logger.debug("[{}] Will not delete folder {} that still has items, count {}.", CONTROLLER_NAME, folderName, itemCount);
+
+                    alaudaFolderProperty.setDirty(true);
                     try {
-                        return api.listNamespaceCall(
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                callGeneratorParams.resourceVersion,
-                                callGeneratorParams.timeoutSeconds,
-                                callGeneratorParams.watch,
-                                null,
-                                null
-                        );
-                    } catch (ApiException e) {
-                        throw new RuntimeException(e);
+                        folder.save();
+                    } catch (IOException e) {
+                        logger.warn("[{}] Unable to save folder {}, reason: {}", CONTROLLER_NAME, folderName, e);
                     }
-                }, V1Namespace.class, V1NamespaceList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
-
-        namespaceInformer.addEventHandler(new ResourceEventHandler<V1Namespace>() {
-            @Override
-            public void onAdd(V1Namespace obj) {
-            }
-
-            @Override
-            public void onUpdate(V1Namespace oldObj, V1Namespace newObj) {
-            }
-
-            @Override
-            public void onDelete(V1Namespace namespace, boolean deletedFinalStateUnknown) {
-
-                String folderName = namespace.getMetadata().getName();
+                    return new Result(false);
+                }
 
                 try {
-                    ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, Exception>() {
-                        @Override
-                        public Void call() {
-                            Folder folder = Jenkins.getInstance().getItemByFullName(folderName, Folder.class);
-                            if (folder == null) {
-                                logger.warning(String.format("Folder [%s] can't found.", folderName));
-                                return null;
-                            }
-
-                            AlaudaFolderProperty alaudaFolderProperty = folder.getProperties().get(AlaudaFolderProperty.class);
-                            if (alaudaFolderProperty == null) {
-                                logger.log(Level.FINE, String.format("Folder [%s] don't have AbstractFolderProperty, will skip it.", folderName));
-                                return null;
-                            }
-
-                            int itemCount = folder.getItems().size();
-                            if (itemCount > 0) {
-                                logger.log(Level.INFO, String.format("Will not delete folder [%s] that still has items, count %s.", folderName, itemCount));
-
-                                alaudaFolderProperty.setDirty(true);
-                                try {
-                                    folder.save();
-                                } catch (IOException e) {
-                                    logger.log(Level.WARNING, String.format("Unable to save folder [%s]", folderName), e);
-                                }
-                                return null;
-                            }
-
-                            try {
-                                folder.delete();
-                            } catch (InterruptedException | IOException e) {
-                                logger.log(Level.WARNING, String.format("Failed to delete folder [%s]", folderName, e));
-                            }
-                            return null;
-                        }
-                    });
-                } catch (Exception ignore) {
+                    folder.delete();
+                } catch (InterruptedException | IOException e) {
+                    logger.warn("[{}] Failed to delete folder {}, reason: {}", CONTROLLER_NAME, folderName, e);
+                    return new Result(true);
                 }
+
+            } catch (Exception e) {
+                logger.info("[{}] Unable to delete folder {}, reason {}", CONTROLLER_NAME, folderName, e.getMessage());
             }
-        });
-    }
-
-    @Override
-    public void start() {
-
-    }
-
-    @Override
-    public void shutDown(Throwable throwable) {
-        if (namespaceInformer == null) {
-            return;
-        }
-
-        try {
-            namespaceInformer.stop();
-            namespaceInformer = null;
-        } catch (Throwable e) {
-            logger.log(Level.WARNING, String.format("Unable to stop NamespaceInformer, reason: %s", e.getMessage()));
+            return new Result(false);
         }
     }
 
-    @Override
-    public boolean hasSynced() {
-        return namespaceInformer != null && namespaceInformer.hasSynced();
-    }
-
-    @Override
-    public Type getType() {
-        return new TypeToken<V1Namespace>() {
-        }.getType();
-    }
 }
+
+

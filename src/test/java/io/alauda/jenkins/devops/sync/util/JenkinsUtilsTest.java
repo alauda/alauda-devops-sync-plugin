@@ -30,11 +30,11 @@
 //
 //    @Test
 //    @WithoutK8s
-//    public void getJob() throws Exception {
+//    public void getItem() throws Exception {
 //        FreeStyleProject freeStyleProject = j.createFreeStyleProject();
 //
-//        assertNotNull("can't found job", JenkinsUtils.getJob(freeStyleProject.getName()));
-//        assertNull(JenkinsUtils.getJob("hello"));
+//        assertNotNull("can't found job", JenkinsUtils.getItem(freeStyleProject.getName()));
+//        assertNull(JenkinsUtils.getItem("hello"));
 //
 //        // deleteRun
 //        final WorkflowJob wfJob = j.createProject(WorkflowJob.class);

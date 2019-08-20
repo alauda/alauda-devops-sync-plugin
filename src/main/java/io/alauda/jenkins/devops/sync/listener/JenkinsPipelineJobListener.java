@@ -20,7 +20,7 @@ import hudson.ExtensionList;
 import hudson.model.Item;
 import hudson.model.listeners.ItemListener;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
-import io.alauda.jenkins.devops.sync.controller.PipelineConfigController;
+import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 /**
  * Listens to {@link WorkflowJob} objects being updated via the web console or
  * Jenkins REST API and replicating the changes back to the Alauda DevOps
- * {@link V1alpha1PipelineConfig} for the case where folks edit inline Jenkinsfile flows
+ * {@link io.alauda.devops.java.client.models.V1alpha1PipelineConfig} for the case where folks edit inline Jenkinsfile flows
  * inside the Jenkins UI
  */
 @Extension
@@ -55,7 +55,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onCreated(Item item) {
-        if (!PipelineConfigController.getCurrentPipelineConfigController().hasSynced()) {
+        if (!ResourceSyncManager.getSyncManager().isStarted()) {
             return;
         }
 
@@ -69,7 +69,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onUpdated(Item item) {
-        if (!PipelineConfigController.getCurrentPipelineConfigController().hasSynced()) {
+        if (!ResourceSyncManager.getSyncManager().isStarted()) {
             return;
         }
 
@@ -83,7 +83,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onDeleted(Item item) {
-        if (!PipelineConfigController.getCurrentPipelineConfigController().hasSynced()) {
+        if (!ResourceSyncManager.getSyncManager().isStarted()) {
             logger.info("no configuration... onDelete ignored...");
             return;
         }
@@ -111,8 +111,8 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public String toString() {
-        return "JenkinsPipelineJobListener{"  + ", jenkinsService='" +
-                jenkinsService + '\'' +  ", jobNamePattern='" +
+        return "JenkinsPipelineJobListener{" + ", jenkinsService='" +
+                jenkinsService + '\'' + ", jobNamePattern='" +
                 jobNamePattern + '\'' + '}';
     }
 }

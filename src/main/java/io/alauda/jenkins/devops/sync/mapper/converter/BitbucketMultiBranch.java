@@ -1,4 +1,4 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.mapper.converter;
 
 import hudson.Extension;
 import io.alauda.jenkins.devops.sync.constants.CodeRepoServiceEnum;
