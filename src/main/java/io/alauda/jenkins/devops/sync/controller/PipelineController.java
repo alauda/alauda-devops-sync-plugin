@@ -191,6 +191,7 @@ public class PipelineController implements ResourceSyncController {
                         logger.info("[{}] Unable to trigger Pipeline '{}/{}', reason: {}", getControllerName(), namespace, name, e.getMessage());
                         return new Result(true);
                     }
+                    logger.debug("[{}] Will update Pipeline '{}/{}'", getControllerName(), namespace, name);
                     if (succeed) {
                         succeed = pipelineClient.update(pipeline, pipelineCopy);
                         return new Result(!succeed);

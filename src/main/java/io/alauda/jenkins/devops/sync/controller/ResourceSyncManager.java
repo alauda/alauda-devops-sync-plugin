@@ -77,13 +77,18 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
 
         pluginStatus = "";
         started = true;
-        controllerManager.run();
+        new Thread(() -> controllerManager.run()).start();
+
     }
 
     @Override
     public synchronized void onConfigError(KubernetesCluster cluster, Throwable reason) {
         started = false;
         shutdown(reason);
+
+        if (controllerManager != null) {
+            controllerManager.shutdown();
+        }
     }
 
     public synchronized void shutdown(Throwable reason) {
