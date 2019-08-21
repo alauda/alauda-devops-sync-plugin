@@ -55,11 +55,6 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
         String namespace = pipelineConfig.getMetadata().getNamespace();
         String name = pipelineConfig.getMetadata().getName();
 
-        String formattedJenkinsFile = mapper.formatJenkinsfile(pipelineConfig);
-        if (!StringUtils.isEmpty(formattedJenkinsFile)) {
-            pipelineConfig.getSpec().getStrategy().getJenkins().setJenkinsfile(formattedJenkinsFile);
-        }
-
         NamespaceName namespaceName = new NamespaceName(namespace, name);
         Item item = jenkinsClient.getItem(namespaceName);
 

@@ -15,8 +15,6 @@ import java.io.IOException;
 import java.util.Optional;
 
 public class PipelineConfigMapper {
-    private static final Logger logger = LoggerFactory.getLogger(PipelineConfigMapper.class);
-
     /**
      * @param namespace Namespace of PipelineConfig
      * @param name      Name of PipelineConfig
@@ -53,24 +51,6 @@ public class PipelineConfigMapper {
     public V1alpha1PipelineConfig mapFrom(TopLevelItem job) {
         //TODO
         return null;
-    }
-
-    public String formatJenkinsfile(V1alpha1PipelineConfig pipelineConfig) {
-        String jenkinsfile = pipelineConfig.getSpec().getStrategy().getJenkins().getJenkinsfile();
-        if (StringUtils.isEmpty(jenkinsfile)) {
-            return jenkinsfile;
-        }
-
-        String formattedJenkinsfile = null;
-        try {
-            formattedJenkinsfile = JenkinsUtils.formatJenkinsfile(jenkinsfile);
-        } catch (IOException e) {
-            // format error, could be pipeline syntax error
-            logger.warn("Failed to format Pipeline.", e);
-        } catch (MultipleCompilationErrorsException e) {
-            logger.warn("Pipeline syntax has errors.", e);
-        }
-        return formattedJenkinsfile;
     }
 
 }
