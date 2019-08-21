@@ -220,6 +220,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             }
         } catch (InterruptedException e) {
             logger.log(SEVERE, "Unable to poll status of runs, reason %s", e.getMessage());
+            Thread.currentThread().interrupt();
         }
     }
 

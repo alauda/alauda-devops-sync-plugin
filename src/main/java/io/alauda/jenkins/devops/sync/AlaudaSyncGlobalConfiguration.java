@@ -26,7 +26,6 @@ import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
-import java.util.logging.Logger;
 
 /**
  * @author suren
@@ -34,7 +33,6 @@ import java.util.logging.Logger;
 @Extension(ordinal = 100)
 @Symbol("alaudaSync")
 public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
-    private static final Logger LOGGER = Logger.getLogger(AlaudaSyncGlobalConfiguration.class.getName());
     private boolean enabled = true;
     private String jenkinsService;
     private int resyncPeriod = 0;

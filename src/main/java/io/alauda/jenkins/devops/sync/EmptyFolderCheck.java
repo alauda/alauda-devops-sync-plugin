@@ -13,31 +13,28 @@ import io.kubernetes.client.models.V1Namespace;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
 import org.acegisecurity.context.SecurityContextHolder;
-import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 @Extension
 public class EmptyFolderCheck extends AsyncPeriodicWork {
-    private static final Logger logger = Logger.getLogger(EmptyFolderCheck.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(EmptyFolderCheck.class.getName());
 
     public EmptyFolderCheck() {
         super("EmptyFolderCheck");
     }
 
-    private List<Folder> folders = null;
-
     @Override
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
         final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
         try {
-            folders = Jenkins.getInstance().getItems(Folder.class);
+            List<Folder> folders = Jenkins.getInstance().getItems(Folder.class);
 
             if (folders == null) {
                 return;
@@ -46,7 +43,7 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
             ResourceSyncManager resourceSyncManager = ResourceSyncManager.getSyncManager();
 
             if (!resourceSyncManager.isStarted()) {
-                logger.log(Level.INFO, String.format("SyncManager has not started yet, reason %s, will skip this Empty Folder Check", resourceSyncManager.getPluginStatus()));
+                logger.info("SyncManager has not started yet, reason {}, will skip this Empty Folder Check", resourceSyncManager.getPluginStatus());
                 return;
             }
 
@@ -62,7 +59,7 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
                     }
             )).filter(folder -> {
                 Collection<TopLevelItem> items = folder.getItems();
-                if (items.size() == 0) {
+                if (items.isEmpty()) {
                     return true;
                 }
 
