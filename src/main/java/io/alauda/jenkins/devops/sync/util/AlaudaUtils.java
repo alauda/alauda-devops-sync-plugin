@@ -27,7 +27,6 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.controller.PipelineController;
-import io.alauda.jenkins.devops.sync.icons.AlaudaFolderIcon;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
@@ -194,7 +193,6 @@ public abstract class AlaudaUtils {
                     alaPro.setDirty(false);
                 }
 
-                folder.setIcon(new AlaudaFolderIcon());
                 folder.save();
 
                 return folder;
@@ -202,7 +200,6 @@ public abstract class AlaudaUtils {
                 Folder folder = new Folder(activeJenkins, namespace);
                 folder.setDescription(FOLDER_DESCRIPTION + namespace);
                 folder.addProperty(new AlaudaFolderProperty());
-                folder.setIcon(new AlaudaFolderIcon());
                 BulkChange bk = new BulkChange(folder);
                 InputStream jobStream = new StringInputStream(new XStream2().toXML(folder));
 
