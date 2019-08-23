@@ -13,7 +13,6 @@ import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
-import io.alauda.jenkins.devops.sync.icons.AlaudaFolderIcon;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -468,14 +467,12 @@ public class JenkinsClient {
                 } else {
                     alaPro.setDirty(false);
                 }
-                folder.setIcon(new AlaudaFolderIcon());
                 folder.save();
                 return folder;
             } else {
                 folder = new Folder(jenkins, folderName);
                 folder.setDescription(FOLDER_DESCRIPTION + folderName);
                 folder.addProperty(new AlaudaFolderProperty());
-                folder.setIcon(new AlaudaFolderIcon());
                 BulkChange bk = new BulkChange(folder);
                 InputStream jobStream = new StringInputStream(new XStream2().toXML(folder));
 
