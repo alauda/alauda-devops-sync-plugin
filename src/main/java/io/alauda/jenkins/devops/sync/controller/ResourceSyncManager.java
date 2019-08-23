@@ -9,7 +9,6 @@ import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.extend.controller.ControllerManager;
 import io.alauda.devops.java.client.extend.controller.builder.ControllerBuilder;
 import io.alauda.devops.java.client.extend.controller.builder.ControllerManangerBuilder;
-import io.alauda.devops.java.client.extend.wait.Wait;
 import io.alauda.devops.java.client.models.V1alpha1Jenkins;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.devops.java.client.utils.PatchGenerator;
@@ -28,10 +27,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY;
 
@@ -40,27 +40,21 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
     private static final Logger logger = LoggerFactory.getLogger(ResourceSyncManager.class);
 
     private ControllerManager controllerManager;
+    private ExecutorService controllerManagerThread;
     private String pluginStatus;
     private boolean started = false;
 
     @Override
     public synchronized void onConfigChange(KubernetesCluster cluster, ApiClient client) {
         started = false;
-        if (controllerManager != null) {
-            logger.debug("[ResourceSyncManager] The previous controller manager is not null, will try to stop it");
-            controllerManager.shutdown();
+        shutdown(null);
+
+        // check if jenkins valid
+        String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+        if (!checkJenkinsService(jenkinsService)) {
+            logger.warn("[ResourceSyncManager] The target Jenkins service {} is invalid, reason {}", jenkinsService, pluginStatus);
+            return;
         }
-
-        // poll until jenkins service is valid
-        Wait.poll(Duration.ofMinutes(1), Duration.ofDays(1), () -> {
-            String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
-            if (checkJenkinsService(jenkinsService)) {
-                return true;
-            }
-
-            logger.warn("[ResourceSyncManager] The target Jenkins service {} is invalid, reason {}, will retry after 1 minute", jenkinsService, pluginStatus);
-            return false;
-        });
 
         logger.debug("[ResourceSyncManager] Starting initialize controller manager");
         SharedInformerFactory informerFactory = new SharedInformerFactory();
@@ -77,18 +71,15 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
 
         pluginStatus = "";
         started = true;
-        new Thread(() -> controllerManager.run()).start();
 
+        controllerManagerThread = Executors.newSingleThreadExecutor();
+        controllerManagerThread.submit(() -> controllerManager.run());
     }
 
     @Override
     public synchronized void onConfigError(KubernetesCluster cluster, Throwable reason) {
         started = false;
         shutdown(reason);
-
-        if (controllerManager != null) {
-            controllerManager.shutdown();
-        }
     }
 
     public synchronized void shutdown(Throwable reason) {
@@ -96,6 +87,11 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
             controllerManager.shutdown();
             controllerManager = null;
         }
+
+        if (controllerManagerThread != null && !controllerManagerThread.isShutdown()) {
+            controllerManagerThread.shutdown();
+        }
+
         if (reason == null) {
             logger.warn("[ResourceSyncManager] ResourceSyncManager is stopped, reason is null, seems stopped by user");
         } else {
