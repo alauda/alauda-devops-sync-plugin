@@ -2,15 +2,9 @@ package io.alauda.jenkins.devops.sync.controller;
 
 import hudson.Extension;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
-import io.alauda.devops.java.client.extend.controller.Controller;
-import io.alauda.devops.java.client.extend.controller.builder.ControllerBuilder;
-import io.alauda.devops.java.client.extend.controller.builder.ControllerManangerBuilder;
-import io.alauda.devops.java.client.extend.controller.reconciler.Reconciler;
-import io.alauda.devops.java.client.extend.controller.reconciler.Request;
-import io.alauda.devops.java.client.extend.controller.reconciler.Result;
-import io.alauda.devops.java.client.extend.workqueue.DefaultRateLimitingQueue;
-import io.alauda.devops.java.client.extend.workqueue.RateLimitingQueue;
-import io.alauda.devops.java.client.models.*;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineList;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.client.Clients;
@@ -18,12 +12,17 @@ import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
+import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
-import io.kubernetes.client.ApiException;
+import io.kubernetes.client.extended.controller.Controller;
+import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
+import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
+import io.kubernetes.client.extended.controller.reconciler.Reconciler;
+import io.kubernetes.client.extended.controller.reconciler.Request;
+import io.kubernetes.client.extended.controller.reconciler.Result;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
@@ -34,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
@@ -47,45 +45,36 @@ public class PipelineController implements ResourceSyncController {
     private static final String CONTROLLER_NAME = "PipelineController";
 
     @Override
-    public void add(ControllerManangerBuilder managerBuilder, SharedInformerFactory factory) {
+    public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
         SharedIndexInformer<V1alpha1Pipeline> informer = InformerUtils.getExistingSharedIndexInformer(factory, V1alpha1Pipeline.class);
         if (informer == null) {
             informer = factory.sharedIndexInformerFor(
-                    callGeneratorParams -> {
-                        try {
-                            return api.listPipelineForAllNamespacesCall(
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    callGeneratorParams.resourceVersion,
-                                    callGeneratorParams.timeoutSeconds,
-                                    callGeneratorParams.watch,
-                                    null,
-                                    null
-                            );
-                        } catch (ApiException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }, V1alpha1Pipeline.class, V1alpha1PipelineList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+                    callGeneratorParams -> api.listPipelineForAllNamespacesCall(
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            callGeneratorParams.resourceVersion,
+                            callGeneratorParams.timeoutSeconds,
+                            callGeneratorParams.watch,
+                            null,
+                            null
+                    ), V1alpha1Pipeline.class, V1alpha1PipelineList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
         }
 
 
         PipelineClient client = new PipelineClient(informer);
         Clients.register(V1alpha1Pipeline.class, client);
 
-        RateLimitingQueue<Request> rateLimitingQueue = new DefaultRateLimitingQueue<>(Executors.newSingleThreadScheduledExecutor());
-
         Controller controller =
                 ControllerBuilder.defaultBuilder(factory).watch(
-                        ControllerBuilder.controllerWatchBuilder(V1alpha1Pipeline.class)
+                        (workQueue) -> ControllerBuilder.controllerWatchBuilder(V1alpha1Pipeline.class, workQueue)
                                 .withWorkQueueKeyFunc(pipeline ->
                                         new Request(pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()))
-                                .withWorkQueue(rateLimitingQueue)
                                 .withOnAddFilter(pipeline -> {
                                     logger.debug("[{}] received event: Add, Pipeline '{}/{}'", CONTROLLER_NAME, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName());
                                     return true;
@@ -109,10 +98,7 @@ public class PipelineController implements ResourceSyncController {
                         .withName(CONTROLLER_NAME)
                         .withReadyFunc(Clients::allRegisteredResourcesSynced)
                         .withWorkerCount(4)
-                        .withWorkQueue(rateLimitingQueue)
                         .build();
-
-        increaseInformerCapacity(informer);
 
         managerBuilder.addController(controller);
     }
