@@ -3,12 +3,18 @@ package io.alauda.jenkins.devops.sync;
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
 import com.cloudbees.hudson.plugins.folder.AbstractFolderProperty;
 import com.cloudbees.hudson.plugins.folder.AbstractFolderPropertyDescriptor;
-import net.sf.json.JSONObject;
+import hudson.Extension;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
-import org.kohsuke.stapler.StaplerRequest;
+
+import javax.annotation.Nonnull;
 
 public class AlaudaFolderProperty extends AbstractFolderProperty<AbstractFolder<?>> {
     private boolean dirty;
+
+    @DataBoundConstructor
+    public AlaudaFolderProperty() {
+    }
 
     public boolean isDirty() {
         return dirty;
@@ -24,10 +30,12 @@ public class AlaudaFolderProperty extends AbstractFolderProperty<AbstractFolder<
         return new AlaudaFolderPropertyDescriptor();
     }
 
-    private static class AlaudaFolderPropertyDescriptor extends AbstractFolderPropertyDescriptor {
+    @Extension
+    public static class AlaudaFolderPropertyDescriptor extends AbstractFolderPropertyDescriptor {
+        @Nonnull
         @Override
-        public AbstractFolderProperty<?> newInstance(StaplerRequest req, JSONObject formData) throws FormException {
-            return super.newInstance(req, formData);
+        public String getDisplayName() {
+            return "AlaudaFolderProperty";
         }
     }
 }
