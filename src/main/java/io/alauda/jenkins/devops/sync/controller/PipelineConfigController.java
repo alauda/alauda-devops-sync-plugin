@@ -127,6 +127,8 @@ public class PipelineConfigController implements ResourceSyncController {
                         .withWorkQueue(rateLimitingQueue)
                         .build();
 
+        increaseInformerCapacity(informer);
+
         managerBuilder.addController(controller);
     }
 

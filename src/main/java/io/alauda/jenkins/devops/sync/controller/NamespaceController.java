@@ -86,6 +86,8 @@ public class NamespaceController implements ResourceSyncController {
                         .withWorkQueue(rateLimitingQueue)
                         .build();
 
+        increaseInformerCapacity(informer);
+
         managerBuilder.addController(controller);
     }
 
