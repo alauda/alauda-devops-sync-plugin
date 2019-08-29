@@ -373,13 +373,12 @@ public class JenkinsClient {
         }
 
         // cancel if in the queue
-        Queue pipelineQueue = jenkins.getQueue();
-        for (Queue.Item item : pipelineQueue.getItems()) {
-            for (JenkinsPipelineCause cause : PipelineUtils.findAllAlaudaCauses(item)) {
-                if (cause.getNamespace().equals(namespace) && cause.getName().equals(name)) {
-                    try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
-                        pipelineQueue.cancel(item);
-                        return false;
+        try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
+            Queue pipelineQueue = jenkins.getQueue();
+            for (Queue.Item item : pipelineQueue.getItems()) {
+                for (JenkinsPipelineCause cause : PipelineUtils.findAllAlaudaCauses(item)) {
+                    if (cause.getNamespace().equals(namespace) && cause.getName().equals(name)) {
+                        return pipelineQueue.cancel(item);
                     }
                 }
             }
