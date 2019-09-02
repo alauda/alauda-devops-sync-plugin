@@ -6,9 +6,6 @@ import com.google.gson.JsonObject;
 import hudson.Extension;
 import hudson.ExtensionList;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
-import io.alauda.devops.java.client.extend.controller.ControllerManager;
-import io.alauda.devops.java.client.extend.controller.builder.ControllerBuilder;
-import io.alauda.devops.java.client.extend.controller.builder.ControllerManangerBuilder;
 import io.alauda.devops.java.client.models.V1alpha1Jenkins;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.devops.java.client.utils.PatchGenerator;
@@ -20,6 +17,9 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.kubernetes.client.ApiClient;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.Configuration;
+import io.kubernetes.client.extended.controller.ControllerManager;
+import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
+import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import jenkins.model.identity.IdentityRootAction;
 import org.apache.commons.lang3.StringUtils;
@@ -62,7 +62,7 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
         ExtensionList<ResourceSyncController> resourceSyncControllers = ResourceSyncController.all();
         logger.debug("[ResourceSyncManager] Found {} resourceSyncControllers", resourceSyncControllers.size());
 
-        ControllerManangerBuilder controllerManagerBuilder =
+        ControllerManagerBuilder controllerManagerBuilder =
                 ControllerBuilder.controllerManagerBuilder(informerFactory);
 
         resourceSyncControllers.forEach(resourceSyncController -> resourceSyncController.add(controllerManagerBuilder, informerFactory));
