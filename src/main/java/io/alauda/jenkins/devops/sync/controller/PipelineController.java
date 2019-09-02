@@ -141,10 +141,10 @@ public class PipelineController implements ResourceSyncController {
                 try {
                     deleteSucceed = jenkinsClient.deletePipeline(new NamespaceName(namespace, name));
                     if (!deleteSucceed) {
-                        logger.warn("[{}] Failed to delete job for Pipeline '{}/{}'", getControllerName(), namespace, name);
+                        logger.warn("[{}] Failed to delete build for Pipeline '{}/{}'", getControllerName(), namespace, name);
                     }
                 } catch (Exception e) {
-                    logger.warn("[{}] Failed to delete job for Pipeline '{}/{}', reason {}", getControllerName(), namespace, name, e.getMessage());
+                    logger.warn("[{}] Failed to delete build for Pipeline '{}/{}', reason {}", getControllerName(), namespace, name, e.getMessage());
                 }
                 return new Result(false);
             }
@@ -207,6 +207,7 @@ public class PipelineController implements ResourceSyncController {
                     logger.debug("[{}] Starting cancel Pipeline '{}/{}'", getControllerName(), namespace, name);
                     boolean succeed = jenkinsClient.cancelPipeline(new NamespaceName(namespace, name));
                     if (succeed) {
+                        pipelineCopy.getStatus().setPhase(CANCELLED);
                         succeed = pipelineClient.update(pipeline, pipelineCopy);
                         return new Result(!succeed);
                     } else {
