@@ -37,6 +37,7 @@ public final class Constants {
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS = "alauda.io/jenkins-steps";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG = "alauda.io/jenkins-view-log";
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG = "alauda.io/jenkins-progressive-log";
+    public static final String ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS = "alauda.io/causes-details";
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON = "alauda.io/jenkins-pending-input-actions-json";
 
@@ -85,6 +86,14 @@ public final class Constants {
     public static final String PIPELINE_TRIGGER_TYPE_MANUAL = "manual";
     public static final String PIPELINE_TRIGGER_TYPE_CRON = "cron";
     public static final String PIPELINE_TRIGGER_TYPE_CODE_CHANGE = "codeChange";
+    /** Triggered by branch scanning */
+    public static final String PIPELINE_TRIGGER_TYPE_BRANCH_SCAN = "branchScan";
+    /** Triggered by an upstream job */
+    public static final String PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE = "upstreamCause";
+    /** Triggered by multi-causes */
+    public static final String PIPELINE_TRIGGER_TYPE_MULTI_CAUSES = "multiCauses";
+    /** Should be an error situation */
+    public static final String PIPELINE_TRIGGER_TYPE_NOT_FOUND = "noCauseFound";
 
     public static final String PIPELINE_RUN_POLICY_SERIAL = "Serial";
     public static final String PIPELINE_RUN_POLICY_PARALLEL = "Parallel";

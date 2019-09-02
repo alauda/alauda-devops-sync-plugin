@@ -10,7 +10,9 @@ import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import jenkins.branch.Branch;
+import jenkins.branch.BranchIndexingCause;
 import jenkins.scm.api.SCMHead;
+import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -72,32 +74,47 @@ public abstract class PipelineGenerator {
         return buildPipeline(config, new HashMap<>(), triggerURL, actions);
     }
 
-    public static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, Map<String, String> annotations, String triggerURL, List<Action> actions) throws ApiException {
+    /**
+     * Convert a cause object into name
+     * @param cause cause object
+     * @return cause name
+     */
+    private static String causeConvert(Cause cause) {
+        String causeName = null;
+        if (cause instanceof SCMTrigger.SCMTriggerCause) {
+            causeName = PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
+        } else if (cause instanceof TimerTrigger.TimerTriggerCause) {
+            causeName = PIPELINE_TRIGGER_TYPE_CRON;
+        } else if (cause instanceof BranchIndexingCause) {
+            causeName = PIPELINE_TRIGGER_TYPE_BRANCH_SCAN;
+        } else if (cause instanceof Cause.UpstreamCause) {
+            causeName = PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE;
+        }
+        return causeName;
+    }
+
+    private static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, Map<String, String> annotations, String triggerURL, List<Action> actions) throws ApiException {
         V1alpha1PipelineSpec pipelineSpec = buildPipelineSpec(config, triggerURL);
 
-        // TODO here should be multi-cause, fix later
-        String cause = null;
+        List<Cause> allCauses = new ArrayList<>();
         for (Action action : actions) {
             if (!(action instanceof CauseAction)) {
                 continue;
             }
 
-            // TODO just get first causeAction for now
             CauseAction causeAction = (CauseAction) action;
-            if (cause == null) {
-                if (causeAction.findCause(SCMTrigger.SCMTriggerCause.class) != null) {
-                    cause = PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
-                } else if (causeAction.findCause(TimerTrigger.TimerTriggerCause.class) != null) {
-                    cause = PIPELINE_TRIGGER_TYPE_CRON;
-                }
-            } else {
-                LOGGER.fine("CauseAction is : " + causeAction.getDisplayName());
-            }
+            allCauses.addAll(causeAction.getCauses());
         }
 
-        // we think of the default cause is manual
-        if (cause == null) {
-            cause = PIPELINE_TRIGGER_TYPE_MANUAL;
+        String cause = null;
+        if(allCauses.size() > 1) {
+            cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
+            annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS, JSONObject.fromObject(allCauses).toString());
+        } else if(allCauses.size() == 1) {
+            cause = causeConvert(allCauses.get(0));
+        } else {
+            // should not be here
+            cause = PIPELINE_TRIGGER_TYPE_NOT_FOUND;
         }
 
         V1alpha1PipelineCause pipelineCause = new V1alpha1PipelineCause().type(cause).message(TRIGGER_BY + triggerURL);
@@ -131,9 +148,7 @@ public abstract class PipelineGenerator {
         labels.put(Constants.PIPELINE_CREATED_BY, Constants.ALAUDA_SYNC_PLUGIN);
 
         String namespace = config.getMetadata().getNamespace();
-
         // update pipeline to k8s
-
 
         V1alpha1Pipeline pipe = new V1alpha1PipelineBuilder().withMetadata(
                 new V1ObjectMetaBuilder()
