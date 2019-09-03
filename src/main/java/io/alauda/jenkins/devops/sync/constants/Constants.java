@@ -92,6 +92,8 @@ public final class Constants {
     public static final String PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE = "upstreamCause";
     /** Triggered by multi-causes */
     public static final String PIPELINE_TRIGGER_TYPE_MULTI_CAUSES = "multiCauses";
+    /** Triggered by unknown cause */
+    public static final String PIPELINE_TRIGGER_TYPE_UNKNOWN_CAUSE = "unknownCause";
     /** Should be an error situation */
     public static final String PIPELINE_TRIGGER_TYPE_NOT_FOUND = "noCauseFound";
 

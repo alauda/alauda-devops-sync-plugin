@@ -89,6 +89,8 @@ public abstract class PipelineGenerator {
             causeName = PIPELINE_TRIGGER_TYPE_BRANCH_SCAN;
         } else if (cause instanceof Cause.UpstreamCause) {
             causeName = PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE;
+        } else {
+            causeName = PIPELINE_TRIGGER_TYPE_UNKNOWN_CAUSE;
         }
         return causeName;
     }
