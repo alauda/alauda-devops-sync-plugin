@@ -181,7 +181,7 @@
     <dependency>
       <groupId>io.alauda</groupId>
       <artifactId>devops-client-java</artifactId>
-      <version>1.0.3-SNAPSHOT</version>
+      <version>1.0.3</version>
       <exclusions>
         <exclusion>
           <groupId>io.swagger</groupId>
