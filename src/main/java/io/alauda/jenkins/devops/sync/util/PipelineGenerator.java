@@ -12,6 +12,8 @@ import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import jenkins.branch.Branch;
 import jenkins.branch.BranchIndexingCause;
 import jenkins.scm.api.SCMHead;
+import jenkins.scm.api.mixin.ChangeRequestSCMHead;
+import jenkins.scm.api.mixin.ChangeRequestSCMHead2;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
@@ -46,8 +48,11 @@ public abstract class PipelineGenerator {
                 annotations.put(Annotations.MULTI_BRANCH_NAME, branch.getName());
 
                 // TODO need to consider multi-tag like GitTagSCMHead
-                if (isPR(job)) {
+                PullRequest pr = getPR(job);
+                if (pr != null) {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "pr");
+                    annotations.put(Annotations.SOURCE_BRANCH_NAME, pr.getSourceBranch());
+                    annotations.put(Annotations.TARGET_BRANCH_NAME, pr.getTargetBranch());
                 } else {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "branch");
                 }
@@ -57,15 +62,23 @@ public abstract class PipelineGenerator {
         return buildPipeline(config, annotations, triggerURL, actions);
     }
 
-    public static boolean isPR(Item item) {
+    public static PullRequest getPR(Item item) {
+        PullRequest pr = null;
         SCMHead head = SCMHead.HeadByItem.findHead(item);
-        if (head == null) {
-            return false;
+        if (!(head instanceof ChangeRequestSCMHead)) {
+            return pr;
         }
 
-        String headClsName = head.getClass().getName();
-        return "org.jenkinsci.plugins.github_branch_source.PullRequestSCMHead".equals(headClsName)
-                || "com.cloudbees.jenkins.plugins.bitbucket.PullRequestSCMHead".equals(headClsName);
+        pr = new PullRequest();
+        ChangeRequestSCMHead prHead = (ChangeRequestSCMHead) head;
+        pr.setTargetBranch(prHead.getTarget().getName());
+        pr.setId(prHead.getId());
+
+        if (head instanceof ChangeRequestSCMHead2) {
+            pr.setSourceBranch(((ChangeRequestSCMHead2) head).getOriginName());
+        }
+
+        return pr;
     }
 
 
@@ -179,5 +192,44 @@ public abstract class PipelineGenerator {
         pipeSpec.setHooks(spec.getHooks());
         pipeSpec.setSource(spec.getSource());
         return pipeSpec;
+    }
+
+    public static class PullRequest {
+        private String sourceBranch;
+        private String targetBranch;
+        private String title;
+        private String id;
+
+        public String getSourceBranch() {
+            return sourceBranch;
+        }
+
+        public void setSourceBranch(String sourceBranch) {
+            this.sourceBranch = sourceBranch;
+        }
+
+        public String getTargetBranch() {
+            return targetBranch;
+        }
+
+        public void setTargetBranch(String targetBranch) {
+            this.targetBranch = targetBranch;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
     }
 }

@@ -132,6 +132,12 @@ public final class Constants {
     public static final String BITBUCKET_FORK_PR_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait";
     public static final String BITBUCKET_FORK_PR_TRUST_TRAIT = "com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait$TrustTeamForks";
 
+    public static final String GITLAB_SCM_SOURCE = "io.jenkins.plugins.gitlabbranchsource.GitLabSCMSource";
+    public static final String GITLAB_BRANCH_DISCOVERY_TRAIT = "io.jenkins.plugins.gitlabbranchsource.BranchDiscoveryTrait";
+    public static final String GITLAB_ORIGIN_PR_TRAIT = "io.jenkins.plugins.gitlabbranchsource.OriginMergeRequestDiscoveryTrait";
+    public static final String GITLAB_FORK_PR_TRAIT = "io.jenkins.plugins.gitlabbranchsource.ForkMergeRequestDiscoveryTrait";
+    public static final String GITLAB_FORK_PR_TRUST_TRAIT = "io.jenkins.plugins.gitlabbranchsource.ForkMergeRequestDiscoveryTrait$TrustPermission";
+
     public static final String SOURCE_TYPE_SVN = "SVN";
     public static final String SOURCE_TYPE_GIT = "GIT";
 }

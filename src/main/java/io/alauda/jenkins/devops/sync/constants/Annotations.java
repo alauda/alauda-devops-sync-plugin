@@ -33,5 +33,8 @@ public final class Annotations {
     public static final String MULTI_BRANCH_CATEGORY = "alauda.io/multiBranchCategory";
     public static final String MULTI_BRANCH_NAME = "alauda.io/multiBranchName";
 
+    public static final String SOURCE_BRANCH_NAME = "alauda.io/sourceBranch";
+    public static final String TARGET_BRANCH_NAME = "alauda.io/targetBranch";
+
     public static final String ALAUDA_PIPELINE_CONTEXT = "alauda.io/pipelinecontext.";
 }

@@ -12,6 +12,7 @@ import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.kubernetes.client.models.V1ObjectMeta;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONException;
+import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -47,9 +48,10 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             String name = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
-            if(PipelineGenerator.isPR(item)) {
+            PipelineGenerator.PullRequest pr = PipelineGenerator.getPR(item);
+            if(pr != null) {
                 // we consider it as a pr
-                addPRAnnotation(parent, name);
+                addPRAnnotation(parent, pr, name);
                 logger.info(String.format("add a pr %s", name));
             } else {
                 addBranchAnnotation(parent, name);
@@ -67,7 +69,8 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
             if(item.isDisabled()) {
                 // it's a stale pipeline for multi-branch
-                if(PipelineGenerator.isPR(item)) {
+                PipelineGenerator.PullRequest pr = PipelineGenerator.getPR(item);
+                if(pr != null) {
                     delPRAnnotation(parent, name);
                     addStalePRAnnotation(parent, name);
                     logger.info(String.format("disable a pr %s", name));
@@ -79,9 +82,10 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             } else {
                 // when the deleted branch had been restored
 
-                if(PipelineGenerator.isPR(item)) {
+                PipelineGenerator.PullRequest pr = PipelineGenerator.getPR(item);
+                if(pr != null) {
                     delStalePRAnnotation(parent, name);
-                    addPRAnnotation(parent, name);
+                    addPRAnnotation(parent, pr, name);
                     logger.info(String.format("enable a pr %s", name));
                 } else {
                     delStaleBranchAnnotation(parent, name);
@@ -99,7 +103,8 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             String name = pro.getBranch().getEncodedName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
-            if(PipelineGenerator.isPR(item)) {
+            PipelineGenerator.PullRequest pr = PipelineGenerator.getPR(item);
+            if(pr != null) {
                 delStalePRAnnotation(parent, name);
                 logger.info(String.format("del a stale pr %s", name));
             } else {
@@ -165,7 +170,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
-    private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
+    private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, PipelineGenerator.PullRequest pr, String branchName) {
         AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
         if(pro == null) {
             logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
@@ -179,7 +184,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        addPRAnnotation(newPc, branchName);
+        addPRAnnotation(newPc, pr, branchName);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
@@ -187,8 +192,9 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         addAnnotation(pc, MULTI_BRANCH_BRANCH, name);
     }
 
-    private void addPRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
+    private void addPRAnnotation(@NotNull V1alpha1PipelineConfig pc, PipelineGenerator.PullRequest pr, String name) {
         addAnnotation(pc, MULTI_BRANCH_PR, name);
+        setAnnotation(pc, "alauda.io/jenkins." + name, pr);
     }
 
     private void addStaleBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
@@ -199,7 +205,28 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         addAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
     }
 
-    private void addAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, String name) {
+    private void setAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, Object obj) {
+        V1ObjectMeta meta = pc.getMetadata();
+        Map<String, String> annotations = meta.getAnnotations();
+        if(annotations == null) {
+            annotations = new HashMap<>();
+            meta.setAnnotations(annotations);
+        }
+
+        annotations.put(annotation, JSONObject.fromObject(obj).toString());
+    }
+
+    private void delAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation) {
+        V1ObjectMeta meta = pc.getMetadata();
+        Map<String, String> annotations = meta.getAnnotations();
+        if(annotations == null) {
+            annotations = new HashMap<>();
+            meta.setAnnotations(annotations);
+        }
+        annotations.remove(annotation);
+    }
+
+    private void  addAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, String name) {
         V1ObjectMeta meta = pc.getMetadata();
         Map<String, String> annotations = meta.getAnnotations();
         if(annotations == null) {
@@ -309,6 +336,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
     private void delStalePRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
         delAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
+        delAnnotation(pc, "alauda.io/jenkins." + name);
     }
 
     private void delAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, String name) {
