@@ -35,6 +35,8 @@ public final class Annotations {
 
     public static final String SOURCE_BRANCH_NAME = "alauda.io/sourceBranch";
     public static final String TARGET_BRANCH_NAME = "alauda.io/targetBranch";
+    public static final String PULL_REQUEST_ID = "alauda.io/pull-request-id";
+    public static final String PULL_REQUEST_TITLE = "alauda.io/pull-request-title";
 
     public static final String ALAUDA_PIPELINE_CONTEXT = "alauda.io/pipelinecontext.";
 }

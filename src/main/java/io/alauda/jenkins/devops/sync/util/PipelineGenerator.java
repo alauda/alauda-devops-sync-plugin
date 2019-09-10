@@ -53,6 +53,8 @@ public abstract class PipelineGenerator {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "pr");
                     annotations.put(Annotations.SOURCE_BRANCH_NAME, pr.getSourceBranch());
                     annotations.put(Annotations.TARGET_BRANCH_NAME, pr.getTargetBranch());
+                    annotations.put(Annotations.PULL_REQUEST_ID, pr.getId());
+                    annotations.put(Annotations.PULL_REQUEST_TITLE, pr.getTitle());
                 } else {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "branch");
                 }
