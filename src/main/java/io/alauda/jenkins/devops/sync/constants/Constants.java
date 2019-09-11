@@ -134,4 +134,14 @@ public final class Constants {
 
     public static final String SOURCE_TYPE_SVN = "SVN";
     public static final String SOURCE_TYPE_GIT = "GIT";
+
+    public static final String JENKINS_NODES_CONDITION = "nodes";
+    public static final String JENKINS_PLUGINS_CONDITION = "plugins";
+    public static final String JENKINS_WARNINGS_CONDITION = "warnings";
+
+    public static final String JENKINS_CONDITION_STATUS_TYPE = "jenkins-status";
+
+    public static final String JENKINS_PLUGIN_STATUS_FAILED = "failed";
+    public static final String JENKINS_PLUGIN_STATUS_ACTIVE = "active";
+    public static final String JENKINS_PLUGIN_STATUS_INACTIVE = "inactive";
 }

@@ -114,7 +114,7 @@ public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConf
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
         try {
-            return api.deleteNamespacedPipelineConfig(name, namespace, new V1DeleteOptions(), null, null, null, null, null);
+            return api.deleteNamespacedPipelineConfig(name, namespace, null, new V1DeleteOptions(), null, null, null, null);
         } catch (ApiException e) {
             logger.warn(String.format("Unable to delete PipelineConfig '%s/%s', reason: %s", namespace, name, e.getMessage()), e);
             return null;
