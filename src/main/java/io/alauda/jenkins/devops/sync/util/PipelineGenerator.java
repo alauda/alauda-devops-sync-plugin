@@ -59,7 +59,7 @@ public abstract class PipelineGenerator {
                 if (pr != null) {
                     pr.setUrl(scmURL);
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "pr");
-                    annotations.put(Annotations.MULTI_BRANCH_PR, JSONObject.fromObject(pr).toString());
+                    annotations.put(Annotations.MULTI_BRANCH_PR_DETAIL, JSONObject.fromObject(pr).toString());
                 } else {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "branch");
                 }

@@ -30,6 +30,7 @@ public final class Annotations {
     public static final String MULTI_BRANCH_NAME = "alauda.io/multiBranchName";
 
     public static final String MULTI_BRANCH_PR = "alauda.io/jenkins.pr";
+    public static final String MULTI_BRANCH_PR_DETAIL = "alauda.io/jenkins.pr.detail";
 
     public static final String ALAUDA_PIPELINE_CONTEXT = "alauda.io/pipelinecontext.";
 }
