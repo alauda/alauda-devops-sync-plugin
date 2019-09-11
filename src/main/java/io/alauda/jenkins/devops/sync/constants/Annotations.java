@@ -21,22 +21,15 @@ package io.alauda.jenkins.devops.sync.constants;
 public final class Annotations {
     private Annotations(){}
     public static final String JENKINS_JOB_PATH = "jenkins.alauda.io/job-path";
-    public static final String GENERATED_BY = "jenkins.alauda.io/generated-by";
-    public static final String GENERATED_BY_JENKINS = "jenkins";
-    public static final String DISABLE_SYNC_CREATE = "jenkins.alauda.io/disable-sync-create";
 
     public static final String MULTI_BRANCH_BRANCH = "alauda.io/jenkins.branch";
     public static final String MULTI_BRANCH_STALE_BRANCH = "alauda.io/jenkins.stale.branch";
-    public static final String MULTI_BRANCH_PR = "alauda.io/jenkins.pr";
     public static final String MULTI_BRANCH_STALE_PR = "alauda.io/jenkins.stale.pr";
 
     public static final String MULTI_BRANCH_CATEGORY = "alauda.io/multiBranchCategory";
     public static final String MULTI_BRANCH_NAME = "alauda.io/multiBranchName";
 
-    public static final String SOURCE_BRANCH_NAME = "alauda.io/sourceBranch";
-    public static final String TARGET_BRANCH_NAME = "alauda.io/targetBranch";
-    public static final String PULL_REQUEST_ID = "alauda.io/pull-request-id";
-    public static final String PULL_REQUEST_TITLE = "alauda.io/pull-request-title";
+    public static final String MULTI_BRANCH_PR = "alauda.io/jenkins.pr";
 
     public static final String ALAUDA_PIPELINE_CONTEXT = "alauda.io/pipelinecontext.";
 }

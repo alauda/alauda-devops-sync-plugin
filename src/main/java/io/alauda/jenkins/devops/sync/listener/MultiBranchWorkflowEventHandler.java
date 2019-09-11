@@ -8,8 +8,10 @@ import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.kubernetes.client.models.V1ObjectMeta;
+import jenkins.scm.api.metadata.ObjectMetadataAction;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
@@ -44,17 +46,25 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     @Override
     public void onCreated(WorkflowJob item) {
         BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
+
+        String scmURL = "";
+        ObjectMetadataAction metadataAction = item.getAction(ObjectMetadataAction.class);
+        if(metadataAction != null) {
+            scmURL = metadataAction.getObjectUrl();
+        }
+
         if(pro != null) {
             String name = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
-            PipelineGenerator.PullRequest pr = PipelineGenerator.getPR(item);
+            PullRequest pr = PipelineGenerator.getPR(item);
             if(pr != null) {
                 // we consider it as a pr
+                pr.setUrl(scmURL);
                 addPRAnnotation(parent, pr, name);
                 logger.info(String.format("add a pr %s", name));
             } else {
-                addBranchAnnotation(parent, name);
+                addBranchAnnotation(parent, name, scmURL);
                 logger.info(String.format("add a branch %s", name));
             }
         }
@@ -63,13 +73,19 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     @Override
     public void onUpdated(WorkflowJob item) {
         BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
+
+        String scmURL = "";
+        ObjectMetadataAction metadataAction = item.getAction(ObjectMetadataAction.class);
+        if(metadataAction != null) {
+            scmURL = metadataAction.getObjectUrl();
+        }
         if(pro != null) {
             String name = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
             if(item.isDisabled()) {
                 // it's a stale pipeline for multi-branch
-                PipelineGenerator.PullRequest pr = PipelineGenerator.getPR(item);
+                PullRequest pr = PipelineGenerator.getPR(item);
                 if(pr != null) {
                     delPRAnnotation(parent, name);
                     addStalePRAnnotation(parent, name);
@@ -82,14 +98,15 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             } else {
                 // when the deleted branch had been restored
 
-                PipelineGenerator.PullRequest pr = PipelineGenerator.getPR(item);
+                PullRequest pr = PipelineGenerator.getPR(item);
                 if(pr != null) {
+                    pr.setUrl(scmURL);
                     delStalePRAnnotation(parent, name);
                     addPRAnnotation(parent, pr, name);
                     logger.info(String.format("enable a pr %s", name));
                 } else {
                     delStaleBranchAnnotation(parent, name);
-                    addBranchAnnotation(parent, name);
+                    addBranchAnnotation(parent, name, scmURL);
                     logger.info(String.format("enable a branch %s", name));
                 }
             }
@@ -103,7 +120,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             String name = pro.getBranch().getEncodedName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
-            PipelineGenerator.PullRequest pr = PipelineGenerator.getPR(item);
+            PullRequest pr = PipelineGenerator.getPR(item);
             if(pr != null) {
                 delStalePRAnnotation(parent, name);
                 logger.info(String.format("del a stale pr %s", name));
@@ -115,94 +132,52 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     private void addStaleBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
-        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-        if(pro == null) {
-            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
-            return;
-        }
-
-        String namespace = pro.getNamespace();
-        String name = pro.getName();
-
-
-        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+        V1alpha1PipelineConfig pc = getPipelineConfig(job);
         if(pc == null) {
-            logger.warning(String.format("Can't find PipelineConfig by namespace: %s, name: %s.", namespace, name));
             return;
         }
-
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
         addStaleBranchAnnotation(newPc, branchName);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
-    private void addStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
-        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-        if(pro == null) {
-            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+    private void addStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String prName) {
+        V1alpha1PipelineConfig pc = getPipelineConfig(job);
+        if(pc == null) {
             return;
         }
-
-        String namespace = pro.getNamespace();
-        String name = pro.getName();
-
-        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        addStalePRAnnotation(newPc, branchName);
+        addAnnotation(newPc, MULTI_BRANCH_STALE_PR, prName);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
-    private void addBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
-        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-        if(pro == null) {
-            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+    private void addBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName, String scmURL) {
+        V1alpha1PipelineConfig pc = getPipelineConfig(job);
+        if(pc == null) {
             return;
         }
-
-        String namespace = pro.getNamespace();
-        String name = pro.getName();
-
-        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        addBranchAnnotation(newPc, branchName);
+        addAnnotation(newPc, MULTI_BRANCH_BRANCH, branchName);
+        setAnnotation(newPc, "alauda.io/jenkins." + branchName + ".url", scmURL);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
-    private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, PipelineGenerator.PullRequest pr, String branchName) {
-        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-        if(pro == null) {
-            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+    private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, PullRequest pr, String prName) {
+        V1alpha1PipelineConfig pc = getPipelineConfig(job);
+        if(pc == null) {
             return;
         }
-
-        String namespace = pro.getNamespace();
-        String name = pro.getName();
-
-
-        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        addPRAnnotation(newPc, pr, branchName);
+        addAnnotation(newPc, MULTI_BRANCH_PR, prName);
+        setAnnotation(newPc, "alauda.io/jenkins." + prName, pr);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
-    private void addBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
-        addAnnotation(pc, MULTI_BRANCH_BRANCH, name);
-    }
-
-    private void addPRAnnotation(@NotNull V1alpha1PipelineConfig pc, PipelineGenerator.PullRequest pr, String name) {
-        addAnnotation(pc, MULTI_BRANCH_PR, name);
-        setAnnotation(pc, "alauda.io/jenkins." + name, pr);
-    }
-
-    private void addStaleBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
-        addAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
-    }
-
-    private void addStalePRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
-        addAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
+    private void addStaleBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String branchName) {
+        addAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, branchName);
     }
 
     private void setAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, Object obj) {
@@ -213,7 +188,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             meta.setAnnotations(annotations);
         }
 
-        annotations.put(annotation, JSONObject.fromObject(obj).toString());
+        annotations.put(annotation, obj instanceof String ? obj.toString() : JSONObject.fromObject(obj).toString());
     }
 
     private void delAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation) {
@@ -254,89 +229,53 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     private void delPRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
-        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-        if(pro == null) {
-            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+        V1alpha1PipelineConfig pc = getPipelineConfig(job);
+        if(pc == null) {
             return;
         }
-
-        String namespace = pro.getNamespace();
-        String name = pro.getName();
-
-        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+        String name = pc.getMetadata().getName();
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        delPRAnnotation(newPc, branchName);
+        delAnnotation(newPc, MULTI_BRANCH_PR, name);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void delBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
-        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-        if(pro == null) {
-            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+        V1alpha1PipelineConfig pc = getPipelineConfig(job);
+        if(pc == null) {
             return;
         }
-
-        String namespace = pro.getNamespace();
-        String name = pro.getName();
-
-        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+        String name = pc.getMetadata().getName();
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        delBranchAnnotation(newPc, branchName);
+        delAnnotation(newPc, MULTI_BRANCH_BRANCH, name);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
-    private void delStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
-        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-        if(pro == null) {
-            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+    private void delStalePRAnnotation(@NotNull WorkflowMultiBranchProject job, String prName) {
+        V1alpha1PipelineConfig pc = getPipelineConfig(job);
+        if(pc == null) {
             return;
         }
-
-        String namespace = pro.getNamespace();
-        String name = pro.getName();
-
-
-        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        delStalePRAnnotation(newPc, branchName);
+        delAnnotation(newPc, MULTI_BRANCH_STALE_PR, prName);
+        delAnnotation(newPc, "alauda.io/jenkins." + prName);
+        delAnnotation(newPc, "alauda.io/jenkins." + prName + ".url");
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
     private void delStaleBranchAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
-        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-        if(pro == null) {
-            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+        V1alpha1PipelineConfig pc = getPipelineConfig(job);
+        if(pc == null) {
             return;
         }
-
-        String namespace = pro.getNamespace();
-        String name = pro.getName();
-
-        V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+        String name = pc.getMetadata().getName();
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        delStaleBranchAnnotation(newPc, branchName);
+        delAnnotation(newPc, MULTI_BRANCH_STALE_BRANCH, branchName);
+        delAnnotation(newPc, "alauda.io/jenkins." + branchName + ".url");
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
-    }
-
-    private void delBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
-        delAnnotation(pc, MULTI_BRANCH_BRANCH, name);
-    }
-
-    private void delPRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
-        delAnnotation(pc, MULTI_BRANCH_PR, name);
-    }
-
-    private void delStaleBranchAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
-        delAnnotation(pc, MULTI_BRANCH_STALE_BRANCH, name);
-    }
-
-    private void delStalePRAnnotation(@NotNull V1alpha1PipelineConfig pc, String name) {
-        delAnnotation(pc, MULTI_BRANCH_STALE_PR, name);
-        delAnnotation(pc, "alauda.io/jenkins." + name);
     }
 
     private void delAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, String name) {
@@ -361,4 +300,16 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         }
     }
 
+    private V1alpha1PipelineConfig getPipelineConfig(WorkflowMultiBranchProject job) {
+        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
+        if(pro == null) {
+            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+            return null;
+        }
+
+        String namespace = pro.getNamespace();
+        String name = pro.getName();
+
+        return Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+    }
 }

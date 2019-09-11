@@ -7,11 +7,13 @@ import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import jenkins.branch.Branch;
 import jenkins.branch.BranchIndexingCause;
 import jenkins.scm.api.SCMHead;
+import jenkins.scm.api.metadata.ObjectMetadataAction;
 import jenkins.scm.api.mixin.ChangeRequestSCMHead;
 import jenkins.scm.api.mixin.ChangeRequestSCMHead2;
 import net.sf.json.JSONObject;
@@ -47,14 +49,17 @@ public abstract class PipelineGenerator {
                 Branch branch = property.getBranch();
                 annotations.put(Annotations.MULTI_BRANCH_NAME, branch.getName());
 
-                // TODO need to consider multi-tag like GitTagSCMHead
+                String scmURL = "";
+                ObjectMetadataAction metadataAction = job.getAction(ObjectMetadataAction.class);
+                if(metadataAction != null) {
+                    scmURL = metadataAction.getObjectUrl();
+                }
+
                 PullRequest pr = getPR(job);
                 if (pr != null) {
+                    pr.setUrl(scmURL);
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "pr");
-                    annotations.put(Annotations.SOURCE_BRANCH_NAME, pr.getSourceBranch());
-                    annotations.put(Annotations.TARGET_BRANCH_NAME, pr.getTargetBranch());
-                    annotations.put(Annotations.PULL_REQUEST_ID, pr.getId());
-                    annotations.put(Annotations.PULL_REQUEST_TITLE, pr.getTitle());
+                    annotations.put(Annotations.MULTI_BRANCH_PR, JSONObject.fromObject(pr).toString());
                 } else {
                     annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "branch");
                 }
@@ -196,42 +201,4 @@ public abstract class PipelineGenerator {
         return pipeSpec;
     }
 
-    public static class PullRequest {
-        private String sourceBranch;
-        private String targetBranch;
-        private String title;
-        private String id;
-
-        public String getSourceBranch() {
-            return sourceBranch;
-        }
-
-        public void setSourceBranch(String sourceBranch) {
-            this.sourceBranch = sourceBranch;
-        }
-
-        public String getTargetBranch() {
-            return targetBranch;
-        }
-
-        public void setTargetBranch(String targetBranch) {
-            this.targetBranch = targetBranch;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-
-        public String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-    }
 }

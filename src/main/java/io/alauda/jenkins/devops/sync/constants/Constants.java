@@ -48,8 +48,6 @@ public final class Constants {
 
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG = "alauda.io/multi-branch-scan-log";
 
-    public static final String ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE = "alauda.io/pull-request-title";
-
     public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY = "alauda.io/jenkins-instance-identity";
 
     /** secret keys */
