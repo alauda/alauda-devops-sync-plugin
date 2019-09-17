@@ -274,7 +274,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                         runsToPoll.remove(run);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.log(Level.WARNING, "Pipeline job status poll error", e);
+                runsToPoll.remove(run);
             }
         }
     }
