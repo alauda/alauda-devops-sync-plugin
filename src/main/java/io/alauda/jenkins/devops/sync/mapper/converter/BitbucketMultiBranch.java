@@ -1,8 +1,7 @@
 package io.alauda.jenkins.devops.sync.mapper.converter;
 
 import hudson.Extension;
-import io.alauda.jenkins.devops.sync.GitLabProviderMultiBranch;
-import io.alauda.jenkins.devops.sync.constants.CodeRepoServiceEnum;
+import io.alauda.jenkins.devops.sync.constants.CodeRepoServices;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMHeadAuthority;
 import jenkins.scm.api.trait.SCMSourceTrait;
@@ -22,7 +21,7 @@ public class BitbucketMultiBranch implements GitProviderMultiBranch {
 
     @Override
     public boolean accept(String type) {
-        return (CodeRepoServiceEnum.Bitbucket.name().equals(type));
+        return (CodeRepoServices.Bitbucket.name().equals(type));
     }
 
     @Override

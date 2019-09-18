@@ -1,7 +1,7 @@
 package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
-import io.alauda.jenkins.devops.sync.constants.CodeRepoServiceEnum;
+import io.alauda.jenkins.devops.sync.constants.CodeRepoServices;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMHeadAuthority;
 import jenkins.scm.api.trait.SCMSourceTrait;
@@ -21,7 +21,7 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
 
     @Override
     public boolean accept(String type) {
-        return (CodeRepoServiceEnum.Gitlab.name().equals(type));
+        return (CodeRepoServices.Gitlab.name().equals(type));
     }
 
     @Override
