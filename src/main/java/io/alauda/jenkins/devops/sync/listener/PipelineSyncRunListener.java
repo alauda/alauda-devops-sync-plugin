@@ -265,13 +265,17 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                 switch(status) {
                     case IN_PROGRESS:
                     case PAUSED_PENDING_INPUT:
-                    case NOT_EXECUTED:
                         continue;
+                    case NOT_EXECUTED:
+                        if (run.isBuilding()) {
+                            continue;
+                        }
                     default:
                         runsToPoll.remove(run);
                 }
-            } catch (KubernetesClientException | TimeoutException | InterruptedException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Pipeline job status poll error", e);
+                runsToPoll.remove(run);
             }
         }
     }
