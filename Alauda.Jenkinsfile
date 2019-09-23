@@ -94,14 +94,16 @@ pipeline {
 		stage('Sonar') {
 			steps {
 				script {
-					deploy.scan(
-						REPOSITORY,
-						GIT_BRANCH,
-						SONARQUBE_SCM_CREDENTIALS,
-						FOLDER,
-						DEBUG,
-						OWNER,
-						SCM_FEEDBACK_ACCOUNT).start()
+				    container('tools'){
+                        deploy.scan(
+                            REPOSITORY,
+                            GIT_BRANCH,
+                            SONARQUBE_SCM_CREDENTIALS,
+                            FOLDER,
+                            DEBUG,
+                            OWNER,
+                            SCM_FEEDBACK_ACCOUNT).start()
+				    }
 				}
 			}
 		}

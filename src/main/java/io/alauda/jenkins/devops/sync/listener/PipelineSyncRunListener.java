@@ -321,7 +321,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         String stagesLogUrl;
         String stepsUrl;
         String stepsLogUrl;
-        String changeTitle = "";
         if (JenkinsUtils.fromMultiBranch(run)) {
             WorkflowJob wfJob = (WorkflowJob) run.getParent();
             WorkflowMultiBranchProject multiWfJob = (WorkflowMultiBranchProject) wfJob.getParent();
@@ -354,11 +353,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
                     multiWfJob.getName(),
                     wfJob.getName(),
                     run.number);
-
-            Object changeTitleObj = run.getEnvVars().get("CHANGE_TITLE");
-            if (changeTitleObj != null) {
-                changeTitle = changeTitleObj.toString();
-            }
         } else {
             Job wfJob = run.getParent();
 
@@ -542,7 +536,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS, stepsUrl);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG, stepsLogUrl);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG, progressiveLogUrl);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_CHANGE_TITLE, changeTitle);
         newPipeline.getMetadata().setAnnotations(annotations);
 
         badgeHandle(run, annotations);

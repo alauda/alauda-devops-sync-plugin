@@ -1,20 +1,27 @@
 package io.alauda.jenkins.devops.sync.mapper.converter;
 
 import hudson.Extension;
-import io.alauda.jenkins.devops.sync.constants.CodeRepoServiceEnum;
+import io.alauda.jenkins.devops.sync.constants.CodeRepoServices;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMHeadAuthority;
 import jenkins.scm.api.trait.SCMSourceTrait;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 @Extension
+@Restricted(NoExternalUse.class)
 public class BitbucketMultiBranch implements GitProviderMultiBranch {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BitbucketMultiBranch.class);
+
     @Override
     public boolean accept(String type) {
-        return (CodeRepoServiceEnum.Bitbucket.name().equals(type));
+        return (CodeRepoServices.Bitbucket.name().equals(type));
     }
 
     @Override
@@ -26,7 +33,7 @@ public class BitbucketMultiBranch implements GitProviderMultiBranch {
         } catch (ClassNotFoundException | NoSuchMethodException
                 | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
-            e.printStackTrace();
+            LOGGER.warn("Exception happened while getSCMSource", e);
         }
 
         return null;
@@ -40,7 +47,7 @@ public class BitbucketMultiBranch implements GitProviderMultiBranch {
         } catch (ClassNotFoundException | NoSuchMethodException
                 | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
-            e.printStackTrace();
+            LOGGER.warn("Exception happened while getBranchDiscoverTrait", e);
         }
         return null;
     }
@@ -53,7 +60,7 @@ public class BitbucketMultiBranch implements GitProviderMultiBranch {
         } catch (ClassNotFoundException | NoSuchMethodException
                 | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
-            e.printStackTrace();
+            LOGGER.warn("Exception happened while getOriginPRTrait", e);
         }
         return null;
     }
@@ -67,7 +74,7 @@ public class BitbucketMultiBranch implements GitProviderMultiBranch {
         } catch (ClassNotFoundException | NoSuchMethodException
                 | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
-            e.printStackTrace();
+            LOGGER.warn("Exception happened while getForkPRTrait", e);
         }
         return null;
     }

@@ -1,4 +1,4 @@
-package io.alauda.jenkins.devops.sync.mapper.converter;
+package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
 import io.alauda.jenkins.devops.sync.constants.CodeRepoServices;
@@ -16,20 +16,21 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 @Extension
 @Restricted(NoExternalUse.class)
-public class GitHubMultiBranch implements GitProviderMultiBranch {
-    private static final Logger LOGGER = LoggerFactory.getLogger(GitHubMultiBranch.class);
+public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch {
+    private static final Logger LOGGER = LoggerFactory.getLogger(GitLabProviderMultiBranch.class);
 
     @Override
     public boolean accept(String type) {
-        return (CodeRepoServices.Github.name().equals(type));
+        return (CodeRepoServices.Gitlab.name().equals(type));
     }
 
     @Override
-    public SCMSource getSCMSource(String repoOwner, String repository) {
+    public SCMSource getSCMSource(String server, String repoOwner, String repository) {
         try {
-            Class<?> scmSource = loadClass(GITHUB_SCM_SOURCE);
+            Class<?> scmSource = loadClass(GITLAB_SCM_SOURCE);
 
-            return (SCMSource) scmSource.getConstructor(String.class, String.class).newInstance(repoOwner, repository);
+            return (SCMSource) scmSource.getConstructor(String.class, String.class, String.class)
+                    .newInstance(server, repoOwner, repository);
         } catch (ClassNotFoundException | NoSuchMethodException
                 | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
@@ -42,21 +43,20 @@ public class GitHubMultiBranch implements GitProviderMultiBranch {
     @Override
     public SCMSourceTrait getBranchDiscoverTrait(int code) {
         try {
-            Class<?> discoverBranchClz = loadClass(GITHUB_BRANCH_DISCOVERY_TRAIT);
+            Class<?> discoverBranchClz = loadClass(GITLAB_BRANCH_DISCOVERY_TRAIT);
             return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(code);
         } catch (ClassNotFoundException | NoSuchMethodException
                 | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
             LOGGER.warn("Exception happened while getBranchDiscoverTrait", e);
         }
-
         return null;
     }
 
     @Override
     public SCMSourceTrait getOriginPRTrait(int code) {
         try {
-            Class<?> discoverBranchClz = loadClass(GITHUB_ORIGIN_PR_TRAIT);
+            Class<?> discoverBranchClz = loadClass(GITLAB_ORIGIN_PR_TRAIT);
             return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(code);
         } catch (ClassNotFoundException | NoSuchMethodException
                 | InstantiationException | IllegalAccessException
@@ -69,8 +69,8 @@ public class GitHubMultiBranch implements GitProviderMultiBranch {
     @Override
     public SCMSourceTrait getForkPRTrait(int code) {
         try {
-            Class<?> discoverBranchClz = loadClass(GITHUB_FORK_PR_TRAIT);
-            Class<?> trustClz = loadClass(GITHUB_FORK_PR_TRUST_TRAIT);
+            Class<?> discoverBranchClz = loadClass(GITLAB_FORK_PR_TRAIT);
+            Class<?> trustClz = loadClass(GITLAB_FORK_PR_TRUST_TRAIT);
             return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class, SCMHeadAuthority.class).newInstance(code, trustClz.newInstance());
         } catch (ClassNotFoundException | NoSuchMethodException
                 | InstantiationException | IllegalAccessException
