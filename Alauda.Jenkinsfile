@@ -94,7 +94,7 @@ pipeline {
 		stage('Sonar') {
 			steps {
 				script {
-				    container('java'){
+				    container('tools'){
                         deploy.scan(
                             REPOSITORY,
                             GIT_BRANCH,
