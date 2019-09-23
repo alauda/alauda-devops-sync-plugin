@@ -3,9 +3,13 @@ package io.alauda.jenkins.devops.sync.controller;
 import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.PluginManager;
-import hudson.model.*;
+import hudson.model.Label;
+import hudson.model.UpdateSite;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
-import io.alauda.devops.java.client.models.*;
+import io.alauda.devops.java.client.models.V1alpha1BindingCondition;
+import io.alauda.devops.java.client.models.V1alpha1Jenkins;
+import io.alauda.devops.java.client.models.V1alpha1JenkinsList;
+import io.alauda.devops.java.client.models.V1alpha1JenkinsStatus;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
@@ -27,8 +31,9 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -54,7 +59,7 @@ public class JenkinsController implements ResourceSyncController {
                             params.timeoutSeconds,
                             params.watch,
                             null,
-                            null), V1alpha1Jenkins.class, V1alpha1JenkinsList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+                            null), V1alpha1Jenkins.class, V1alpha1JenkinsList.class, TimeUnit.MINUTES.toMillis(5));
         }
 
         Controller controller = ControllerBuilder.defaultBuilder(factory)
@@ -104,12 +109,10 @@ public class JenkinsController implements ResourceSyncController {
 
             boolean succeed = JenkinsClient.getInstance().updateJenkins(jenkins, jenkinsCopy);
 
-            Result r = new Result(true);
-            if (succeed) {
-                // reconcile again after 5 minutes
-                r.setRequeueAfter(Duration.ofMinutes(5));
+            if (!succeed) {
+              new Result(true);
             }
-            return r;
+            return new Result(false);
         }
 
         private void addLabelsCondition(V1alpha1Jenkins jenkins) {
