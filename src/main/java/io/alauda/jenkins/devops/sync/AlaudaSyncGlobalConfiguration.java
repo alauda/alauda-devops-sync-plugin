@@ -57,8 +57,17 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
 
     @Override
     public boolean configure(StaplerRequest req, JSONObject json) {
+        String jenkinsServiceBefore = jenkinsService;
+        boolean enabledBefore = enabled;
+
         req.bindJSON(this, json);
         this.save();
+
+        if (jenkinsService != null && jenkinsService.equals(jenkinsServiceBefore) && enabled == enabledBefore) {
+            return true;
+        }
+
+        ResourceSyncManager.getSyncManager().restart();
         return true;
     }
 
@@ -80,12 +89,8 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
         if (jenkinsService != null) {
             jenkinsService = jenkinsService.trim();
         }
-        if (this.jenkinsService != null && this.jenkinsService.equals(jenkinsService)) {
-            return;
-        }
 
         this.jenkinsService = jenkinsService;
-        ResourceSyncManager.getSyncManager().notifyJenkinsServiceChanged();
     }
 
     public String getErrorMsg() {

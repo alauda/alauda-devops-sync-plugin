@@ -1,15 +1,22 @@
 package io.alauda.jenkins.devops.sync.client;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import hudson.BulkChange;
 import hudson.model.*;
+import hudson.model.Queue;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
 import hudson.util.XStream2;
+import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
+import io.alauda.devops.java.client.models.V1alpha1Jenkins;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfigStatus;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
+import io.alauda.devops.java.client.utils.PatchGenerator;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
@@ -18,6 +25,7 @@ import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
+import io.kubernetes.client.ApiException;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
@@ -32,9 +40,7 @@ import javax.annotation.Nonnull;
 import javax.xml.transform.stream.StreamSource;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -497,4 +503,35 @@ public class JenkinsClient {
         return deleteInProgress.add(new NamespaceName(namespace, name));
     }
 
+
+    public boolean updateJenkins(V1alpha1Jenkins oldJenkins, V1alpha1Jenkins newJenkins) {
+        String name = oldJenkins.getMetadata().getName();
+
+        String patch;
+        try {
+            patch = new PatchGenerator().generatePatchBetween(oldJenkins, newJenkins);
+        } catch (IOException e) {
+            logger.warn("Failed to update Jenkins '{}', unable to generate patch, reason: {}", name, e.getMessage());
+            return false;
+        }
+
+        logger.debug("Patch: {}", patch);
+
+        List<JsonObject> body = new LinkedList<>();
+        JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
+        arr.forEach(jsonElement -> body.add(jsonElement.getAsJsonObject()));
+
+        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+        try {
+            api.patchJenkins(
+                    name,
+                    body,
+                    null,
+                    null);
+        } catch (ApiException e) {
+            logger.warn("Failed to update Jenkins '{}', reason: {}", name, e.getMessage());
+            return false;
+        }
+        return true;
+    }
 }
