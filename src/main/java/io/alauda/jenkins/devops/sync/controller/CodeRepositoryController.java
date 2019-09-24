@@ -5,6 +5,7 @@ import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepositoryList;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.CodeRepositoryClient;
 import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
@@ -16,10 +17,14 @@ import io.kubernetes.client.extended.controller.reconciler.Result;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Extension
-public class CodeRepositoryController implements ResourceSyncController {
+public class CodeRepositoryController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+
+    private LocalDateTime lastEventComingTime;
+
     @Override
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
@@ -49,10 +54,16 @@ public class CodeRepositoryController implements ResourceSyncController {
         Controller controller =
                 ControllerBuilder.defaultBuilder(factory)
                         .watch(workQueue -> ControllerBuilder.controllerWatchBuilder(V1alpha1CodeRepository.class, workQueue)
-                                        .withWorkQueueKeyFunc(repository ->
-                                                new Request(repository.getMetadata().getNamespace(),
-                                                        repository.getMetadata().getName()))
-                                        .build())
+                                .withWorkQueueKeyFunc(repository ->
+                                        new Request(repository.getMetadata().getNamespace(),
+                                                repository.getMetadata().getName()))
+                                .withOnUpdateFilter((oldCodeRepository, newCodeRepository) -> {
+                                    if (!oldCodeRepository.getMetadata().getResourceVersion().equals(newCodeRepository.getMetadata().getResourceVersion())) {
+                                        lastEventComingTime = LocalDateTime.now();
+                                    }
+                                    return true;
+                                })
+                                .build())
                         .withReconciler(request -> new Result(false))
                         .withName("CodeRepositoryController")
                         .withWorkerCount(1)
@@ -60,5 +71,15 @@ public class CodeRepositoryController implements ResourceSyncController {
                         .build();
 
         managerBuilder.addController(controller);
+    }
+
+    @Override
+    public LocalDateTime lastEventComingTime() {
+        return lastEventComingTime;
+    }
+
+    @Override
+    public String resourceName() {
+        return "CodeRepository";
     }
 }

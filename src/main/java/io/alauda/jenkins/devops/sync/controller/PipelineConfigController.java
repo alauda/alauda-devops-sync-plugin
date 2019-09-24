@@ -7,6 +7,7 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfigList;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineConfigClient;
@@ -32,15 +33,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Extension
-public class PipelineConfigController implements ResourceSyncController {
+public class PipelineConfigController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
     private static final Logger logger = LoggerFactory.getLogger(PipelineConfigController.class);
     private static final String CONTROLLER_NAME = "PipelineConfigController";
+
+    private LocalDateTime lastEventComingTime;
 
     @Override
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
@@ -94,6 +98,8 @@ public class PipelineConfigController implements ResourceSyncController {
                                         return false;
                                     }
 
+                                    lastEventComingTime = LocalDateTime.now();
+
                                     if (newPipelineConfig.getStatus().getPhase().equals(PipelineConfigPhase.CREATING)) {
                                         logger.debug("[{}] phase of PipelineConfig '{}/{}' is {}, will skip it", CONTROLLER_NAME, namespace, name, PipelineConfigPhase.CREATING);
                                         return false;
@@ -118,6 +124,16 @@ public class PipelineConfigController implements ResourceSyncController {
                         .build();
 
         managerBuilder.addController(controller);
+    }
+
+    @Override
+    public LocalDateTime lastEventComingTime() {
+        return lastEventComingTime;
+    }
+
+    @Override
+    public String resourceName() {
+        return "PipelineConfig";
     }
 
     static class PipelineConfigReconciler implements Reconciler {
