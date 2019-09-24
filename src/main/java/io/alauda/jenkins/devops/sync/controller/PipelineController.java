@@ -7,6 +7,7 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineList;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineClient;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -39,10 +41,12 @@ import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 
 @Extension
-public class PipelineController implements ResourceSyncController {
+public class PipelineController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
     private static final Logger logger = LoggerFactory.getLogger(PipelineController.class);
     private static final String CONTROLLER_NAME = "PipelineController";
+
+    private LocalDateTime lastEventComingTime;
 
     @Override
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
@@ -86,6 +90,9 @@ public class PipelineController implements ResourceSyncController {
                                         logger.debug("[{}] resourceVersion of Pipeline '{}/{}' is equal, will skip update event for it", CONTROLLER_NAME, namespace, name);
                                         return false;
                                     }
+
+                                    lastEventComingTime = LocalDateTime.now();
+
                                     logger.debug("[{}] received event: Update, Pipeline '{}/{}'", CONTROLLER_NAME, namespace, name);
                                     return true;
                                 })
@@ -101,6 +108,16 @@ public class PipelineController implements ResourceSyncController {
                         .build();
 
         managerBuilder.addController(controller);
+    }
+
+    @Override
+    public LocalDateTime lastEventComingTime() {
+        return lastEventComingTime;
+    }
+
+    @Override
+    public String resourceName() {
+        return "Pipeline";
     }
 
 

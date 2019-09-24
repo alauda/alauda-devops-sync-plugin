@@ -12,6 +12,7 @@ import io.alauda.devops.java.client.models.V1alpha1JenkinsList;
 import io.alauda.devops.java.client.models.V1alpha1JenkinsStatus;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.kubernetes.client.JSON;
@@ -31,6 +32,7 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -38,9 +40,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Extension
-public class JenkinsController implements ResourceSyncController {
+public class JenkinsController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
     private static final Logger logger = LoggerFactory.getLogger(JenkinsController.class);
     private static final String CONTROLLER_NAME = "JenkinsController";
+
+    private LocalDateTime lastEventComingTime;
 
     @Override
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
@@ -65,6 +69,12 @@ public class JenkinsController implements ResourceSyncController {
         Controller controller = ControllerBuilder.defaultBuilder(factory)
                 .watch(workQueue -> ControllerBuilder.controllerWatchBuilder(V1alpha1Jenkins.class, workQueue)
                         .withWorkQueueKeyFunc(jenkins -> new Request(jenkins.getMetadata().getName()))
+                        .withOnUpdateFilter((oldJenkins, newJenkins) -> {
+                            if (!oldJenkins.getMetadata().getResourceVersion().equals(newJenkins.getMetadata().getResourceVersion())) {
+                                lastEventComingTime = LocalDateTime.now();
+                            }
+                            return true;
+                        })
                         .build())
                 .withWorkerCount(1)
                 .withName(CONTROLLER_NAME)
@@ -72,6 +82,16 @@ public class JenkinsController implements ResourceSyncController {
                 .build();
 
         managerBuilder.addController(controller);
+    }
+
+    @Override
+    public LocalDateTime lastEventComingTime() {
+        return lastEventComingTime;
+    }
+
+    @Override
+    public String resourceName() {
+        return "Jenkins";
     }
 
     private class JenkinsReconciler implements Reconciler {
