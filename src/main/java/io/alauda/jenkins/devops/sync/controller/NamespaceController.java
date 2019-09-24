@@ -6,6 +6,7 @@ import hudson.security.ACL;
 import hudson.security.ACLContext;
 import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.NamespaceClient;
 import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
@@ -26,13 +27,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Extension
-public class NamespaceController implements ResourceSyncController {
+public class NamespaceController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
     private static final Logger logger = LoggerFactory.getLogger(NamespaceController.class);
     private static final String CONTROLLER_NAME = "NamespaceController";
+
+    private LocalDateTime lastEventComingTime;
 
     @Override
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
@@ -64,6 +68,12 @@ public class NamespaceController implements ResourceSyncController {
                         (workQueue) -> ControllerBuilder.controllerWatchBuilder(V1Namespace.class, workQueue)
                                 .withWorkQueueKeyFunc(namespace ->
                                         new Request(namespace.getMetadata().getName()))
+                                .withOnUpdateFilter((oldNs, newNs) -> {
+                                    if (!oldNs.getMetadata().getResourceVersion().equals(newNs.getMetadata().getResourceVersion())) {
+                                        lastEventComingTime = LocalDateTime.now();
+                                    }
+                                    return true;
+                                })
                                 .build())
                         .withReconciler(new NamespaceReconciler(new Lister<>(informer.getIndexer())))
                         .withName(CONTROLLER_NAME)
@@ -72,6 +82,16 @@ public class NamespaceController implements ResourceSyncController {
                         .build();
 
         managerBuilder.addController(controller);
+    }
+
+    @Override
+    public LocalDateTime lastEventComingTime() {
+        return lastEventComingTime;
+    }
+
+    @Override
+    public String resourceName() {
+        return "Namespace";
     }
 
 
