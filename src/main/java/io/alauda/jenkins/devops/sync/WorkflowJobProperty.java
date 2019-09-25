@@ -55,61 +55,54 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
         this.contextAnnotation = contextAnnotation;
     }
 
-    public static WorkflowJobProperty getInstance(V1alpha1PipelineConfig pc) {
-        V1ObjectMeta meta = pc.getMetadata();
-        Map<String, String> Annotation = meta.getAnnotations();
-        String contextAnnotation = "{}";
-        if(Annotation!=null){
-            Map<String,String> annotationreuslt = new HashMap<>();
-            for(String key:Annotation.keySet()){
-                if(key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)){
-                    annotationreuslt.put(key, Annotation.get(key));
-                }
-            }
-            contextAnnotation = JSONObject.fromObject(annotationreuslt).toString();
-        }
-        return new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
-                meta.getUid(), meta.getResourceVersion(), contextAnnotation);
-    }
-
-    public String getContextAnnotation() {
-        return contextAnnotation;
-    }
-
-    public void setContextAnnotation(String contextAnnotation) {
-        this.contextAnnotation = contextAnnotation;
-    }
-
+    @Override
     public String getUid() {
         return uid;
     }
 
+    @Override
     public void setUid(String uid) {
         this.uid = uid;
     }
 
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public void setName(String name) {
         this.name = name;
     }
 
+    @Override
     public String getNamespace() {
         return namespace;
     }
 
+    @Override
     public void setNamespace(String namespace) {
         this.namespace = namespace;
     }
 
+    @Override
     public String getResourceVersion() {
         return resourceVersion;
     }
 
+    @Override
     public void setResourceVersion(String resourceVersion) {
         this.resourceVersion = resourceVersion;
+    }
+
+    @Override
+    public String getContextAnnotation() {
+        return contextAnnotation;
+    }
+
+    @Override
+    public void setContextAnnotation(String contextAnnotation) {
+        this.contextAnnotation = contextAnnotation;
     }
 
     @Extension

@@ -18,6 +18,7 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
     private String namespace;
     private String name;
     private String resourceVersion;
+    private String contextAnnotation;
 
     @DataBoundConstructor
     public MultiBranchProperty(String namespace, String name,
@@ -31,21 +32,6 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
     @Override
     public AbstractFolderProperty<?> reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
         return this;
-    }
-
-    @Extension
-    public static class DescriptorImpl extends AbstractFolderPropertyDescriptor {
-
-        @Nonnull
-        @Override
-        public String getDisplayName() {
-            return "Alauda MultiBranch Project";
-        }
-
-        @Override
-        public boolean isApplicable(Class<? extends AbstractFolder> containerType) {
-            return MultiBranchProject.class.isAssignableFrom(containerType);
-        }
     }
 
     @Override
@@ -86,5 +72,30 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
     @Override
     public void setResourceVersion(String resourceVersion) {
         this.resourceVersion = resourceVersion;
+    }
+
+    @Override
+    public String getContextAnnotation() {
+        return contextAnnotation;
+    }
+
+    @Override
+    public void setContextAnnotation(String contextAnnotation) {
+        this.contextAnnotation = contextAnnotation;
+    }
+
+    @Extension
+    public static class DescriptorImpl extends AbstractFolderPropertyDescriptor {
+
+        @Nonnull
+        @Override
+        public String getDisplayName() {
+            return "Alauda MultiBranch Project";
+        }
+
+        @Override
+        public boolean isApplicable(Class<? extends AbstractFolder> containerType) {
+            return MultiBranchProject.class.isAssignableFrom(containerType);
+        }
     }
 }
