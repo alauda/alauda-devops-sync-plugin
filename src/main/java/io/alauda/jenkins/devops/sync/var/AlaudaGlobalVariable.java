@@ -38,7 +38,7 @@ public class AlaudaGlobalVariable extends GlobalVariable {
         }
 
         Job<?,?> parent =  build.getParent();
-        if(parent instanceof ){
+        if(parent instanceof WorkflowJob){
             AlaudaJobProperty property = getAlaudaJobProperty((WorkflowJob) parent);
             if (property==null){
                 return new AlaudaContext("","",null,false);
