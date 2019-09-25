@@ -58,31 +58,6 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
         this.contextAnnotation = contextAnnotation;
     }
 
-    public static WorkflowJobProperty getInstance(PipelineConfig pc) {
-        ObjectMeta meta = pc.getMetadata();
-        Map<String, String> Annotation = meta.getAnnotations();
-        String contextAnnotation = "{}";
-        if(Annotation!=null){
-            Map<String,String> annotationreuslt = new HashMap<>();
-            for(String key:Annotation.keySet()){
-                if(key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)){
-                    annotationreuslt.put(key, Annotation.get(key));
-                }
-            }
-            contextAnnotation = JSONObject.fromObject(annotationreuslt).toString();
-        }
-        return new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
-                meta.getUid(), meta.getResourceVersion(), contextAnnotation);
-    }
-
-    public String getContextAnnotation() {
-        return contextAnnotation;
-    }
-
-    public void setContextAnnotation(String contextAnnotation) {
-        this.contextAnnotation = contextAnnotation;
-    }
-
     public String getUid() {
         return uid;
     }
@@ -113,6 +88,16 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
 
     public void setResourceVersion(String resourceVersion) {
         this.resourceVersion = resourceVersion;
+    }
+
+    @Override
+    public String getContextAnnotation() {
+        return contextAnnotation;
+    }
+
+    @Override
+    public void setContextAnnotation(String contextAnnotation) {
+        this.contextAnnotation = contextAnnotation;
     }
 
     @Extension
