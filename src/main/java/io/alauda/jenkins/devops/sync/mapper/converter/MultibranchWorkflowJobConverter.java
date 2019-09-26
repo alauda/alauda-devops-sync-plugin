@@ -15,6 +15,7 @@ import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
+import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.branch.BranchSource;
 import jenkins.model.Jenkins;
 import jenkins.plugins.git.GitSCMSource;
@@ -70,7 +71,13 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
             logger.debug("Unable to found a Jenkins job for PipelineConfig '{}/{}'", namespace, name);
             Folder parentFolder = jenkinsClient.upsertFolder(namespace);
             job = new WorkflowMultiBranchProject(parentFolder, mapper.jenkinsJobName(namespace, name));
-            job.addProperty(new MultiBranchProperty(namespace, name, pipelineConfig.getMetadata().getUid(), pipelineConfig.getMetadata().getResourceVersion()));
+
+            V1ObjectMeta meta = pipelineConfig.getMetadata();
+            MultiBranchProperty property = new MultiBranchProperty(namespace, name,
+                    meta.getUid(), meta.getResourceVersion());
+            property.setContextAnnotation(property.generateAnnotationAsJSON(pipelineConfig));
+
+            job.addProperty(property);
         } else {
             if (!(item instanceof WorkflowMultiBranchProject)) {
                 throw new PipelineConfigConvertException(String.format("Unable to update Jenkins job, except a WorkflowMultiBranchProject but found a %s", item.getClass()));
@@ -78,6 +85,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
             job = ((WorkflowMultiBranchProject) item);
 
             MultiBranchProperty mbProperty = job.getProperties().get(MultiBranchProperty.class);
+            mbProperty.setContextAnnotation(mbProperty.generateAnnotationAsJSON(pipelineConfig));
             mbProperty.setResourceVersion(pipelineConfig.getMetadata().getResourceVersion());
         }
 

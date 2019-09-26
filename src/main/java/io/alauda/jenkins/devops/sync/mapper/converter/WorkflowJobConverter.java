@@ -14,6 +14,7 @@ import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
+import io.kubernetes.client.models.V1ObjectMeta;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.parboiled.common.StringUtils;
@@ -63,7 +64,13 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
             logger.debug("Unable to found a Jenkins job for PipelineConfig '{}/{}'", namespace, name);
             Folder parentFolder = jenkinsClient.upsertFolder(namespace);
             job = new WorkflowJob(parentFolder, mapper.jenkinsJobName(namespace, name));
-            job.addProperty(WorkflowJobProperty.getInstance(pipelineConfig));
+
+            V1ObjectMeta meta = pipelineConfig.getMetadata();
+            WorkflowJobProperty property = new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
+                    meta.getUid(), meta.getResourceVersion(), null);
+            property.setContextAnnotation(property.generateAnnotationAsJSON(pipelineConfig));
+
+            job.addProperty(property);
         } else {
             if (!(item instanceof WorkflowJob)) {
                 throw new PipelineConfigConvertException(String.format("Unable to update Jenkins job, except a WorkflowJob but found a %s", item.getClass()));
@@ -77,13 +84,18 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
                 PipelineConfigProjectProperty pcpp = job.getProperty(PipelineConfigProjectProperty.class);
                 if (pcpp == null) {
                     logger.warn("No old property PipelineConfigProjectProperty for PipelineConfig '{}/{}', will skip add property for it.", namespace, name);
-                    wfJobProperty = WorkflowJobProperty.getInstance(pipelineConfig);
+
+                    V1ObjectMeta meta = pipelineConfig.getMetadata();
+                    wfJobProperty = new WorkflowJobProperty(meta.getNamespace(), meta.getName(),
+                            meta.getUid(), meta.getResourceVersion(), null);
+
                     job.addProperty(wfJobProperty);
                 } else {
                     wfJobProperty = pcpp;
                 }
             }
 
+            wfJobProperty.setContextAnnotation(wfJobProperty.generateAnnotationAsJSON(pipelineConfig));
             wfJobProperty.setResourceVersion(pipelineConfig.getMetadata().getResourceVersion());
         }
 
