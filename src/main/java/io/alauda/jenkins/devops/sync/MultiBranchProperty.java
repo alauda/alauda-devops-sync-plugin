@@ -5,12 +5,17 @@ import com.cloudbees.hudson.plugins.folder.AbstractFolderProperty;
 import com.cloudbees.hudson.plugins.folder.AbstractFolderPropertyDescriptor;
 import hudson.Extension;
 import hudson.model.Descriptor;
+import io.alauda.jenkins.devops.sync.constants.Annotations;
+import io.alauda.kubernetes.api.model.ObjectMeta;
+import io.alauda.kubernetes.api.model.PipelineConfig;
 import jenkins.branch.MultiBranchProject;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
 import javax.annotation.Nonnull;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?>>
         implements AlaudaJobProperty {
@@ -18,6 +23,7 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
     private String namespace;
     private String name;
     private String resourceVersion;
+    private String contextAnnotation;
 
     @DataBoundConstructor
     public MultiBranchProperty(String namespace, String name,
@@ -31,21 +37,6 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
     @Override
     public AbstractFolderProperty<?> reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
         return this;
-    }
-
-    @Extension
-    public static class DescriptorImpl extends AbstractFolderPropertyDescriptor {
-
-        @Nonnull
-        @Override
-        public String getDisplayName() {
-            return "Alauda MultiBranch Project";
-        }
-
-        @Override
-        public boolean isApplicable(Class<? extends AbstractFolder> containerType) {
-            return MultiBranchProject.class.isAssignableFrom(containerType);
-        }
     }
 
     @Override
@@ -86,5 +77,30 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
     @Override
     public void setResourceVersion(String resourceVersion) {
         this.resourceVersion = resourceVersion;
+    }
+
+    @Override
+    public String getContextAnnotation() {
+        return contextAnnotation;
+    }
+
+    @Override
+    public void setContextAnnotation(String contextAnnotation) {
+        this.contextAnnotation = contextAnnotation;
+    }
+
+    @Extension
+    public static class DescriptorImpl extends AbstractFolderPropertyDescriptor {
+
+        @Nonnull
+        @Override
+        public String getDisplayName() {
+            return "Alauda MultiBranch Project";
+        }
+
+        @Override
+        public boolean isApplicable(Class<? extends AbstractFolder> containerType) {
+            return MultiBranchProject.class.isAssignableFrom(containerType);
+        }
     }
 }

@@ -98,18 +98,23 @@ public class ConvertToMultiBranch implements PipelineConfigConvert<WorkflowMulti
         if (newJob) {
             parent = AlaudaUtils.getOrCreateFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
             job = new WorkflowMultiBranchProject(parent, jobName);
-            job.addProperty(new MultiBranchProperty(namespace, name, uid, resourceVer));
+
+            MultiBranchProperty multiBranchProperty = new MultiBranchProperty(namespace, name, uid, resourceVer);
+            multiBranchProperty.setContextAnnotation(multiBranchProperty.generateAnnotationAsJSON(pipelineConfig));
+
+            job.addProperty(multiBranchProperty);
 
             logger.info(String.format("New MultiBranchProject [%s] will be created.", job.getFullName()));
         } else {
-            MultiBranchProperty mbProperty = job.getProperties().get(MultiBranchProperty.class);
-            if(mbProperty == null) {
+            MultiBranchProperty multiBranchProperty = job.getProperties().get(MultiBranchProperty.class);
+            if(multiBranchProperty == null) {
                 logger.warning(String.format("No MultiBranchProperty in job: %s.", job.getFullName()));
                 return null;
             }
 
-            if(isSameJob(pipelineConfig, mbProperty)) {
-                mbProperty.setResourceVersion(resourceVer);
+            if(isSameJob(pipelineConfig, multiBranchProperty)) {
+                multiBranchProperty.setResourceVersion(resourceVer);
+                multiBranchProperty.setContextAnnotation(multiBranchProperty.generateAnnotationAsJSON(pipelineConfig));
 
                 PipelineConfigToJobMap.putJobWithPipelineConfig(job, pipelineConfig);
             } else {
