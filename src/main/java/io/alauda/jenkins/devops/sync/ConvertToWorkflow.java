@@ -62,7 +62,13 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
         if (newJob) {
             parent = AlaudaUtils.getOrCreateFullNameParent(activeInstance, jobFullName, AlaudaUtils.getNamespace(pipelineConfig));
             job = new WorkflowJob(parent, jobName);
-            job.addProperty(WorkflowJobProperty.getInstance(pipelineConfig));
+
+            ObjectMeta meta = pipelineConfig.getMetadata();
+            WorkflowJobProperty property = new WorkflowJobProperty(meta.getNamespace(),
+                    meta.getName(), meta.getUid(), meta.getResourceVersion(), "");
+            property.setContextAnnotation(property.generateAnnotationAsJSON(pipelineConfig));
+
+            job.addProperty(property);
         } else {
             WorkflowJobProperty wfJobProperty = job.getProperty(WorkflowJobProperty.class);
             if(wfJobProperty == null) {
@@ -80,6 +86,7 @@ public class ConvertToWorkflow implements PipelineConfigConvert<WorkflowJob> {
             if(isSameJob(pipelineConfig, wfJobProperty)){
                 // only could update the resourceVersion
                 wfJobProperty.setResourceVersion(resourceVer);
+                wfJobProperty.setContextAnnotation(wfJobProperty.generateAnnotationAsJSON(pipelineConfig));
             } else {
                 logger.warning(String.format("Not the same job, can't handle it." +
                         "PipelineConfig uid is %s, job uid is %s",
