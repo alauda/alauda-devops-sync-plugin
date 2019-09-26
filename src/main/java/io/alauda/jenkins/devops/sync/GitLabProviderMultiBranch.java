@@ -21,7 +21,8 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
 
     @Override
     public boolean accept(String type) {
-        return (CodeRepoServices.Gitlab.name().equals(type));
+        return false;
+//        return (CodeRepoServices.Gitlab.name().equals(type));
     }
 
     @Override
