@@ -4,6 +4,7 @@ import hudson.Extension;
 import hudson.ExtensionList;
 import hudson.PluginManager;
 import hudson.model.Label;
+import hudson.model.Node;
 import hudson.model.UpdateSite;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1BindingCondition;
@@ -130,7 +131,7 @@ public class JenkinsController implements ResourceSyncController, ConnectionAliv
             boolean succeed = JenkinsClient.getInstance().updateJenkins(jenkins, jenkinsCopy);
 
             if (!succeed) {
-              new Result(true);
+                new Result(true);
             }
             return new Result(false);
         }
@@ -164,11 +165,34 @@ public class JenkinsController implements ResourceSyncController, ConnectionAliv
                     .distinct()
                     .collect(Collectors.toList());
 
+            labels = removeUnavailableLabels(labels);
+
             logger.debug("Found {} labels", labels.size());
 
             NodeList nodeList = new NodeList();
             nodeList.setLabels(labels);
             addJenkinsStatusCondition(jenkins, new JSON().serialize(nodeList), Constants.JENKINS_NODES_CONDITION);
+        }
+
+        private List<String> removeUnavailableLabels(List<String> labels) {
+            List<Node> nodes = Jenkins.getInstance()
+                    .getNodes();
+            // Jenkins.getInstance().getNodes() will return all nodes except Jenkins itself
+            nodes.add(Jenkins.getInstance());
+
+            List<String> unavailableFromStaticNodes = nodes
+                    .stream()
+                    .filter(node -> node.getNumExecutors() <= 0)
+                    .flatMap(node -> Label.parse(node.getLabelString())
+                            .stream()
+                            .map(Label::getName))
+                    .collect(Collectors.toList());
+
+            logger.debug("labels {}", unavailableFromStaticNodes);
+
+            return labels.stream()
+                    .filter(label -> !unavailableFromStaticNodes.contains(label))
+                    .collect(Collectors.toList());
         }
 
         private void addPluginsCondition(V1alpha1Jenkins jenkins) {
@@ -193,6 +217,8 @@ public class JenkinsController implements ResourceSyncController, ConnectionAliv
                 conditions = new LinkedList<>();
                 jenkins.getStatus().setConditions(conditions);
             }
+
+            conditions.removeIf(condition -> condition.getType().equals(Constants.JENKINS_CONDITION_STATUS_TYPE) && condition.getName().equals(conditionName));
 
             Optional<V1alpha1BindingCondition> conditionOptional = conditions.stream()
                     .filter(c -> conditionName.equals(c.getName()))
