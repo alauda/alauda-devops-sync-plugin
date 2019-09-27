@@ -4,5 +4,13 @@
 		<f:description>
 			${%Alauda WorkflowMultiBranch}
 		</f:description>
+
+        <f:invisibleEntry>
+          <f:readOnlyTextbox field="namespace"/>
+          <f:readOnlyTextbox field="name"/>
+          <f:readOnlyTextbox field="uid"/>
+          <f:readOnlyTextbox field="resourceVersion"/>
+          <f:readOnlyTextbox field="contextAnnotation"/>
+        </f:invisibleEntry>
     </f:section>
 </j:jelly>
