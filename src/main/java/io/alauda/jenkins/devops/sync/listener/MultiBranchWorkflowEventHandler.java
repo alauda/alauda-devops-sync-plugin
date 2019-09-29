@@ -160,8 +160,16 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         addAnnotation(newPc, MULTI_BRANCH_BRANCH, branchName);
-        setAnnotation(newPc, "alauda.io/jenkins." + branchName + ".url", scmURL);
+        setAnnotation(newPc, "alauda.io/jenkins." + annotationKeySpec(branchName) + ".url", scmURL);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
+    }
+
+    private String annotationKeySpec(String key) {
+        if (key == null) {
+            return null;
+        }
+
+        return key.replaceAll("/", "-");
     }
 
     private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, PullRequest pr, String prName) {
@@ -261,7 +269,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
         delAnnotation(newPc, MULTI_BRANCH_STALE_PR, prName);
         delAnnotation(newPc, "alauda.io/jenkins." + prName);
-        delAnnotation(newPc, "alauda.io/jenkins." + prName + ".url");
+        delAnnotation(newPc, "alauda.io/jenkins." + annotationKeySpec(prName) + ".url");
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
@@ -274,7 +282,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         delAnnotation(newPc, MULTI_BRANCH_STALE_BRANCH, branchName);
-        delAnnotation(newPc, "alauda.io/jenkins." + branchName + ".url");
+        delAnnotation(newPc, "alauda.io/jenkins." + annotationKeySpec(branchName) + ".url");
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
