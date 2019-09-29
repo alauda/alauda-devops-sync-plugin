@@ -55,18 +55,18 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         }
 
         if(pro != null) {
-            String name = pro.getBranch().getName();
+            final String branchName = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
             PullRequest pr = PipelineGenerator.getPR(item);
             if(pr != null) {
                 // we consider it as a pr
                 pr.setUrl(scmURL);
-                addPRAnnotation(parent, pr, name);
-                logger.info(String.format("add a pr %s", name));
+                addPRAnnotation(parent, pr, branchName);
+                logger.info(String.format("add a pr %s", branchName));
             } else {
-                addBranchAnnotation(parent, name, scmURL);
-                logger.info(String.format("add a branch %s", name));
+                addBranchAnnotation(parent, branchName, scmURL);
+                logger.info(String.format("add a branch %s", branchName));
             }
         }
     }
@@ -81,20 +81,20 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             scmURL = metadataAction.getObjectUrl();
         }
         if(pro != null) {
-            String name = pro.getBranch().getName();
+            final String branchName = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
             if(item.isDisabled()) {
                 // it's a stale pipeline for multi-branch
                 PullRequest pr = PipelineGenerator.getPR(item);
                 if(pr != null) {
-                    delPRAnnotation(parent, name);
-                    addStalePRAnnotation(parent, name);
-                    logger.info(String.format("disable a pr %s", name));
+                    delPRAnnotation(parent, branchName);
+                    addStalePRAnnotation(parent, branchName);
+                    logger.info(String.format("disable a pr %s", branchName));
                 } else {
-                    delBranchAnnotation(parent, name);
-                    addStaleBranchAnnotation(parent, name);
-                    logger.info(String.format("disable a branch %s", name));
+                    delBranchAnnotation(parent, branchName);
+                    addStaleBranchAnnotation(parent, branchName);
+                    logger.info(String.format("disable a branch %s", branchName));
                 }
             } else {
                 // when the deleted branch had been restored
@@ -102,13 +102,13 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
                 PullRequest pr = PipelineGenerator.getPR(item);
                 if(pr != null) {
                     pr.setUrl(scmURL);
-                    delStalePRAnnotation(parent, name);
-                    addPRAnnotation(parent, pr, name);
-                    logger.info(String.format("enable a pr %s", name));
+                    delStalePRAnnotation(parent, branchName);
+                    addPRAnnotation(parent, pr, branchName);
+                    logger.info(String.format("enable a pr %s", branchName));
                 } else {
-                    delStaleBranchAnnotation(parent, name);
-                    addBranchAnnotation(parent, name, scmURL);
-                    logger.info(String.format("enable a branch %s", name));
+                    delStaleBranchAnnotation(parent, branchName);
+                    addBranchAnnotation(parent, branchName, scmURL);
+                    logger.info(String.format("enable a branch %s", branchName));
                 }
             }
         }
@@ -118,16 +118,16 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     public synchronized void onDeleted(WorkflowJob item) {
         BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
         if(pro != null) {
-            String name = pro.getBranch().getEncodedName();
+            String branchName = pro.getBranch().getName();
             WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
 
             PullRequest pr = PipelineGenerator.getPR(item);
             if(pr != null) {
-                delStalePRAnnotation(parent, name);
-                logger.info(String.format("del a stale pr %s", name));
+                delStalePRAnnotation(parent, branchName);
+                logger.info(String.format("del a stale pr %s", branchName));
             } else {
-                delStaleBranchAnnotation(parent, name);
-                logger.info(String.format("del a stale branch %s", name));
+                delStaleBranchAnnotation(parent, branchName);
+                logger.info(String.format("del a stale branch %s", branchName));
             }
         }
     }
@@ -256,10 +256,9 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         if(pc == null) {
             return;
         }
-        String name = pc.getMetadata().getName();
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        delAnnotation(newPc, MULTI_BRANCH_BRANCH, name);
+        delAnnotation(newPc, MULTI_BRANCH_BRANCH, branchName);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
