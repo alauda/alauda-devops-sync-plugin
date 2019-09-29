@@ -44,7 +44,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     @Override
-    public void onCreated(WorkflowJob item) {
+    public synchronized void onCreated(WorkflowJob item) {
         BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
 
         String scmURL = "";
@@ -71,7 +71,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     @Override
-    public void onUpdated(WorkflowJob item) {
+    public synchronized void onUpdated(WorkflowJob item) {
         BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
 
         String scmURL = "";
@@ -114,7 +114,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     @Override
-    public void onDeleted(WorkflowJob item) {
+    public synchronized void onDeleted(WorkflowJob item) {
         BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
         if(pro != null) {
             String name = pro.getBranch().getEncodedName();
@@ -209,7 +209,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         annotations.remove(annotation);
     }
 
-    private void  addAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, String name) {
+    private void addAnnotation(@NotNull V1alpha1PipelineConfig pc, final String annotation, String name) {
         V1ObjectMeta meta = pc.getMetadata();
         Map<String, String> annotations = meta.getAnnotations();
         if(annotations == null) {
