@@ -244,10 +244,9 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         if(pc == null) {
             return;
         }
-        String name = pc.getMetadata().getName();
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
-        delAnnotation(newPc, MULTI_BRANCH_PR, name);
+        delAnnotation(newPc, MULTI_BRANCH_PR, branchName);
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
