@@ -24,6 +24,7 @@ import org.kohsuke.accmod.restrictions.DoNotUse;
 import javax.validation.constraints.NotNull;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Annotations.*;
@@ -234,6 +235,8 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             jsonArray.add(name);
         }
         annotations.put(annotation, jsonArray.toString());
+
+        logger.log(Level.FINE, "Update annotation, before is: {}, after is: {}", new Object[]{branchJson, jsonArray.toString()});
     }
 
     private void delPRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
