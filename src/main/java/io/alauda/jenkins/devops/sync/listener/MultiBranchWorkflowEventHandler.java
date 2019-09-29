@@ -236,7 +236,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         }
         annotations.put(annotation, jsonArray.toString());
 
-        logger.log(Level.FINE, "Update annotation, before is: {}, after is: {}", new Object[]{branchJson, jsonArray.toString()});
+        logger.log(Level.FINE, String.format("Update annotation, before is: %s, after is: %s", branchJson, jsonArray.toString()));
     }
 
     private void delPRAnnotation(@NotNull WorkflowMultiBranchProject job, String branchName) {
@@ -281,7 +281,6 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         if(pc == null) {
             return;
         }
-        String name = pc.getMetadata().getName();
         V1alpha1PipelineConfig newPc = DeepCopyUtils.deepCopy(pc);
 
         delAnnotation(newPc, MULTI_BRANCH_STALE_BRANCH, branchName);
