@@ -171,14 +171,6 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
     }
 
-    private String annotationKeySpec(String key) {
-        if (key == null) {
-            return null;
-        }
-
-        return key.replaceAll("/", "-");
-    }
-
     private void addPRAnnotation(@NotNull WorkflowMultiBranchProject job, PullRequest pr, String prName) {
         V1alpha1PipelineConfig pc = getPipelineConfig(job);
         if(pc == null) {
@@ -325,5 +317,13 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         String name = pro.getName();
 
         return Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+    }
+
+    private String annotationKeySpec(String key) {
+        if (key == null) {
+            return null;
+        }
+
+        return key.replaceAll("[^0-9a-zA-Z-]", "-");
     }
 }
