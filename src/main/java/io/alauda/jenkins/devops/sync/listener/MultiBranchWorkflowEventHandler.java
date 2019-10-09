@@ -23,11 +23,9 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 
-import javax.validation.constraints.NotNull;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Annotations.*;
@@ -59,20 +57,18 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             }
 
             if (pro != null) {
-                String name = pro.getBranch().getName();
-                WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
+                String branchName = pro.getBranch().getName();
+                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, branchName);
 
-
-                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, name);
                 PullRequest pr = PipelineGenerator.getPR(item);
                 if (pr != null) {
                     // we consider it as a pr
                     pr.setUrl(scmURL);
                     pipelineConfigUpdater.addPRAnnotation(pr);
-                    logger.info(String.format("add a pr %s", name));
+                    logger.info(String.format("add a pr %s", branchName));
                 } else {
                     pipelineConfigUpdater.addBranchAnnotation(scmURL);
-                    logger.info(String.format("add a branch %s", name));
+                    logger.info(String.format("add a branch %s", branchName));
 
                     pipelineConfigUpdater.addParameters();
                     pipelineConfigUpdater.commit();
@@ -92,21 +88,20 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
                 scmURL = metadataAction.getObjectUrl();
             }
             if(pro != null) {
-                String name = pro.getBranch().getName();
-                WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
+                String branchName = pro.getBranch().getName();
 
-                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, name);
+                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, branchName);
                 if(item.isDisabled()) {
                     // it's a stale pipeline for multi-branch
                     PullRequest pr = PipelineGenerator.getPR(item);
                     if(pr != null) {
                         pipelineConfigUpdater.delPRAnnotation();
                         pipelineConfigUpdater.addStalePRAnnotation();
-                        logger.info(String.format("disable a pr %s", name));
+                        logger.info(String.format("disable a pr %s", branchName));
                     } else {
                         pipelineConfigUpdater.delBranchAnnotation();
-                        pipelineConfigUpdater.addAnnotation(MULTI_BRANCH_STALE_BRANCH, name);
-                        logger.info(String.format("disable a branch %s", name));
+                        pipelineConfigUpdater.addAnnotation(MULTI_BRANCH_STALE_BRANCH, branchName);
+                        logger.info(String.format("disable a branch %s", branchName));
                     }
                 } else {
                     // when the deleted branch had been restored
@@ -115,12 +110,12 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
                     if(pr != null) {
                         pr.setUrl(scmURL);
                         pipelineConfigUpdater.delStalePRAnnotation();
-                        pipelineConfigUpdater.addPRAnnotation(pr, name);
-                        logger.info(String.format("enable a pr %s", name));
+                        pipelineConfigUpdater.addPRAnnotation(pr, branchName);
+                        logger.info(String.format("enable a pr %s", branchName));
                     } else {
                         pipelineConfigUpdater.delStaleBranchAnnotation();
                         pipelineConfigUpdater.addBranchAnnotation(scmURL);
-                        logger.info(String.format("enable a branch %s", name));
+                        logger.info(String.format("enable a branch %s", branchName));
                     }
                 }
 
@@ -153,20 +148,13 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         }
     }
 
-    private String annotationKeySpec(String key) {
-        if (key == null) {
-            return null;
-        }
-
-        return key.replaceAll("[^0-9a-zA-Z-]", "-");
-    }
-
     private class PipelineConfigUpdater {
         private WorkflowJob job;
         private String branchName;
 
         private V1alpha1PipelineConfig oldPC;
         private V1alpha1PipelineConfig newPC;
+
 
         PipelineConfigUpdater(WorkflowJob job, String branchName) {
             this.job = job;
@@ -208,6 +196,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         void delStaleBranchAnnotation() {
             delAnnotation(MULTI_BRANCH_STALE_BRANCH, branchName);
             delAnnotation("alauda.io/jenkins." + annotationKeySpec(branchName) + ".url");
+
         }
 
         void delAnnotation(String annotation, String name) {
@@ -323,5 +312,13 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
         void commit() {
             Clients.get(V1alpha1PipelineConfig.class).update(oldPC, newPC);
         }
+    }
+
+    private String annotationKeySpec(String key) {
+        if (key == null) {
+            return null;
+        }
+
+        return key.replaceAll("[^0-9a-zA-Z-]", "-");
     }
 }
