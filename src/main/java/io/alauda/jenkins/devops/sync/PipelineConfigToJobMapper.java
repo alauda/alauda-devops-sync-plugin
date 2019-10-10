@@ -281,7 +281,7 @@ public abstract class PipelineConfigToJobMapper {
         return false;
     }
 
-    private static void updateParameters(WorkflowJob job, V1alpha1PipelineConfig pipelineConfig) {
+    public static void updateParameters(WorkflowJob job, V1alpha1PipelineConfig pipelineConfig) {
         V1alpha1PipelineConfigSpec spec = pipelineConfig.getSpec();
 
         if (spec.getParameters() != null) {

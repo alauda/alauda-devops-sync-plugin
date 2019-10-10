@@ -54,6 +54,8 @@ public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConf
             return false;
         }
 
+        logger.info("PipelineConfig update patch: " + patch);
+
         // When use remove op on omitempty empty field, will cause 422 Exception
         List<JsonObject> bodyWithoutRemove = new LinkedList<>();
         List<JsonObject> bodyOnlyRemove = new LinkedList<>();

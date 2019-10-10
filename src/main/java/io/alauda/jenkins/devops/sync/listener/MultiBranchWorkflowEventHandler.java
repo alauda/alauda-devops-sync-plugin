@@ -3,6 +3,7 @@ package io.alauda.jenkins.devops.sync.listener;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
+import hudson.model.Job;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
@@ -12,18 +13,23 @@ import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
+import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.scm.api.metadata.ObjectMetadataAction;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -47,105 +53,140 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
     @Override
     public void onCreated(WorkflowJob item) {
-        synchronized (MultiBranchWorkflowEventHandler.class) {
-            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
+        WorkflowJobUtils.updateAnnotations(item);
+//        synchronized (item) {
+//            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
+//
+//            String scmURL = "";
+//            ObjectMetadataAction metadataAction = item.getAction(ObjectMetadataAction.class);
+//            if (metadataAction != null) {
+//                scmURL = metadataAction.getObjectUrl();
+//            }
+//
+//            if (pro != null) {
+//                String branchName = pro.getBranch().getName();
+//                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, branchName);
+//
+//                PullRequest pr = PipelineGenerator.getPR(item);
+//                if (pr != null) {
+//                    // we consider it as a pr
+//                    pr.setUrl(scmURL);
+//                    pipelineConfigUpdater.addPRAnnotation(pr);
+//                    logger.info(String.format("add a pr %s", branchName));
+//                } else {
+//                    pipelineConfigUpdater.addBranchAnnotation(scmURL);
+//                    logger.info(String.format("add a branch %s", branchName));
+//                }
+//
+//                pipelineConfigUpdater.addParameters();
+//                pipelineConfigUpdater.commit();
+//            }
+//        }
+    }
 
-            String scmURL = "";
-            ObjectMetadataAction metadataAction = item.getAction(ObjectMetadataAction.class);
-            if (metadataAction != null) {
-                scmURL = metadataAction.getObjectUrl();
+    class BranchItem {
+        private List<String> branchList = new ArrayList<>();
+        private List<String> staleBranchList = new ArrayList<>();
+        private List<String> prList = new ArrayList<>();
+        private List<String> stalePRList = new ArrayList<>();
+        public void add(WorkflowJob wfJob, boolean isPR, String branchName) {
+            if (wfJob.isDisabled() && isPR) {
+                stalePRList.add(branchName);
+            } else if (wfJob.isDisabled() && !isPR) {
+                staleBranchList.add(branchName);
+            } else if (!wfJob.isDisabled() && !isPR) {
+                branchList.add(branchName);
+            } else {
+                prList.add(branchName);
             }
+        }
 
-            if (pro != null) {
-                String branchName = pro.getBranch().getName();
-                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, branchName);
+        public List<String> getBranchList() {
+            return branchList;
+        }
 
-                PullRequest pr = PipelineGenerator.getPR(item);
-                if (pr != null) {
-                    // we consider it as a pr
-                    pr.setUrl(scmURL);
-                    pipelineConfigUpdater.addPRAnnotation(pr);
-                    logger.info(String.format("add a pr %s", branchName));
-                } else {
-                    pipelineConfigUpdater.addBranchAnnotation(scmURL);
-                    logger.info(String.format("add a branch %s", branchName));
+        public List<String> getStaleBranchList() {
+            return staleBranchList;
+        }
 
-                    pipelineConfigUpdater.addParameters();
-                    pipelineConfigUpdater.commit();
-                }
-            }
+        public List<String> getPrList() {
+            return prList;
+        }
+
+        public List<String> getStalePRList() {
+            return stalePRList;
         }
     }
 
     @Override
     public void onUpdated(WorkflowJob item) {
-        synchronized (MultiBranchWorkflowEventHandler.class) {
-            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
-
-            String scmURL = "";
-            ObjectMetadataAction metadataAction = item.getAction(ObjectMetadataAction.class);
-            if(metadataAction != null) {
-                scmURL = metadataAction.getObjectUrl();
-            }
-            if(pro != null) {
-                String branchName = pro.getBranch().getName();
-
-                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, branchName);
-                if(item.isDisabled()) {
-                    // it's a stale pipeline for multi-branch
-                    PullRequest pr = PipelineGenerator.getPR(item);
-                    if(pr != null) {
-                        pipelineConfigUpdater.delPRAnnotation();
-                        pipelineConfigUpdater.addStalePRAnnotation();
-                        logger.info(String.format("disable a pr %s", branchName));
-                    } else {
-                        pipelineConfigUpdater.delBranchAnnotation();
-                        pipelineConfigUpdater.addAnnotation(MULTI_BRANCH_STALE_BRANCH, branchName);
-                        logger.info(String.format("disable a branch %s", branchName));
-                    }
-                } else {
-                    // when the deleted branch had been restored
-
-                    PullRequest pr = PipelineGenerator.getPR(item);
-                    if(pr != null) {
-                        pr.setUrl(scmURL);
-                        pipelineConfigUpdater.delStalePRAnnotation();
-                        pipelineConfigUpdater.addPRAnnotation(pr, branchName);
-                        logger.info(String.format("enable a pr %s", branchName));
-                    } else {
-                        pipelineConfigUpdater.delStaleBranchAnnotation();
-                        pipelineConfigUpdater.addBranchAnnotation(scmURL);
-                        logger.info(String.format("enable a branch %s", branchName));
-                    }
-                }
-
-                pipelineConfigUpdater.commit();
-            }
-        }
+        WorkflowJobUtils.updateAnnotations(item);
+//        synchronized (MultiBranchWorkflowEventHandler.class) {
+//            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
+//
+//            String scmURL = "";
+//            ObjectMetadataAction metadataAction = item.getAction(ObjectMetadataAction.class);
+//            if(metadataAction != null) {
+//                scmURL = metadataAction.getObjectUrl();
+//            }
+//            if(pro != null) {
+//                String branchName = pro.getBranch().getName();
+//
+//                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, branchName);
+//                if(item.isDisabled()) {
+//                    // it's a stale pipeline for multi-branch
+//                    PullRequest pr = PipelineGenerator.getPR(item);
+//                    if(pr != null) {
+//                        pipelineConfigUpdater.delPRAnnotation();
+//                        pipelineConfigUpdater.addStalePRAnnotation();
+//                        logger.info(String.format("disable a pr %s", branchName));
+//                    } else {
+//                        pipelineConfigUpdater.delBranchAnnotation();
+//                        pipelineConfigUpdater.addAnnotation(MULTI_BRANCH_STALE_BRANCH, branchName);
+//                        logger.info(String.format("disable a branch %s", branchName));
+//                    }
+//                } else {
+//                    // when the deleted branch had been restored
+//                    PullRequest pr = PipelineGenerator.getPR(item);
+//                    if(pr != null) {
+//                        pr.setUrl(scmURL);
+//                        pipelineConfigUpdater.delStalePRAnnotation();
+//                        pipelineConfigUpdater.addPRAnnotation(pr, branchName);
+//                        logger.info(String.format("enable a pr %s", branchName));
+//                    } else {
+//                        pipelineConfigUpdater.delStaleBranchAnnotation();
+//                        pipelineConfigUpdater.addBranchAnnotation(scmURL);
+//                        logger.info(String.format("enable a branch %s", branchName));
+//                    }
+//                }
+//
+//                pipelineConfigUpdater.commit();
+//            }
+//        }
     }
 
     @Override
     public void onDeleted(WorkflowJob item) {
-        synchronized (MultiBranchWorkflowEventHandler.class) {
-            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
-            if (pro != null) {
-                String name = pro.getBranch().getEncodedName();
-                WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
-
-                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, name);
-                PullRequest pr = PipelineGenerator.getPR(item);
-                if (pr != null) {
-                    pipelineConfigUpdater.delStalePRAnnotation();
-                    logger.info(String.format("del a stale pr %s", name));
-                } else {
-                    pipelineConfigUpdater.delStaleBranchAnnotation();
-                    logger.info(String.format("del a stale branch %s", name));
-                }
-
-                pipelineConfigUpdater.delParameters();
-                pipelineConfigUpdater.commit();
-            }
-        }
+        WorkflowJobUtils.updateAnnotations(item);
+//        synchronized (MultiBranchWorkflowEventHandler.class) {
+//            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
+//            if (pro != null) {
+//                String name = pro.getBranch().getEncodedName();
+//
+//                PipelineConfigUpdater pipelineConfigUpdater = new PipelineConfigUpdater(item, name);
+//                PullRequest pr = PipelineGenerator.getPR(item);
+//                if (pr != null) {
+//                    pipelineConfigUpdater.delStalePRAnnotation();
+//                    logger.info(String.format("del a stale pr %s", name));
+//                } else {
+//                    pipelineConfigUpdater.delStaleBranchAnnotation();
+//                    logger.info(String.format("del a stale branch %s", name));
+//                }
+//
+//                pipelineConfigUpdater.delParameters();
+//                pipelineConfigUpdater.commit();
+//            }
+//        }
     }
 
     private class PipelineConfigUpdater {
@@ -259,17 +300,17 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             annotations.put(annotation, jsonStr);
         }
 
-        void addAnnotation(final String annotation, String name) {
+        void addAnnotation(final String annotation, String value) {
             V1ObjectMeta meta = newPC.getMetadata();
+            String branchJson = null;
+
             Map<String, String> annotations = meta.getAnnotations();
-            if(annotations == null) {
-                annotations = new HashMap<>();
-                meta.setAnnotations(annotations);
+            if(annotations != null) {
+                branchJson = annotations.get(annotation);
             }
 
             JSONArray jsonArray;
-            String branchJson = annotations.get(annotation);
-            if(branchJson == null) {
+            if(branchJson == null || "".equalsIgnoreCase(branchJson)) {
                 jsonArray = new JSONArray();
             } else {
                 try {
@@ -280,10 +321,12 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
                 }
             }
 
-            if(!jsonArray.contains(name)) {
-                jsonArray.add(name);
+            if(!jsonArray.contains(value)) {
+                jsonArray.add(value);
             }
-            annotations.put(annotation, jsonArray.toString());
+            meta.putAnnotationsItem(annotation, jsonArray.toString());
+
+            logger.info(meta.getAnnotations().get(annotation));
         }
 
         void addParameters() {
@@ -296,29 +339,41 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
             delAnnotation("alauda.io/jenkins." + annotationKeySpec(branchName) + ".params");
         }
 
-        V1alpha1PipelineConfig getPipelineConfig(WorkflowMultiBranchProject job) {
-            AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
-            if(pro == null) {
-                logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
-                return null;
-            }
-
-            String namespace = pro.getNamespace();
-            String name = pro.getName();
-
-            return Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
-        }
-
         void commit() {
             Clients.get(V1alpha1PipelineConfig.class).update(oldPC, newPC);
         }
     }
 
-    private String annotationKeySpec(String key) {
+    private String toJSON(Object obj) {
+        String jsonStr = null;
+        if(obj instanceof String) {
+            jsonStr = obj.toString();
+        } else if(obj instanceof List){
+            jsonStr = JSONArray.fromObject(obj).toString();
+        } else {
+            jsonStr = JSONObject.fromObject(obj).toString();
+        }
+        return jsonStr;
+    }
+
+    String annotationKeySpec(String key) {
         if (key == null) {
             return null;
         }
 
         return key.replaceAll("[^0-9a-zA-Z-]", "-");
+    }
+
+    V1alpha1PipelineConfig getPipelineConfig(WorkflowMultiBranchProject job) {
+        AlaudaJobProperty pro = job.getProperties().get(MultiBranchProperty.class);
+        if(pro == null) {
+            logger.warning(String.format("No AlaudaJobProperty in job %s.", job.getFullName()));
+            return null;
+        }
+
+        String namespace = pro.getNamespace();
+        String name = pro.getName();
+
+        return Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
     }
 }
