@@ -492,14 +492,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
             return new Result(true);
         }
 
-        String json = null;
-        try {
-            json = new ObjectMapper().writeValueAsString(wfRunExt);
-        } catch (JsonProcessingException e) {
-            logger.log(SEVERE, "Failed to serialize workflow run. " + e, e);
-        }
-
-
         String phase = runToPipelinePhase(run);
         long started = getStartTime(run);
         DateTime startTime = null;
@@ -524,8 +516,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         String blueJson = toBlueJson(pipeJson);
 
         Map<String, String> annotations = newPipeline.getMetadata().getAnnotations();
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON, json);
-        annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON, blueJson);
+
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI, buildUrl);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL, logsUrl);
         annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL, logsConsoleUrl);
