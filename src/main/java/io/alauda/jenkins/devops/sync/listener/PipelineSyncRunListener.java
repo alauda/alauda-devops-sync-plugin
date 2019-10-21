@@ -31,6 +31,7 @@ import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineStatus;
 import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkins;
 import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkinsBuilder;
@@ -39,6 +40,7 @@ import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
+import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
@@ -108,11 +110,33 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
     @Override
     public void onStarted(Run run, TaskListener listener) {
-        if (shouldPollRun(run)) {
+        AlaudaJobProperty property = getAlaudaJobProperty(run);
+        if (property != null) {
             runs.add(run);
             logger.info("starting polling build " + run.getUrl());
 
             checkTimerStarted();
+
+            if (run instanceof WorkflowRun) {
+                WorkflowJob job = ((WorkflowRun) run).getParent();
+                if (job.getParent() instanceof WorkflowMultiBranchProject && WorkflowJobUtils.parametersHasChange(job)) {
+                    WorkflowJobUtils.updateAnnotations(job);
+                } else {
+                    String namespace = property.getNamespace();
+                    String name = property.getName();
+                    V1alpha1PipelineConfig pc = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+                    if (pc == null) {
+                        logger.info("can not found pipelineconfig by namespace: " + namespace + ", name: " + name  + "; skip update parameters");
+                        return;
+                    }
+
+                    V1alpha1PipelineConfig newPC = DeepCopyUtils.deepCopy(pc);
+                    PipelineConfigToJobMapper.updateParameters(job, newPC);
+                    Clients.get(V1alpha1PipelineConfig.class).update(pc, newPC);
+
+                    logger.info("update parameter done, namespace: " + namespace + ", name: " + name);
+                }
+            }
         } else {
             logger.fine("not polling polling pipeline " + run.getUrl() + " as its not a WorkflowJob");
         }
@@ -692,19 +716,13 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         return run.getNumber();
     }
 
-    /**
-     * Returns true if we should poll the status of this run
-     *
-     * @param run the Run to test against
-     * @return true if the should poll the status of this build run
-     */
-    private boolean shouldPollRun(Run run) {
+    private AlaudaJobProperty getAlaudaJobProperty(Run run) {
         if (!AlaudaSyncGlobalConfiguration.get().isEnabled()) {
-            return false;
+            return null;
         }
 
         if (!(run instanceof WorkflowRun)) {
-            return false;
+            return null;
         }
 
         WorkflowJob job = ((WorkflowRun) run).getParent();
@@ -712,12 +730,20 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
         if (parent instanceof WorkflowMultiBranchProject) {
             WorkflowMultiBranchProject multiBranchProject = ((WorkflowMultiBranchProject) parent);
-            AlaudaJobProperty alaudaJobProperty = multiBranchProject.getProperties().get(MultiBranchProperty.class);
-            return alaudaJobProperty != null;
+            return multiBranchProject.getProperties().get(MultiBranchProperty.class);
         }
 
-        AlaudaJobProperty alaudaJobProperty = WorkflowJobUtils.getAlaudaProperty(job);
-        return alaudaJobProperty != null;
+        return WorkflowJobUtils.getAlaudaProperty(job);
+    }
+
+    /**
+     * Returns true if we should poll the status of this run
+     *
+     * @param run the Run to test against
+     * @return true if the should poll the status of this build run
+     */
+    private boolean shouldPollRun(Run run) {
+        return getAlaudaJobProperty(run) != null;
     }
 
     /**

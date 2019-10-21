@@ -281,30 +281,37 @@ public abstract class PipelineConfigToJobMapper {
         return false;
     }
 
-    private static void updateParameters(WorkflowJob job, V1alpha1PipelineConfig pipelineConfig) {
+    public static void updateParameters(WorkflowJob job, V1alpha1PipelineConfig pipelineConfig) {
         V1alpha1PipelineConfigSpec spec = pipelineConfig.getSpec();
 
-        if (spec.getParameters() == null) {
-            spec.setParameters(new ArrayList<>());
-        } else {
+        if (spec.getParameters() != null) {
             spec.getParameters().clear();
         }
+
+        for (V1alpha1PipelineParameter param : getPipelineParameter(job)) {
+            spec.addParametersItem(param);
+        }
+    }
+
+    public static List<V1alpha1PipelineParameter> getPipelineParameter(@Nonnull WorkflowJob job) {
+        List<V1alpha1PipelineParameter> pipelineParameters = new ArrayList<>();
 
         ParametersDefinitionProperty paramsDefPro = job.getProperty(ParametersDefinitionProperty.class);
         if (paramsDefPro == null) {
             LOGGER.log(Level.FINE, "No parameters define property for job {0}", job);
-            return;
+            return pipelineParameters;
         }
 
         List<ParameterDefinition> paramDefs = paramsDefPro.getParameterDefinitions();
         if (paramDefs == null || paramDefs.size() == 0) {
             LOGGER.log(Level.FINE, "No parameters defined for job {0}", job);
-            return;
+            return pipelineParameters;
         }
 
         for (ParameterDefinition def : paramDefs) {
-            spec.getParameters().add(convertTo(def));
+            pipelineParameters.add(convertTo(def));
         }
+        return pipelineParameters;
     }
 
     public static boolean isSupportParamType(@Nonnull ParameterDefinition paramDef) {
