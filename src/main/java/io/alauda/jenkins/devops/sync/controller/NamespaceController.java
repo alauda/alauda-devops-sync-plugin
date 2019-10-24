@@ -10,6 +10,7 @@ import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.NamespaceClient;
 import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
+import io.kubernetes.client.ApiException;
 import io.kubernetes.client.apis.CoreV1Api;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
@@ -92,6 +93,25 @@ public class NamespaceController implements ResourceSyncController, ConnectionAl
     @Override
     public String resourceName() {
         return "Namespace";
+    }
+
+    @Override
+    public boolean hasResourceExists() throws ApiException {
+        CoreV1Api api = new CoreV1Api();
+        V1NamespaceList namespaceList = api.listNamespace(null,
+                null,
+                null,
+                null,
+                1,
+                "0",
+                null,
+                null);
+
+        if (namespaceList == null || namespaceList.getItems() == null || namespaceList.getItems().size() == 0) {
+            return false;
+        }
+
+        return true;
     }
 
 

@@ -18,6 +18,7 @@ import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
+import io.kubernetes.client.ApiException;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
@@ -118,6 +119,26 @@ public class PipelineController implements ResourceSyncController, ConnectionAli
     @Override
     public String resourceName() {
         return "Pipeline";
+    }
+
+    @Override
+    public boolean hasResourceExists() throws ApiException {
+        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+        V1alpha1PipelineList pipelineList = api.listPipelineForAllNamespaces(null,
+                null,
+                null,
+                null,
+                1,
+                null,
+                "0",
+                null,
+                null);
+
+        if (pipelineList == null || pipelineList.getItems() == null || pipelineList.getItems().size() == 0) {
+            return false;
+        }
+
+        return true;
     }
 
 

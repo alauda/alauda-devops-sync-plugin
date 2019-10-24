@@ -18,6 +18,7 @@ import io.alauda.jenkins.devops.sync.exception.ConditionsUtils;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
+import io.kubernetes.client.ApiException;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
@@ -134,6 +135,26 @@ public class PipelineConfigController implements ResourceSyncController, Connect
     @Override
     public String resourceName() {
         return "PipelineConfig";
+    }
+
+    @Override
+    public boolean hasResourceExists() throws ApiException {
+        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+        V1alpha1PipelineConfigList pipelineConfigList = api.listPipelineConfigForAllNamespaces(null,
+                null,
+                null,
+                null,
+                1,
+                null,
+                "0",
+                null,
+                null);
+
+        if (pipelineConfigList == null || pipelineConfigList.getItems() == null || pipelineConfigList.getItems().size() == 0) {
+            return false;
+        }
+
+        return true;
     }
 
     static class PipelineConfigReconciler implements Reconciler {
