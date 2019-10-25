@@ -9,6 +9,7 @@ import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.CodeRepositoryClient;
 import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
+import io.kubernetes.client.ApiException;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
@@ -16,6 +17,8 @@ import io.kubernetes.client.extended.controller.reconciler.Request;
 import io.kubernetes.client.extended.controller.reconciler.Result;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 @Extension
 public class CodeRepositoryController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
+    private static final Logger logger = LoggerFactory.getLogger(NamespaceController.class);
     private LocalDateTime lastEventComingTime;
 
     @Override
@@ -81,5 +85,25 @@ public class CodeRepositoryController implements ResourceSyncController, Connect
     @Override
     public String resourceName() {
         return "CodeRepository";
+    }
+
+    @Override
+    public boolean hasResourceExists() throws ApiException {
+        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+        V1alpha1CodeRepositoryList repositoryList = api.listCodeRepositoryForAllNamespaces(null,
+                null,
+                null,
+                null,
+                1,
+                null,
+                "0",
+                null,
+                null);
+
+        if (repositoryList == null || repositoryList.getItems() == null || repositoryList.getItems().size() == 0) {
+            return false;
+        }
+
+        return true;
     }
 }

@@ -7,15 +7,13 @@ import hudson.model.Label;
 import hudson.model.Node;
 import hudson.model.UpdateSite;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
-import io.alauda.devops.java.client.models.V1alpha1BindingCondition;
-import io.alauda.devops.java.client.models.V1alpha1Jenkins;
-import io.alauda.devops.java.client.models.V1alpha1JenkinsList;
-import io.alauda.devops.java.client.models.V1alpha1JenkinsStatus;
+import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.kubernetes.client.ApiException;
 import io.kubernetes.client.JSON;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
@@ -93,6 +91,26 @@ public class JenkinsController implements ResourceSyncController, ConnectionAliv
     @Override
     public String resourceName() {
         return "Jenkins";
+    }
+
+    @Override
+    public boolean hasResourceExists() throws ApiException {
+        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+        V1alpha1JenkinsList jenkinsList = api.listJenkins(null,
+                null,
+                null,
+                null,
+                null,
+                1,
+                "0",
+                null,
+                null);
+
+        if (jenkinsList == null || jenkinsList.getItems() == null || jenkinsList.getItems().size() == 0) {
+            return false;
+        }
+
+        return true;
     }
 
     private class JenkinsReconciler implements Reconciler {

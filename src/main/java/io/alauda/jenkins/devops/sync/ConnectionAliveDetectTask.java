@@ -6,6 +6,7 @@ import hudson.ExtensionPoint;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
+import io.kubernetes.client.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,11 +40,22 @@ public class ConnectionAliveDetectTask extends AsyncPeriodicWork {
         HeartbeatResourceDetector.all()
                 .forEach(detector -> {
                     logger.debug("Starting to check if the watch connection of resource {} is alive", detector.resourceName());
+                    heartbeatLostCount.putIfAbsent(detector, new AtomicInteger(0));
 
                     LocalDateTime lastEventComingTime = detector.lastEventComingTime();
                     // controller might not be initialized, or no resource exist in k8s so that we cannot receive event
                     if (lastEventComingTime == null) {
-                        logger.debug("The controller of resource {} seems not start or no resource exists in k8s, will skip check for it", detector.resourceName());
+                        try {
+                            // if there has resource exists but we didn't receive any event, the watch connection might be broken
+                            if (detector.hasResourceExists()) {
+                                int count = heartbeatLostCount.get(detector).incrementAndGet();
+                                logger.warn("The watch connection of resource {} seems broken, retry count {}", detector.resourceName(), count);
+                            } else {
+                                logger.debug("There are no resource {} exists in k8s, will skip this check for it", detector.resourceName());
+                            }
+                        } catch (ApiException e) {
+                            logger.warn("Unable to check if resource {} exists in k8s, will skip this check for it, reason: {}", detector.resourceName(), e);
+                        }
                         return;
                     }
 
@@ -90,6 +102,8 @@ public class ConnectionAliveDetectTask extends AsyncPeriodicWork {
         LocalDateTime lastEventComingTime();
 
         String resourceName();
+
+        boolean hasResourceExists() throws ApiException;
 
         static ExtensionList<HeartbeatResourceDetector> all() {
             return ExtensionList.lookup(HeartbeatResourceDetector.class);
