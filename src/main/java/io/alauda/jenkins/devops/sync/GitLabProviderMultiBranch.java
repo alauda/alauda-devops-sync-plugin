@@ -9,6 +9,8 @@ import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jenkins.plugins.git.traits.CloneOptionTrait;
+import hudson.plugins.git.extensions.impl.CloneOption;
 
 import java.lang.reflect.InvocationTargetException;
 
@@ -21,8 +23,7 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
 
     @Override
     public boolean accept(String type) {
-        return false;
-//        return (CodeRepoServices.Gitlab.name().equals(type));
+        return (CodeRepoServices.Gitlab.name().equals(type));
     }
 
     @Override
@@ -30,10 +31,9 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
         try {
             Class<?> scmSource = loadClass(GITLAB_SCM_SOURCE);
 
-            return (SCMSource) scmSource.getConstructor(String.class, String.class, String.class)
-                    .newInstance(server, repoOwner, repository);
-        } catch (ClassNotFoundException | NoSuchMethodException
-                | InstantiationException | IllegalAccessException
+            return (SCMSource) scmSource.getConstructor(String.class, String.class, String.class).newInstance(server,
+                    repoOwner, String.format("%s/%s", repoOwner, repository));
+        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
             LOGGER.warn("Exception happened while getSCMSource", e);
         }
@@ -46,8 +46,7 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
         try {
             Class<?> discoverBranchClz = loadClass(GITLAB_BRANCH_DISCOVERY_TRAIT);
             return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(code);
-        } catch (ClassNotFoundException | NoSuchMethodException
-                | InstantiationException | IllegalAccessException
+        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
             LOGGER.warn("Exception happened while getBranchDiscoverTrait", e);
         }
@@ -59,8 +58,7 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
         try {
             Class<?> discoverBranchClz = loadClass(GITLAB_ORIGIN_PR_TRAIT);
             return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(code);
-        } catch (ClassNotFoundException | NoSuchMethodException
-                | InstantiationException | IllegalAccessException
+        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
             LOGGER.warn("Exception happened while getOriginPRTrait", e);
         }
@@ -72,12 +70,20 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
         try {
             Class<?> discoverBranchClz = loadClass(GITLAB_FORK_PR_TRAIT);
             Class<?> trustClz = loadClass(GITLAB_FORK_PR_TRUST_TRAIT);
-            return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class, SCMHeadAuthority.class).newInstance(code, trustClz.newInstance());
-        } catch (ClassNotFoundException | NoSuchMethodException
-                | InstantiationException | IllegalAccessException
+            return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class, SCMHeadAuthority.class)
+                    .newInstance(code, trustClz.newInstance());
+        } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException
                 | InvocationTargetException e) {
             LOGGER.warn("Exception happened while getForkPRTrait", e);
         }
         return null;
+    }
+
+    @Override
+    public CloneOptionTrait getCloneTrait() {
+        CloneOption cloneOption = new CloneOption(false, false, null, null);
+        cloneOption.setHonorRefspec(true);
+
+        return new CloneOptionTrait(cloneOption);
     }
 }

@@ -8,6 +8,7 @@ import hudson.model.Item;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
+import io.alauda.jenkins.devops.sync.PrivateGitProviderMultiBranch;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
@@ -141,7 +142,12 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
                 if(supported) {
                     // TODO need to deal with the private git providers
                     gitProvider = gitProviderOpt.get();
-                    scmSource = gitProvider.getSCMSource(repoOwner, repository);
+                    if (gitProvider instanceof PrivateGitProviderMultiBranch) {
+                        String server = String.format("%s-%s", codeRep.getMetadata().getNamespace(), codeRep.getSpec().getCodeRepoBinding().getName());
+                        scmSource = ((PrivateGitProviderMultiBranch) gitProvider).getSCMSource(server, repoOwner, repository);
+                    } else {
+                        scmSource = gitProvider.getSCMSource(repoOwner, repository);
+                    }
                     if(scmSource == null) {
                         logger.warn("Can't create instance for AbstractGitSCMSource. Type is {}.", codeRepoType);
                         return null;
@@ -170,6 +176,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
             job.setSourcesList(Collections.singletonList(new BranchSource(scmSource)));
             scmSource.setOwner(job);
+            scmSource.afterSave();
         }
 
         List<V1alpha1PipelineTrigger> triggers = pipelineConfig.getSpec().getTriggers();

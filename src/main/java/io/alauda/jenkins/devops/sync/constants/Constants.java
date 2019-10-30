@@ -16,7 +16,8 @@
 package io.alauda.jenkins.devops.sync.constants;
 
 public final class Constants {
-    private Constants(){}
+    private Constants() {
+    }
 
     public static final String ROOT_URL = "http://localhost:8080/";
 
@@ -52,22 +53,21 @@ public final class Constants {
 
     /** secret keys */
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
-    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password"; //NOSONAR
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password"; // NOSONAR
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY = "ssh-privatekey";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_DOCKER = ".dockerconfigjson";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID = "clientID";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET = "clientSecret";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKEN = "accessToken";
     public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKENKEY = "accessTokenKey";
-    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSPHRASE = "passphrase"; //NOSONAR
+    public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSPHRASE = "passphrase"; // NOSONAR
 
     /** secret types */
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SSH = "kubernetes.io/ssh-auth";
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_BASICAUTH = "kubernetes.io/basic-auth";
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER = "kubernetes.io/dockerconfigjson";
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE = "Opaque";
-    public static final String ALAUDA_DEVOPS_SECRETS_TYPE_OAUTH2
-            = "devops.alauda.io/oauth2";
+    public static final String ALAUDA_DEVOPS_SECRETS_TYPE_OAUTH2 = "devops.alauda.io/oauth2";
     public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN = "kubernetes.io/service-account-token";
     public static final String ALAUDA_DEVOPS_PIPELINE_STATUS_FIELD = "status";
 
@@ -135,6 +135,10 @@ public final class Constants {
     public static final String GITLAB_ORIGIN_PR_TRAIT = "io.jenkins.plugins.gitlabbranchsource.OriginMergeRequestDiscoveryTrait";
     public static final String GITLAB_FORK_PR_TRAIT = "io.jenkins.plugins.gitlabbranchsource.ForkMergeRequestDiscoveryTrait";
     public static final String GITLAB_FORK_PR_TRUST_TRAIT = "io.jenkins.plugins.gitlabbranchsource.ForkMergeRequestDiscoveryTrait$TrustPermission";
+
+    public static final String GITLAB_SOURCE_CONFIG_SERVERS = "io.jenkins.plugins.gitlabserverconfig.servers.GitLabServers";
+    public static final String GITLAB_SOURCE_CONFIG_SERVER = "io.jenkins.plugins.gitlabserverconfig.servers.GitLabServer";
+    public static final String GITLAB_SOURCE_CONFIG_SERVER_TOKEN = "io.jenkins.plugins.gitlabserverconfig.credentials.PersonalAccessTokenImpl";
 
     public static final String SOURCE_TYPE_SVN = "SVN";
     public static final String SOURCE_TYPE_GIT = "GIT";

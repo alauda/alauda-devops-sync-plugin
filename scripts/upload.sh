@@ -22,7 +22,7 @@ source $(dirname "${BASH_SOURCE[0]}")/env.sh
 issuer=$(curl -k -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/crumbIssuer/api/json -s -o /dev/null -w %{http_code})
 if [ "$issuer" == "200" ]; then
     export issuer=$(curl -k -u $JENKINS_USER:$JENKINS_TOKEN $JENKINS_URL/crumbIssuer/api/json -s)
-    issuer=$(python -c "import json;import os;issuer=os.getenv('issuer');issuer=json.loads(issuer);print issuer['crumb']")
+    issuer=$(python -c "import json;import os;issuer=os.getenv('issuer');issuer=json.loads(issuer);print(issuer['crumb'])")
 else
     issuer=""
 fi
@@ -38,7 +38,7 @@ if [ "$#" == "1" ]; then
         remote_issuer=$(curl -k -u $REMOTE_USER:$REMOTE_TOKEN $REMOTE_URL/crumbIssuer/api/json -s -o /dev/null -w %{http_code})
         if [ "$remote_issuer" == "200" ]; then
             export remote_issuer=$(curl -k -u $REMOTE_USER:$REMOTE_TOKEN $REMOTE_URL/crumbIssuer/api/json -s)
-            remote_issuer=$(python -c "import json;import os;issuer=os.getenv('remote_issuer');issuer=json.loads(issuer);print issuer['crumb']")
+            remote_issuer=$(python -c "import json;import os;issuer=os.getenv('remote_issuer');issuer=json.loads(issuer);print(issuer['crumb'])")
         else
             remote_issuer=""
         fi
