@@ -95,7 +95,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             }
 
             actions.add(new CauseAction(new JenkinsPipelineCause(pipeline, config.getMetadata().getUid())));
-            actions.add(new AlaudaQueueAction());
+            actions.add(new AlaudaQueueAction(namespace, pipeline.getMetadata().getName()));
 
             ParametersAction params = dumpParams(actions);
             if (params != null) {

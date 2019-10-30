@@ -311,10 +311,10 @@ public abstract class JenkinsUtils {
         final V1ObjectMeta pipMeta = pipeline.getMetadata();
         final String namespace = pipMeta.getNamespace();
         final String pipelineName = pipMeta.getName();
-	    LOGGER.info(() -> "will trigger pipeline: " + pipelineName);
+	    LOGGER.info("will trigger pipeline: " + pipelineName);
 
-        if (isAlreadyTriggered(job, pipeline)) {
-            LOGGER.info(() -> "pipeline already triggered: "+pipelineName);
+        if (hasBuildRunningOrCompleted(job, pipeline)) {
+            LOGGER.info(() -> "pipeline is running or completed: "+pipelineName);
             return false;
         }
 
@@ -366,7 +366,7 @@ public abstract class JenkinsUtils {
             List<Action> pipelineActions = new ArrayList<>();
             CauseAction bCauseAction = new CauseAction(newCauses);
             pipelineActions.add(bCauseAction);
-            pipelineActions.add(new AlaudaQueueAction());
+            pipelineActions.add(new AlaudaQueueAction(namespace, pipelineName));
 
             V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
             String commit = null;
@@ -446,7 +446,7 @@ public abstract class JenkinsUtils {
         }
     }
 
-	private static boolean isAlreadyTriggered(WorkflowJob job, V1alpha1Pipeline pipeline) {
+	private static boolean hasBuildRunningOrCompleted(WorkflowJob job, V1alpha1Pipeline pipeline) {
 		return getRun(job, pipeline) != null;
 	}
 
@@ -466,14 +466,11 @@ public abstract class JenkinsUtils {
         updatePipelinePhase(pipeline, CANCELLED);
 	}
 
-	private static WorkflowRun getRun(WorkflowJob job, V1alpha1Pipeline pipeline) {
-		if (pipeline != null && pipeline.getMetadata() != null) {
-			return getRun(job, pipeline.getMetadata().getUid());
-		}
-		return null;
+	private static WorkflowRun getRun(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline) {
+        return getRun(job, pipeline.getMetadata().getUid());
 	}
 
-    private static WorkflowRun getRun(WorkflowJob job, String pipelineUid) {
+    private static WorkflowRun getRun(@Nonnull WorkflowJob job, @Nonnull String pipelineUid) {
         for (WorkflowRun run : job.getBuilds()) {
             JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
             if (cause != null && cause.getUid().equals(pipelineUid)) {
