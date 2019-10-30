@@ -128,6 +128,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
             V1alpha1CodeRepository codeRep = Clients.get(V1alpha1CodeRepository.class).lister().namespace(namespace).get(codeRepoRef.getName());
             if(codeRep != null) {
+                V1alpha1CodeRepoBinding codeBinding = Clients.get(V1alpha1CodeRepoBinding.class).lister().namespace(namespace).get(codeRep.getSpec().getCodeRepoBinding().getName());
                 V1alpha1CodeRepositorySpec codeRepoSpec = codeRep.getSpec();
                 V1alpha1OriginCodeRepository codeRepo = codeRepoSpec.getRepository();
                 String repoOwner = codeRepo.getOwner().getName();
@@ -143,8 +144,11 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
                     // TODO need to deal with the private git providers
                     gitProvider = gitProviderOpt.get();
                     if (gitProvider instanceof PrivateGitProviderMultiBranch) {
-                        String server = String.format("%s-%s", codeRep.getMetadata().getNamespace(), codeRep.getSpec().getCodeRepoBinding().getName());
-                        scmSource = ((PrivateGitProviderMultiBranch) gitProvider).getSCMSource(server, repoOwner, repository);
+                        PrivateGitProviderMultiBranch privateGitProvider = (PrivateGitProviderMultiBranch) gitProvider;
+                        if (codeBinding != null) {
+                            String server = privateGitProvider.getServer(codeBinding);
+                            scmSource = privateGitProvider.getSCMSource(server, repoOwner, repository);
+                        }
                     } else {
                         scmSource = gitProvider.getSCMSource(repoOwner, repository);
                     }

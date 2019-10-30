@@ -81,6 +81,7 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
 
     @Override
     public CloneOptionTrait getCloneTrait() {
+        // if shallow is true, a pr merge problem will occur.
         CloneOption cloneOption = new CloneOption(false, false, null, null);
         cloneOption.setHonorRefspec(true);
 
