@@ -16,13 +16,10 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import antlr.ANTLRException;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.*;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.plugins.git.RevisionParameterAction;
-import hudson.security.ACL;
 import hudson.triggers.SCMTrigger;
-import hudson.triggers.SafeTimerTask;
 import hudson.triggers.TimerTrigger;
 import hudson.triggers.Trigger;
 import io.alauda.devops.java.client.models.*;
@@ -32,19 +29,14 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.MultiBranchProject;
-import jenkins.model.Jenkins;
-import jenkins.security.NotReallyRoleSensitiveCallable;
-import jenkins.util.Timer;
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.transport.URIish;
-import org.jenkinsci.plugins.pipeline.modeldefinition.ast.ModelASTPipelineDef;
-import org.jenkinsci.plugins.pipeline.modeldefinition.parser.Converter;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
@@ -54,60 +46,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.*;
-import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.updatePipelinePhase;
-import static java.util.logging.Level.SEVERE;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.FAILED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 
 /**
  * @author suren
  */
 public abstract class JenkinsUtils {
-	private static final Logger LOGGER = Logger.getLogger(JenkinsUtils.class.getName());
-	public static final String PARAM_FROM_ENV_DESCRIPTION = "From Alauda DevOps PipelineConfig Parameter";
+    private static final Logger logger = LoggerFactory.getLogger(JenkinsUtils.class);
+    private static final String PARAM_FROM_ENV_DESCRIPTION = "From Alauda DevOps PipelineConfig Parameter";
 
-	private JenkinsUtils(){}
-
-	public static Job getJob(String job) {
-		TopLevelItem item = Jenkins.getInstance().getItem(job);
-		if (item instanceof Job) {
-			return (Job) item;
-		}
-		return null;
-	}
-
-	@NotNull
-	public static String getRootUrl() {
-		// TODO is there a better place to find this?
-		String root = Jenkins.getInstance().getRootUrl();
-		return StringUtils.isBlank(root) ? ROOT_URL : root;
-	}
-
-	public static boolean verifyEnvVars(Map<String, ParameterDefinition> paramMap, WorkflowJob workflowJob) {
-        if (paramMap != null) {
-            String fullName = workflowJob.getFullName();
-            WorkflowJob job = Jenkins.getInstance().getItemByFullName(fullName, WorkflowJob.class);
-            if (job == null) {
-                // this should not occur if an impersonate call has been made higher up
-                // the stack
-                LOGGER.warning(() -> "A run of workflow job " + workflowJob.getName() + " unexpectantly not saved to disk.");
-                return false;
-            }
-            ParametersDefinitionProperty props = job.getProperty(ParametersDefinitionProperty.class);
-            List<String> names = props.getParameterDefinitionNames();
-            for (String name : names) {
-                if (!paramMap.containsKey(name)) {
-                    LOGGER.warning(() -> "A run of workflow job " + job.getName() + " was expecting parameter "
-                            + name + ", but it is not in the parameter list");
-                    return false;
-                }
-            }
-        }
-	    return true;
-	}
+    private JenkinsUtils() {
+    }
 
     public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(WorkflowJob job,
                                                                                     List<V1alpha1PipelineParameter> params, boolean replaceExisting) throws IOException {
@@ -151,10 +103,10 @@ public abstract class JenkinsUtils {
                         break;
                     case PIPELINE_PARAMETER_TYPE_BOOLEAN_DEF:
                     case PIPELINE_PARAMETER_TYPE_BOOLEAN:
-                        jenkinsParam = new BooleanParameterDefinition(param.getName(), Boolean.valueOf(param.getValue()), param.getDescription());
+                        jenkinsParam = new BooleanParameterDefinition(param.getName(), Boolean.parseBoolean(param.getValue()), param.getDescription());
                         break;
                     default:
-                        LOGGER.warning(() -> "Parameter type `" + param.getType() + "` is not supported.. skipping...");
+                        logger.warn("Parameter type `{}` is not supported.. skipping...", param.getType());
                         break;
                 }
 
@@ -179,10 +131,10 @@ public abstract class JenkinsUtils {
 
     /**
      * Override job's triggers
-     * @param job
-     * @param triggers
+     *
+     * @param job Workflow Job need to add triggers
+     * @param triggers trigger
      * @return
-     * @throws IOException
      */
     @NotNull
     public static List<ANTLRException> setJobTriggers(@Nonnull WorkflowJob job, List<V1alpha1PipelineTrigger> triggers) throws IOException {
@@ -192,12 +144,12 @@ public abstract class JenkinsUtils {
         }
 
         job.removeProperty(PipelineTriggersJobProperty.class);
-        LOGGER.info(() -> "PipelineTrigger's count is " + triggers.size());
+        logger.info("Adding trigger to Job '{}' trigger count is {}", job.getFullName(), triggers.size());
 
         for (V1alpha1PipelineTrigger pipelineTrigger : triggers) {
             Trigger trigger = null;
             final String type = pipelineTrigger.getType();
-            if(type == null) {
+            if (type == null) {
                 continue;
             }
 
@@ -206,16 +158,16 @@ public abstract class JenkinsUtils {
                     V1alpha1PipelineTriggerCodeChange codeTrigger = pipelineTrigger.getCodeChange();
 
                     if (codeTrigger == null || !codeTrigger.isEnabled()) {
-                        LOGGER.warning(() -> "Trigger type `" + PIPELINE_TRIGGER_TYPE_CODE_CHANGE + "` has empty description or is disabled...");
+                        logger.warn("Trigger type `{}` has empty description or is disabled...", PIPELINE_TRIGGER_TYPE_CODE_CHANGE);
                         break;
                     }
 
                     try {
                         trigger = new SCMTrigger(codeTrigger.getPeriodicCheck());
 
-                        LOGGER.info(() -> "Add CodeChangeTrigger.");
+                        logger.info("Add CodeChangeTrigger.");
                     } catch (ANTLRException exc) {
-                        LOGGER.log(Level.SEVERE, String.format("Error processing trigger type %s", PIPELINE_TRIGGER_TYPE_CODE_CHANGE), exc);
+                        logger.error("Error processing trigger type {}, error: {}", PIPELINE_TRIGGER_TYPE_CODE_CHANGE, exc);
                         exceptions.add(exc);
                     }
 
@@ -223,52 +175,49 @@ public abstract class JenkinsUtils {
                 case PIPELINE_TRIGGER_TYPE_CRON:
                     V1alpha1PipelineTriggerCron cronTrigger = pipelineTrigger.getCron();
                     if (cronTrigger == null || !cronTrigger.isEnabled()) {
-                        LOGGER.warning(() -> "Trigger type `" + PIPELINE_TRIGGER_TYPE_CRON + "` has empty description or is disabled...");
+                        logger.warn("Trigger type `{}` has empty description or is disabled...", PIPELINE_TRIGGER_TYPE_CRON);
                         break;
                     }
 
                     try {
                         trigger = new TimerTrigger(cronTrigger.getRule());
 
-                        LOGGER.info(() -> "Add CronTrigger.");
+                        logger.info("Add CronTrigger.");
                     } catch (ANTLRException exc) {
-                        LOGGER.log(Level.SEVERE, String.format("Error processing trigger type %s", PIPELINE_TRIGGER_TYPE_CRON), exc);
+                        logger.error("Error processing trigger type {}, error: {}", PIPELINE_TRIGGER_TYPE_CRON, exc);
                         exceptions.add(exc);
                     }
 
                     break;
                 default:
-                    LOGGER.warning(() -> "Trigger type `" + pipelineTrigger.getType() + "` is not supported... skipping...");
+                    logger.warn("Trigger type `{}` is not supported... skipping...", pipelineTrigger.getType());
             }
 
-            if(trigger != null) {
+            if (trigger != null) {
                 job.addTrigger(trigger);
             }
         }
 
-        LOGGER.info(() -> "Job trigger save done.");
+        logger.info("Job trigger save done.");
 
         return exceptions;
     }
 
-    @CheckForNull
-	private static List<Action> putJobRunParamsFromEnvAndUIParams(List<V1alpha1PipelineParameter> pipelineParameters,
-                                                                 List<Action> buildActions) {
-        if(buildActions == null || pipelineParameters == null) {
-            return buildActions;
+    private static void addJobRunParamsFromEnvAndUIParams(List<V1alpha1PipelineParameter> pipelineParameters,
+                                                                  List<Action> buildActions) {
+        if (buildActions == null || pipelineParameters == null) {
+            return;
         }
 
         List<ParameterValue> envVarList = getParameterValues(pipelineParameters);
         if (envVarList.size() == 0) {
-            return buildActions;
+            return;
         }
 
         buildActions.add(new ParametersAction(envVarList));
+    }
 
-		return buildActions;
-	}
-
-	@Nonnull
+    @Nonnull
     private static List<ParameterValue> getParameterValues(List<V1alpha1PipelineParameter> pipelineParameters) {
         List<ParameterValue> envVarList = new ArrayList<>();
         if (pipelineParameters == null) {
@@ -278,7 +227,7 @@ public abstract class JenkinsUtils {
         for (V1alpha1PipelineParameter pipeParam : pipelineParameters) {
             ParameterValue paramValue = null;
             String type = pipeParam.getType();
-            if(type == null) {
+            if (type == null) {
                 continue;
             }
 
@@ -291,10 +240,10 @@ public abstract class JenkinsUtils {
                 case PIPELINE_PARAMETER_TYPE_BOOLEAN_DEF:
                 case PIPELINE_PARAMETER_TYPE_BOOLEAN:
                     paramValue = new BooleanParameterValue(pipeParam.getName(),
-                            Boolean.valueOf(pipeParam.getValue()), pipeParam.getDescription());
+                            Boolean.parseBoolean(pipeParam.getValue()), pipeParam.getDescription());
                     break;
                 default:
-                    LOGGER.warning(() -> "Parameter type `" + pipeParam.getType() + "` is not supported.. skipping...");
+                    logger.warn("Parameter type `{}` is not supported.. skipping...", pipeParam.getType());
                     break;
             }
 
@@ -311,36 +260,34 @@ public abstract class JenkinsUtils {
         final V1ObjectMeta pipMeta = pipeline.getMetadata();
         final String namespace = pipMeta.getNamespace();
         final String pipelineName = pipMeta.getName();
-	    LOGGER.info("will trigger pipeline: " + pipelineName);
+        logger.info("will trigger pipeline: " + pipelineName);
 
         if (hasBuildRunningOrCompleted(job, pipeline)) {
-            LOGGER.info(() -> "pipeline is running or completed: "+pipelineName);
+            logger.info("pipeline is running or completed: {}", pipelineName);
             return false;
         }
 
         AlaudaJobProperty pcProp = job.getProperty(WorkflowJobProperty.class);
         if (pcProp == null) {
-            if(job.getParent() instanceof WorkflowMultiBranchProject) {
+            if (job.getParent() instanceof WorkflowMultiBranchProject) {
                 pcProp = ((WorkflowMultiBranchProject) job.getParent()).getProperties().get(MultiBranchProperty.class);
             }
         }
 
-        if(pcProp == null) {
-            LOGGER.warning(() -> "aborting trigger of pipeline " + pipeline.getMetadata().getNamespace() + "/"+ pipeline.getMetadata().getName()
-                    + "because of missing pc project property");
+        if (pcProp == null) {
+            logger.warn("aborting trigger of Pipeline '{}/{}' because of missing pc project property", namespace, pipelineName);
             return false;
         }
 
         final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
         V1alpha1PipelineConfig pipelineConfig = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(pipelineConfigName);
         if (pipelineConfig == null) {
-            LOGGER.info(() -> "pipeline config not found....: "+pipelineName+" - config name "+pipelineConfigName);
+            logger.info("PipelineConfig '{}/{}' cannot found, unable to trigger build", namespace, pipelineConfigName);
             return false;
         }
 
         // sync on intern of name should guarantee sync on same actual obj
         synchronized (pipelineConfig.getMetadata().getUid().intern()) {
-          LOGGER.info(() -> "pipeline config source credentials: "+pipelineConfig.getMetadata().getName());
 
             // We need to ensure that we do not remove
             // existing Causes from a Run since other
@@ -349,16 +296,16 @@ public abstract class JenkinsUtils {
             newCauses.add(new JenkinsPipelineCause(pipeline, pcProp.getUid()));
             CauseAction originalCauseAction = PipelineToActionMapper.removeCauseAction(pipelineName);
             if (originalCauseAction != null) {
-                if (LOGGER.isLoggable(Level.FINE)) {
-                    LOGGER.fine("Adding existing causes...");
+                if (logger.isDebugEnabled()) {
+                    logger.debug("Adding existing causes...");
                     for (Cause c : originalCauseAction.getCauses()) {
-                        LOGGER.log(Level.FINE, "trigger error", c);
+                        logger.debug("original cause {}", c);
                     }
                 }
                 newCauses.addAll(originalCauseAction.getCauses());
-                if (LOGGER.isLoggable(Level.FINE)) {
+                if (logger.isDebugEnabled()) {
                     for (Cause c : newCauses) {
-                        LOGGER.log(Level.FINE, "trigger error", c);
+                        logger.debug("new cause {}", c);
                     }
                 }
             }
@@ -371,29 +318,24 @@ public abstract class JenkinsUtils {
             V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
             String commit = null;
             if (pipMeta.getAnnotations() != null && pipMeta.getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
-              commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
+                commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
             }
 
-          if (sourceGit != null && commit != null) {
-            try {
-              URIish repoURL = new URIish(sourceGit.getUri());
-              pipelineActions.add(new RevisionParameterAction(commit, repoURL));
-            } catch (URISyntaxException e) {
-              LOGGER.log(SEVERE, "Failed to parse git repo URL" + sourceGit.getUri(), e);
+            if (sourceGit != null && commit != null) {
+                try {
+                    URIish repoURL = new URIish(sourceGit.getUri());
+                    pipelineActions.add(new RevisionParameterAction(commit, repoURL));
+                } catch (URISyntaxException e) {
+                    logger.error("Failed to parse git repo URL {}, error: {}", sourceGit.getUri(), e);
+                }
             }
-          }
-
-          LOGGER.info("pipeline got cause....: "+pipelineName+" pipeline actions "+pipelineActions);
 
             // params added by user in jenkins ui
             PipelineToActionMapper.removeParameterAction(pipelineName);
-
-            putJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
-
-            LOGGER.info(() -> "pipeline config update with job: "+pipelineName+" pipeline config "+pipelineConfig.getMetadata().getName());
+            addJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
 
             Action[] actionArray;
-            if(pipelineActions.size() == 0) {
+            if (pipelineActions.size() == 0) {
                 actionArray = new Action[]{};
             } else {
                 actionArray = pipelineActions.toArray(new Action[0]);
@@ -403,16 +345,16 @@ public abstract class JenkinsUtils {
             if (queueTaskFuture != null) {
                 // TODO should offer a better solution
                 // TODO should we add an extension point here?
-                if(job.getParent() instanceof MultiBranchProject) {
+                if (job.getParent() instanceof MultiBranchProject) {
                     BranchProjectFactory factory = ((MultiBranchProject) job.getParent()).getProjectFactory();
 
                     SCMRevisionAction revisionAction = null;
-                    for(Action action : actionArray) {
-                        if(action instanceof CauseAction) {
+                    for (Action action : actionArray) {
+                        if (action instanceof CauseAction) {
                             List<Cause> causes = ((CauseAction) action).getCauses();
-                            if(causes != null) {
-                                for(Cause cause : causes) {
-                                    if(cause instanceof SCMRevisionAction) {
+                            if (causes != null) {
+                                for (Cause cause : causes) {
+                                    if (cause instanceof SCMRevisionAction) {
                                         revisionAction = (SCMRevisionAction) cause;
                                         break;
                                     }
@@ -421,7 +363,7 @@ public abstract class JenkinsUtils {
                         }
                     }
 
-                    if(revisionAction != null) {
+                    if (revisionAction != null) {
                         factory.setRevisionHash(job, revisionAction.getRevision());
                     }
                 }
@@ -434,41 +376,25 @@ public abstract class JenkinsUtils {
                 try {
                     TimeUnit.MILLISECONDS.sleep(50);
                 } catch (InterruptedException e) {
-                    LOGGER.log(Level.SEVERE, "updatePipelinePhase Interrupted", e);
+                    logger.error("updatePipelinePhase Interrupted: {}", e.getMessage());
                     Thread.currentThread().interrupt();
                 }
                 return true;
             }
             pipeline.getStatus().setPhase(FAILED);
-            LOGGER.info(() -> "Will not schedule build for this pipeline: "+pipelineName);
+            logger.info("Cannot schedule build for this Pipeline '{}/{}', reason: queueTaskFuture is null", namespace, pipelineName);
 
             return false;
         }
     }
 
-	private static boolean hasBuildRunningOrCompleted(WorkflowJob job, V1alpha1Pipeline pipeline) {
-		return getRun(job, pipeline) != null;
-	}
+    private static boolean hasBuildRunningOrCompleted(WorkflowJob job, V1alpha1Pipeline pipeline) {
+        return getRun(job, pipeline) != null;
+    }
 
-	public synchronized static void cancelPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
-		cancelPipeline(job, pipeline, false);
-	}
-
-	public synchronized static void cancelPipeline(WorkflowJob job, V1alpha1Pipeline pipeline, boolean deleted) {
-		if (!cancelQueuedPipeline(job, pipeline)) {
-            cancelRunningPipeline(job, pipeline);
-		}
-
-		if (deleted) {
-			return;
-		}
-
-        updatePipelinePhase(pipeline, CANCELLED);
-	}
-
-	private static WorkflowRun getRun(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline) {
+    private static WorkflowRun getRun(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline) {
         return getRun(job, pipeline.getMetadata().getUid());
-	}
+    }
 
     private static WorkflowRun getRun(@Nonnull WorkflowJob job, @Nonnull String pipelineUid) {
         for (WorkflowRun run : job.getBuilds()) {
@@ -478,187 +404,27 @@ public abstract class JenkinsUtils {
             }
         }
         return null;
-	}
+    }
 
-	public synchronized static void deleteRun(WorkflowRun run) {
+    public synchronized static void deleteRun(WorkflowRun run) {
         try {
-            LOGGER.info("Deleting run: " + run.toString());
+            logger.info("Deleting run: " + run.toString());
             run.delete();
         } catch (IOException e) {
-            LOGGER.warning(() -> "Unable to delete run " + run.toString() + ":" + e.getMessage());
+            logger.warn("Unable to delete run {}, reason: {}", run.getFullDisplayName(), e);
         }
-	}
-
-	private static boolean cancelRunningPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
-		String pipelineUid = pipeline.getMetadata().getUid();
-		WorkflowRun run = getRun(job, pipelineUid);
-		if (run != null && run.isBuilding()) {
-			terminateRun(run);
-			return true;
-		}
-		return false;
-	}
-
-	private static boolean cancelNotYetStartedPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
-		String pipelineUid = pipeline.getMetadata().getUid();
-		WorkflowRun run = getRun(job, pipelineUid);
-		if (run != null && run.hasntStartedYet()) {
-			terminateRun(run);
-			return true;
-		}
-		return false;
-	}
-
-	public static void terminateRun(final WorkflowRun run) {
-		ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, RuntimeException>() {
-			@Override
-			public Void call() throws RuntimeException {
-				run.doTerm();
-				Timer.get().schedule(new SafeTimerTask() {
-					@Override
-					public void doRun() {
-						ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Void, RuntimeException>() {
-							@Override
-							public Void call() throws RuntimeException {
-								run.doKill();
-								return null;
-							}
-						});
-					}
-				}, 5, TimeUnit.SECONDS);
-				return null;
-			}
-		});
-	}
-
-	@SuppressFBWarnings("SE_BAD_FIELD")
-	private static boolean cancelQueuedPipeline(WorkflowJob job, V1alpha1Pipeline pipeline) {
-	    LOGGER.info("cancelling queued pipeline: "+pipeline.getMetadata().getName());
-        String pipelineUid = pipeline.getMetadata().getUid();
-        final Queue pipelineQueue = Jenkins.getInstance().getQueue();
-        boolean foundInQueue = false;
-        for (final Queue.Item item : pipelineQueue.getItems()) {
-            for (JenkinsPipelineCause cause : PipelineUtils.findAllAlaudaCauses(item)) {
-                if (cause.getUid().equals(pipelineUid)) {
-                    foundInQueue = true;
-                    return ACL.impersonate(ACL.SYSTEM, new NotReallyRoleSensitiveCallable<Boolean, RuntimeException>() {
-                        @Override
-                        public Boolean call() throws RuntimeException {
-                            pipelineQueue.cancel(item);
-                            return true;
-                        }
-                    });
-                }
-            }
-        }
-
-        if(!foundInQueue) {
-            LOGGER.info("Not found pipeline: %s" + pipeline.getMetadata().getName());
-        }
-
-		return cancelNotYetStartedPipeline(job, pipeline);
-	}
-
-	public static void cancelQueuedBuilds(WorkflowJob job, String pcUid) {
-        LOGGER.info(() -> "cancelling queued pipeline by uuid: "+pcUid);
-		Queue pipelineQueue = Jenkins.getInstance().getQueue();
-		for (Queue.Item item : pipelineQueue.getItems()) {
-            JenkinsPipelineCause pipelineCause = PipelineUtils.findAlaudaCause(item);
-            if(pipelineCause == null) {
-                continue;
-            }
-
-            if (pipelineCause.getPipelineConfigUid().equals(pcUid)) {
-                V1alpha1Pipeline pipeline = new V1alpha1PipelineBuilder().withMetadata(new V1ObjectMeta().namespace(pipelineCause.getNamespace())
-                        .name(pipelineCause.getName())).build();
-                cancelQueuedPipeline(job, pipeline);
-            }
-		}
-	}
-
-
-
-//    public static void maybeScheduleNext(WorkflowJob job) {
-//        WorkflowJobProperty pcp = WorkflowJobUtils.getAlaudaProperty(job);
-//        if (pcp == null) {
-//            return;
-//        }
-//
-//        List<V1alpha1Pipeline> pipelines = PipelineResourceSyncController.getCurrentPipelineController()
-//                .listPipelines(pcp.getNamespace())
-//                .stream()
-//                .filter(pipe -> {
-//                    Map<String, String> labels = pipe.getMetadata().getLabels();
-//                    if (labels == null) {
-//                        return false;
-//                    }
-//                    return pcp.getName().equals(labels.get(ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG)) && pipe.getStatus().getPhase().equals(PENDING);
-//                }).collect(Collectors.toList());
-//
-//        handlePipelineList(job, pipelines);
-//    }
-//
-//	public static void handlePipelineList(WorkflowJob job, List<V1alpha1Pipeline> pipelines) {
-//		if (pipelines.isEmpty()) {
-//			return;
-//		}
-//        pipelines.sort(new PipelineComparator());
-//		boolean isSerial = !job.isConcurrentBuild();
-//		boolean jobIsBuilding = job.isBuilding();
-//		for (int i = 0; i < pipelines.size(); i++) {
-//            V1alpha1Pipeline p = pipelines.get(i);
-//			if (!AlaudaUtils.isPipelineStrategyPipeline(p))
-//				continue;
-//			// For SerialLatestOnly we should try to cancel all pipelines before
-//			// the latest one requested.
-//            if (jobIsBuilding && !isCancelled(p.getStatus())) {
-//                return;
-//            }
-//
-//            if (i < pipelines.size() - 1) {
-//                cancelQueuedPipeline(job, p);
-//                // TODO: maybe not necessary?
-//                updatePipelinePhase(p, CANCELLED);
-//                continue;
-//            }
-//
-//			boolean buildAdded = false;
-//			try {
-//				buildAdded = PipelineResourceSyncController.addEventToJenkinsJobRun(p);
-//			} catch (IOException e) {
-//				V1ObjectMeta meta = p.getMetadata();
-//				LOGGER.log(WARNING, "Failed to add new build " + meta.getNamespace() + "/" + meta.getName(), e);
-//			}
-//			// If it's a serial build then we only need to schedule the first
-//			// build request.
-//			if (isSerial && buildAdded) {
-//				return;
-//			}
-//		}
-//	}
-
-    @Nonnull
-    public static String getFullJobName(@Nonnull WorkflowJob job) {
-		return job.getRelativeNameFrom(Jenkins.getInstance());
-	}
-
-	@Nonnull
-    public static String formatJenkinsfile(String unformattedJenkinsfile) throws IOException {
-        ModelASTPipelineDef pipelineDef = Converter.scriptToPipelineDef(unformattedJenkinsfile);
-        if (pipelineDef == null) {
-            throw new IOException("Jenkinsfile content '" + unformattedJenkinsfile + "' did not contain the 'pipeline' step or miss some steps");
-        }
-        return pipelineDef.toPrettyGroovy();
     }
+
 
     /**
      * TODO consider gather with other methods
+     *
      * @param run
      * @return
      */
-	public static boolean fromMultiBranch(@NotNull Run run) {
+    public static boolean fromMultiBranch(@NotNull Run run) {
         Job wfJob = run.getParent();
-        if(!(wfJob instanceof WorkflowJob)) {
+        if (!(wfJob instanceof WorkflowJob)) {
             return false;
         }
 
