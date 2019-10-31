@@ -9,6 +9,7 @@ import hudson.model.*;
 import hudson.model.Queue;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
+import hudson.triggers.SafeTimerTask;
 import hudson.util.XStream2;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1Jenkins;
@@ -27,6 +28,7 @@ import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.kubernetes.client.ApiException;
 import jenkins.model.Jenkins;
+import jenkins.util.Timer;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -42,6 +44,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -420,13 +423,27 @@ public class JenkinsClient {
                 JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
                 if (cause != null && cause.getName().equals(namespaceName.getName()) && cause.getNamespace().equals(namespaceName.getNamespace())) {
                     if (run.hasntStartedYet() || run.isBuilding()) {
-                        JenkinsUtils.terminateRun(run);
+                        terminateRun(run);
                         return true;
                     }
                 }
             }
         }
         return false;
+    }
+
+    public void terminateRun(final WorkflowRun run) {
+        try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
+            run.doTerm();
+            Timer.get().schedule(new SafeTimerTask() {
+                @Override
+                public void doRun() {
+                    try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
+                        run.doKill();
+                    }
+                }
+            }, 5, TimeUnit.SECONDS);
+        }
     }
 
 
