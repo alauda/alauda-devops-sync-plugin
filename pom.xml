@@ -28,7 +28,7 @@
 
   <groupId>io.alauda.jenkins.plugins</groupId>
   <artifactId>alauda-devops-sync</artifactId>
-  <version>2.4.3-SNAPSHOT</version>
+  <version>${revision}${sha1}${changelist}</version>
   <packaging>hpi</packaging>
 
   <properties>
@@ -50,9 +50,9 @@
     <validation-api.version>1.1.0.Final</validation-api.version>
     <lombok.version>1.16.10</lombok.version>
 
-    <revision>0.2.4</revision>
+    <revision>2.5</revision>
     <changelist>-SNAPSHOT</changelist>
-    <sha1 />
+    <sha1/>
   </properties>
 
   <name>Alauda DevOps Sync</name>
@@ -413,83 +413,39 @@
 
   <profiles>
     <profile>
-      <id>release</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.6</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-enforcer-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>enforce-no-snapshots</id>
-                <goals>
-                  <goal>enforce</goal>
-                </goals>
-                <configuration>
-                  <rules>
-                    <requireReleaseDeps>
-                      <message>No Snapshots Allowed!</message>
-                    </requireReleaseDeps>
-                  </rules>
-                  <fail>true</fail>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-                <configuration>
-                  <additionalparam>${javadoc.opts}</additionalparam>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>2.4</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
+      <id>incrementals</id>
+      <properties>
+        <releases.id>nexus.acp.alauda.cn</releases.id>
+        <releases.name>nexus.acp.alauda.cn</releases.name>
+        <releases.url>https://nexus.acp.alauda.cn/repository/maven-incrementals/</releases.url>
+        <snapshots.id>nexus.acp.alauda.cn</snapshots.id>
+        <snapshots.name>nexus.acp.alauda.cn</snapshots.name>
+        <snapshots.url>https://nexus.acp.alauda.cn/repository/maven-snapshots/</snapshots.url>
+      </properties>
     </profile>
-
     <profile>
-      <id>doclint-java8-disable</id>
+      <id>default</id>
       <activation>
-        <jdk>[1.8,)</jdk>
+        <activeByDefault>true</activeByDefault>
       </activation>
       <properties>
-        <javadoc.opts>-Xdoclint:none</javadoc.opts>
+        <releases.id>nexus.acp.alauda.cn</releases.id>
+        <releases.name>nexus.acp.alauda.cn</releases.name>
+        <releases.url>https://nexus.acp.alauda.cn/repository/maven-releases/</releases.url>
+        <snapshots.id>nexus.acp.alauda.cn</snapshots.id>
+        <snapshots.name>nexus.acp.alauda.cn</snapshots.name>
+        <snapshots.url>https://nexus.acp.alauda.cn/repository/maven-snapshots/</snapshots.url>
       </properties>
     </profile>
   </profiles>
+  <distributionManagement>
+    <repository>
+      <id>${releases.id}</id>
+      <url>${releases.url}</url>
+    </repository>
+    <snapshotRepository>
+      <id>${snapshots.id}</id>
+      <url>${snapshots.url}</url>
+    </snapshotRepository>
+  </distributionManagement>
 </project>
