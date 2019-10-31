@@ -1,15 +1,19 @@
 // https://jenkins.io/doc/book/pipeline/syntax/
-// Multi-branch discovery pattern: PR-.*
 @Library('alauda-cicd') _
 
 // global variables for pipeline
 def GIT_BRANCH
 def GIT_COMMIT
 def FOLDER = "."
+// image can be used for promoting...
+def IMAGE
+def CURRENT_VERSION
+def code_data
 def DEBUG = false
-def deployment
 def RELEASE_VERSION
-def RELEASE_BUILD
+def TEST_IMAGE
+def hpiRelease
+
 pipeline {
 	// 运行node条件
 	// 为了扩容jenkins的功能一般情况会分开一些功能到不同的node上面
@@ -25,16 +29,22 @@ pipeline {
 		disableConcurrentBuilds()
 	}
 
+	parameters {
+				booleanParam(name: 'DEBUG', defaultValue: false, description: 'DEBUG the pipeline')
+	}
+
 	//(optional) 环境变量
 	environment {
 		// for building an scanning
+		JENKINS_IMAGE = "jenkins/jenkins:lts"
 		REPOSITORY = "alauda-devops-sync-plugin"
+    PLUGIN_NAME = "alauda-devops-sync"
 		OWNER = "alauda"
+		IMAGE_TAG = "dev"
 		// sonar feedback user
 		// needs to change together with the credentialsID
 		SCM_FEEDBACK_ACCOUNT = "alaudabot"
 		SONARQUBE_SCM_CREDENTIALS = "alaudabot"
-		DEPLOYMENT = "alauda-devops-sync-plugin"
 		DINGDING_BOT = "devops-chat-bot"
 		TAG_CREDENTIALS = "alaudabot-github"
 		IN_K8S = "true"
@@ -44,6 +54,7 @@ pipeline {
 		stage('Checkout') {
 			steps {
 				script {
+					DEBUG = params.DEBUG
 					// checkout code
 					def scmVars = checkout scm
 					// extract git information
@@ -51,59 +62,86 @@ pipeline {
 					env.GIT_BRANCH = scmVars.GIT_BRANCH
 					GIT_COMMIT = "${scmVars.GIT_COMMIT}"
 					GIT_BRANCH = "${scmVars.GIT_BRANCH}"
-					pom = readMavenPom file: 'pom.xml'
-					//RELEASE_VERSION = pom.properties['revision'] + pom.properties['sha1'] + pom.properties['changelist']
-					RELEASE_VERSION = pom.version
-				}
-				container('golang'){
-                    // installing golang coverage and report tools
-                    sh "go get -u github.com/alauda/gitversion"
-                    script {
-                        if (GIT_BRANCH != "master") {
-                            def branch = GIT_BRANCH.replace("/","-").replace("_","-")
-                            RELEASE_BUILD = "${RELEASE_VERSION}.${branch}.${env.BUILD_NUMBER}"
-                        } else {
-                            sh "gitversion patch ${RELEASE_VERSION} > patch"
-                            RELEASE_BUILD = readFile("patch").trim()
-                        }
 
-                        sh '''
-                            echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties
-                            echo "build=$RELEASE_BUILD" >> src/main/resources/debug.properties
-                            echo "version=RELEASE_VERSION" >> src/main/resources/debug.properties
-                            cat src/main/resources/debug.properties
-                        '''
-                    }
+					hpiRelease = deploy.HPIRelease(scmVars)
+					hpiRelease.debug = DEBUG
+					hpiRelease.caculate()
+
+					RELEASE_VERSION = hpiRelease.releaseVersion
+
+					sh 'echo "commit=$GIT_COMMIT" > src/main/resources/debug.properties'
+					sh 'echo "build=$RELEASE_VERSION" >> src/main/resources/debug.properties'
+					echo "RELEASE_VERSION ${RELEASE_VERSION}"
 				}
 			}
 		}
-        stage('Build') {
-            steps {
-                script {
-                    container('java'){
-                        sh """
-                            mvn clean install -U findbugs:findbugs -Dmaven.test.skip=true -Dmaven.site.skip=true -Dmaven.javadoc.skip=true
-                        """
-                    }
 
-                    archiveArtifacts 'target/*.hpi'
-                }
-            }
-        }
-		// sonar scan
-		stage('Sonar') {
+		stage('CI'){
 			steps {
 				script {
-				    container('tools'){
-                        deploy.scan(
-                            REPOSITORY,
-                            GIT_BRANCH,
-                            SONARQUBE_SCM_CREDENTIALS,
-                            FOLDER,
-                            DEBUG,
-                            OWNER,
-                            SCM_FEEDBACK_ACCOUNT).start()
-				    }
+					container('java'){
+							sh """
+						mvn clean install -U -Dmaven.test.skip=true
+							"""
+					}
+
+							archiveArtifacts 'target/*.hpi'
+				}
+			}
+		}
+
+		stage("Code Scan"){
+			steps{
+				container("tools"){
+					script{
+						deploy.scan().startACPSonar(null, "-D sonar.projectVersion=${RELEASE_VERSION}")
+					}
+				}
+			}
+		}
+
+		stage('Deploy to Nexus') {
+			steps{
+				script{
+					hpiRelease.deploy("-Dmaven.test.skip=true -Dmaven.site.skip=true -Dmaven.javadoc.skip=true")
+					if(hpiRelease.deployToUC){
+						hpiRelease.triggerBackendIndexing(RELEASE_VERSION)
+						hpiRelease.waitUC(PLUGIN_NAME, RELEASE_VERSION, 15)
+					}
+				}
+			}
+		}
+		// after build it should start deploying
+		stage('Tag Git') {
+			// limit this stage to master or release only
+			when {
+				expression { hpiRelease.shouldTag }
+			}
+			steps {
+				script {
+					// adding tag to the current commit
+					withCredentials([usernamePassword(credentialsId: TAG_CREDENTIALS, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+						sh "git tag -l | xargs git tag -d" // clean local tags
+						sh """
+							git config --global user.email "alaudabot@alauda.io"
+							git config --global user.name "Alauda Bot"
+								"""
+						def repo = "https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${OWNER}/${REPOSITORY}.git"
+						sh "git fetch --tags ${repo}" // retrieve all tags
+						sh("git tag -a ${hpiRelease.tag} -m 'auto add release tag by jenkins'")
+						sh("git push ${repo} --tags")
+					}
+				}
+			}
+		}
+
+		stage("Delivery Jenkins") {
+			when {
+				expression { hpiRelease.deliveryJenkins }
+			}
+			steps {
+			script {
+					hpiRelease.triggerJenkins(PLUGIN_NAME, "io.alauda.jenkins.plugins;${RELEASE_VERSION}")
 				}
 			}
 		}
@@ -116,19 +154,16 @@ pipeline {
 		success {
 			echo "Horay!"
 			script {
-				deploy.notificationSuccess(DEPLOYMENT, DINGDING_BOT, "流水线完成了", RELEASE_BUILD)
+				deploy.notificationSuccess(REPOSITORY, DINGDING_BOT, "流水线完成了", RELEASE_VERSION)
 			}
 		}
 		// 失败
 		failure {
-			// check the npm log
-			// fails lets check if it
-			script {
-			    echo "damn!"
-			    deploy.notificationFailed(DEPLOYMENT, DINGDING_BOT, "流水线失败了", RELEASE_BUILD)
+			script{
+			 deploy.notificationFailed(REPOSITORY, DINGDING_BOT, "流水线失败了", RELEASE_VERSION)
 			}
 		}
-		always { junit allowEmptyResults: true, testResults: '**/target/surefire-reports/**/*.xml' }
+		always { junit allowEmptyResults: true, testResults: "**/target/surefire-reports/**/*.xml" }
 	}
 }
 
