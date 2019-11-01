@@ -17,7 +17,7 @@ package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
 import hudson.util.FormValidation;
-import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import jenkins.model.GlobalConfiguration;
 import net.sf.json.JSONObject;
 import org.jenkinsci.Symbol;
@@ -38,8 +38,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     private int resyncPeriod = 0;
     private transient String errorMsg;
     private String jobNamePattern;
-    private String skipOrganizationPrefix;
-    private String skipBranchSuffix;
 
     public AlaudaSyncGlobalConfiguration() {
         this.load();
@@ -67,7 +65,7 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
             return true;
         }
 
-        ResourceSyncManager.getSyncManager().restart();
+        ResourceControllerManager.getControllerManager().restart();
         return true;
     }
 
@@ -110,25 +108,6 @@ public class AlaudaSyncGlobalConfiguration extends GlobalConfiguration {
     public void setJobNamePattern(String jobNamePattern) {
         this.jobNamePattern = jobNamePattern;
     }
-
-    public String getSkipOrganizationPrefix() {
-        return this.skipOrganizationPrefix;
-    }
-
-    @DataBoundSetter
-    public void setSkipOrganizationPrefix(String skipOrganizationPrefix) {
-        this.skipOrganizationPrefix = skipOrganizationPrefix;
-    }
-
-    public String getSkipBranchSuffix() {
-        return this.skipBranchSuffix;
-    }
-
-    @DataBoundSetter
-    public void setSkipBranchSuffix(String skipBranchSuffix) {
-        this.skipBranchSuffix = skipBranchSuffix;
-    }
-
 
     public int getResyncPeriod() {
         return resyncPeriod;

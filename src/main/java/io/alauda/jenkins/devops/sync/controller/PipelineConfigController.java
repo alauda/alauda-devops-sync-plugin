@@ -13,7 +13,6 @@ import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineConfigClient;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
-import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.alauda.jenkins.devops.sync.exception.ConditionsUtils;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -40,7 +39,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Extension
-public class PipelineConfigController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+public class PipelineConfigController implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
     private static final Logger logger = LoggerFactory.getLogger(PipelineConfigController.class);
     private static final String CONTROLLER_NAME = "PipelineConfigController";
@@ -51,24 +50,22 @@ public class PipelineConfigController implements ResourceSyncController, Connect
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
-        SharedIndexInformer<V1alpha1PipelineConfig> informer = InformerUtils.getExistingSharedIndexInformer(factory, V1alpha1PipelineConfig.class);
+        SharedIndexInformer<V1alpha1PipelineConfig> informer = factory.getExistingSharedIndexInformer(V1alpha1PipelineConfig.class);
         if (informer == null) {
             informer = factory.sharedIndexInformerFor(
-                    callGeneratorParams -> {
-                        return api.listPipelineConfigForAllNamespacesCall(
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null,
-                                callGeneratorParams.resourceVersion,
-                                callGeneratorParams.timeoutSeconds,
-                                callGeneratorParams.watch,
-                                null,
-                                null
-                        );
-                    }, V1alpha1PipelineConfig.class, V1alpha1PipelineConfigList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+                    callGeneratorParams -> api.listPipelineConfigForAllNamespacesCall(
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            callGeneratorParams.resourceVersion,
+                            callGeneratorParams.timeoutSeconds,
+                            callGeneratorParams.watch,
+                            null,
+                            null
+                    ), V1alpha1PipelineConfig.class, V1alpha1PipelineConfigList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
         }
 
 
@@ -161,7 +158,7 @@ public class PipelineConfigController implements ResourceSyncController, Connect
         private Lister<V1alpha1PipelineConfig> lister;
         private JenkinsClient jenkinsClient;
 
-        public PipelineConfigReconciler(Lister<V1alpha1PipelineConfig> lister) {
+        PipelineConfigReconciler(Lister<V1alpha1PipelineConfig> lister) {
             this.lister = lister;
             this.jenkinsClient = JenkinsClient.getInstance();
         }

@@ -20,7 +20,7 @@ import hudson.ExtensionList;
 import hudson.model.Item;
 import hudson.model.listeners.ItemListener;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
-import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -55,7 +55,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onCreated(Item item) {
-        if (!ResourceSyncManager.getSyncManager().isStarted()) {
+        if (!ResourceControllerManager.getControllerManager().isStarted()) {
             return;
         }
 
@@ -69,7 +69,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onUpdated(Item item) {
-        if (!ResourceSyncManager.getSyncManager().isStarted()) {
+        if (!ResourceControllerManager.getControllerManager().isStarted()) {
             return;
         }
 
@@ -83,7 +83,7 @@ public class JenkinsPipelineJobListener extends ItemListener {
 
     @Override
     public void onDeleted(Item item) {
-        if (!ResourceSyncManager.getSyncManager().isStarted()) {
+        if (!ResourceControllerManager.getControllerManager().isStarted()) {
             logger.info("no configuration... onDelete ignored...");
             return;
         }

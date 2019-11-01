@@ -9,7 +9,6 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.NamespaceClient;
-import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.apis.CoreV1Api;
 import io.kubernetes.client.extended.controller.Controller;
@@ -32,7 +31,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Extension
-public class NamespaceController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+public class NamespaceController implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
     private static final Logger logger = LoggerFactory.getLogger(NamespaceController.class);
     private static final String CONTROLLER_NAME = "NamespaceController";
@@ -43,7 +42,7 @@ public class NamespaceController implements ResourceSyncController, ConnectionAl
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
         CoreV1Api api = new CoreV1Api();
 
-        SharedIndexInformer<V1Namespace> informer = InformerUtils.getExistingSharedIndexInformer(factory, V1Namespace.class);
+        SharedIndexInformer<V1Namespace> informer = factory.getExistingSharedIndexInformer(V1Namespace.class);
         if (informer == null) {
             informer = factory.sharedIndexInformerFor(
                     callGeneratorParams -> api.listNamespaceCall(
@@ -118,7 +117,7 @@ public class NamespaceController implements ResourceSyncController, ConnectionAl
     static class NamespaceReconciler implements Reconciler {
         private Lister<V1Namespace> namespaceLister;
 
-        public NamespaceReconciler(Lister<V1Namespace> namespaceLister) {
+        NamespaceReconciler(Lister<V1Namespace> namespaceLister) {
             this.namespaceLister = namespaceLister;
         }
 

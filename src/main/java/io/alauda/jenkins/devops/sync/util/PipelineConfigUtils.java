@@ -9,6 +9,7 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineDependency;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
 import jenkins.model.Jenkins;
+import org.apache.commons.collections4.CollectionUtils;
 
 import javax.annotation.Nonnull;
 import javax.validation.constraints.NotNull;

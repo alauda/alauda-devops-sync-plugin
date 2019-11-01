@@ -36,13 +36,5 @@
         <f:textbox/>
       </f:entry>
     </f:advanced>
-    <f:invisibleEntry title="Skip organization prefix" field="skipOrganizationPrefix"
-             description="What organization name prefix should we omit from the generated Alauda DevOps PipelineConfigs resources created by the sync plugin. Its common for one user/team to use the same git organization so prefixing all PipelineConfig names with the organization name can be noisy.">
-      <f:textbox/>
-    </f:invisibleEntry>
-    <f:invisibleEntry title="Skip branch suffix" field="skipBranchSuffix"
-             description="What branch name suffix should we omit from the generated Alauda DevOps PipelineConfig resources created by the sync plugin.  Its common to use a common branch name like `master` which we can omit from names to avoid noise.">
-      <f:textbox/>
-    </f:invisibleEntry>
   </f:section>
 </j:jelly>

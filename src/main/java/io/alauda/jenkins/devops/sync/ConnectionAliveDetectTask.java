@@ -5,7 +5,7 @@ import hudson.ExtensionList;
 import hudson.ExtensionPoint;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
-import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.kubernetes.client.ApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +30,7 @@ public class ConnectionAliveDetectTask extends AsyncPeriodicWork {
 
     @Override
     protected void execute(TaskListener listener) throws IOException, InterruptedException {
-        if (!ResourceSyncManager.getSyncManager().isStarted()) {
+        if (!ResourceControllerManager.getControllerManager().isStarted()) {
             logger.info("ResourceSyncManager has not started yet, will skip this task");
             return;
         }
@@ -86,7 +86,7 @@ public class ConnectionAliveDetectTask extends AsyncPeriodicWork {
 
         if (needToReconnect) {
             heartbeatLostCount.clear();
-            ResourceSyncManager.getSyncManager().restart();
+            ResourceControllerManager.getControllerManager().restart();
         }
     }
 

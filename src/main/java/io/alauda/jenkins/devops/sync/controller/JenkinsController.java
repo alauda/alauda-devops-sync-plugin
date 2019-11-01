@@ -39,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Extension
-public class JenkinsController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+public class JenkinsController implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
     private static final Logger logger = LoggerFactory.getLogger(JenkinsController.class);
     private static final String CONTROLLER_NAME = "JenkinsController";
 
@@ -117,7 +117,7 @@ public class JenkinsController implements ResourceSyncController, ConnectionAliv
 
         private Lister<V1alpha1Jenkins> lister;
 
-        public JenkinsReconciler(Lister<V1alpha1Jenkins> lister) {
+        JenkinsReconciler(Lister<V1alpha1Jenkins> lister) {
             this.lister = lister;
         }
 
@@ -133,7 +133,7 @@ public class JenkinsController implements ResourceSyncController, ConnectionAliv
             V1alpha1Jenkins jenkins = lister.get(jenkinsName);
             if (jenkins == null) {
                 logger.error("[{}] Jenkins '{}' has been deleted, will stop syncing resource", CONTROLLER_NAME, jenkinsName);
-                ResourceSyncManager.getSyncManager().restart();
+                ResourceControllerManager.getControllerManager().restart();
                 return new Result(false);
             }
 

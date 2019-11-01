@@ -3,7 +3,7 @@ package io.alauda.jenkins.devops.sync;
 import hudson.Extension;
 import hudson.model.AdministrativeMonitor;
 import hudson.util.HttpResponses;
-import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.Symbol;
@@ -35,12 +35,11 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
 
     @Override
     public boolean isActivated() {
+        boolean isStarted = ResourceControllerManager.getControllerManager().isStarted();
 
-        boolean isStarted = ResourceSyncManager.getSyncManager().isStarted();
-
-        message = ResourceSyncManager.getSyncManager().getPluginStatus();
+        message = ResourceControllerManager.getControllerManager().getPluginStatus();
         if (!isStarted && StringUtils.isEmpty(message)) {
-            message = "Resource Sync Manger has not start yet";
+            message = "Resource Sync Manger has not started yet";
         }
 
         return !isStarted || !StringUtils.isEmpty(message);

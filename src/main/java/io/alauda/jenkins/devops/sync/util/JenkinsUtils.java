@@ -29,6 +29,7 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.kubernetes.client.models.V1ObjectMeta;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.MultiBranchProject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.eclipse.jgit.transport.URIish;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;

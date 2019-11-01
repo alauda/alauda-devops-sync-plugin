@@ -6,10 +6,11 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.Item;
 import hudson.model.TaskListener;
 import hudson.security.ACL;
+import hudson.security.ACLContext;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.ApiException;
 import jenkins.model.Jenkins;
@@ -39,18 +40,14 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
         LOGGER.info("Start to scan orphan items.");
         orphanList.clear();
 
-        final SecurityContext previousContext = ACL.impersonate(ACL.SYSTEM);
-        try {
-            ResourceSyncManager resourceSyncManager = ResourceSyncManager.getSyncManager();
+        ResourceControllerManager resourceControllerManager = ResourceControllerManager.getControllerManager();
+        if (!resourceControllerManager.isStarted()) {
+            LOGGER.info("SyncManager has not started yet, reason {}, will skip this Orphan Job check", resourceControllerManager.getPluginStatus());
+            return;
+        }
 
-            if (!resourceSyncManager.isStarted()) {
-                LOGGER.info("SyncManager has not started yet, reason {}, will skip this Orphan Job check", resourceSyncManager.getPluginStatus());
-                return;
-            }
-
+        try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
             scanOrphanItems();
-        } finally {
-            SecurityContextHolder.setContext(previousContext);
         }
     }
 

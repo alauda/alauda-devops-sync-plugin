@@ -8,7 +8,7 @@ import hudson.model.TopLevelItem;
 import hudson.security.ACL;
 import io.alauda.devops.java.client.models.V1alpha1JenkinsBinding;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.controller.ResourceSyncManager;
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.kubernetes.client.models.V1Namespace;
 import jenkins.model.Jenkins;
 import org.acegisecurity.context.SecurityContext;
@@ -40,10 +40,10 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
                 return;
             }
 
-            ResourceSyncManager resourceSyncManager = ResourceSyncManager.getSyncManager();
+            ResourceControllerManager resourceControllerManager = ResourceControllerManager.getControllerManager();
 
-            if (!resourceSyncManager.isStarted()) {
-                logger.info("SyncManager has not started yet, reason {}, will skip this Empty Folder Check", resourceSyncManager.getPluginStatus());
+            if (!resourceControllerManager.isStarted()) {
+                logger.info("SyncManager has not started yet, reason {}, will skip this Empty Folder Check", resourceControllerManager.getPluginStatus());
                 return;
             }
 

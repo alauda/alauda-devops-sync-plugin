@@ -33,8 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY;
 
 @Extension
-public class ResourceSyncManager implements KubernetesClusterConfigurationListener {
-    private static final Logger logger = LoggerFactory.getLogger(ResourceSyncManager.class);
+public class ResourceControllerManager implements KubernetesClusterConfigurationListener {
+    private static final Logger logger = LoggerFactory.getLogger(ResourceControllerManager.class);
 
     private ControllerManager controllerManager;
     private ExecutorService controllerManagerThread;
@@ -51,28 +51,28 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
             Wait.poll(Duration.ofMinutes(1), Duration.ofDays(1), () -> {
                 boolean isEnabled = AlaudaSyncGlobalConfiguration.get().isEnabled();
                 if (!isEnabled) {
-                    logger.warn("[ResourceSyncManager] Sync plugin is disabled, won't start controllers");
+                    logger.warn("[ResourceControllerManager] Alauda DevOps Sync plugin is disabled, won't start controllers");
                     return false;
                 }
 
                 String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
                 if (!checkJenkinsService(jenkinsService)) {
-                    logger.warn("[ResourceSyncManager] The target Jenkins service {} is invalid, reason {}", jenkinsService, pluginStatus);
+                    logger.warn("[ResourceControllerManager] The target Jenkins service {} is invalid, reason {}", jenkinsService, pluginStatus);
                     return false;
                 }
                 return true;
             });
 
-            logger.warn("[ResourceSyncManager] Starting initialize controller manager");
+            logger.warn("[ResourceControllerManager] Starting initialize controller manager");
             SharedInformerFactory informerFactory = new SharedInformerFactory();
 
-            ExtensionList<ResourceSyncController> resourceSyncControllers = ResourceSyncController.all();
-            logger.warn("[ResourceSyncManager] Found {} resourceSyncControllers", resourceSyncControllers.size());
+            ExtensionList<ResourceController> resourceControllers = ResourceController.all();
+            logger.warn("[ResourceControllerManager] Found {} resource controllers", resourceControllers.size());
 
             ControllerManagerBuilder controllerManagerBuilder =
                     ControllerBuilder.controllerManagerBuilder(informerFactory);
 
-            resourceSyncControllers.forEach(resourceSyncController -> resourceSyncController.add(controllerManagerBuilder, informerFactory));
+            resourceControllers.forEach(resourceSyncController -> resourceSyncController.add(controllerManagerBuilder, informerFactory));
 
             controllerManager = controllerManagerBuilder.build();
 
@@ -100,15 +100,15 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
         }
 
         if (reason == null) {
-            logger.warn("[ResourceSyncManager] ResourceSyncManager is stopped, reason is null, seems stopped by user");
+            logger.warn("[ResourceControllerManager] ResourceControllerManager is stopped, reason is null, seems stopped by user");
         } else {
-            logger.warn("[ResourceSyncManager] ResourceSyncManager is stopped, reason: {}", reason.getMessage());
+            logger.warn("[ResourceControllerManager] ResourceControllerManager is stopped, reason: {}", reason.getMessage());
         }
     }
 
     private boolean checkJenkinsService(String jenkinsService) {
         if (StringUtils.isEmpty(jenkinsService)) {
-            pluginStatus = "[ResourceSyncManager] Plugin cannot get mapped Jenkins Service, jenkins service name in configuration is empty";
+            pluginStatus = "[ResourceControllerManager] Plugin cannot get mapped Jenkins Service, jenkins service name in configuration is empty";
             return false;
         }
 
@@ -116,11 +116,11 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
         try {
             currentJenkins = getJenkins(jenkinsService);
         } catch (ApiException e) {
-            pluginStatus = String.format("[ResourceSyncManager] Plugin cannot get mapped Jenkins Service by name %s in devops-apiserver, reason %s, body %s", jenkinsService, e.getMessage(), e.getResponseBody());
+            pluginStatus = String.format("[ResourceControllerManager] Plugin cannot get mapped Jenkins Service by name %s in devops-apiserver, reason %s, body %s", jenkinsService, e.getMessage(), e.getResponseBody());
             return false;
         }
         if (currentJenkins == null) {
-            pluginStatus = String.format("[ResourceSyncManager] Plugin cannot to get mapped Jenkins Service by name %s in devops-apiserver, please ensure the jenkins service name is correct", jenkinsService);
+            pluginStatus = String.format("[ResourceControllerManager] Plugin cannot to get mapped Jenkins Service by name %s in devops-apiserver, please ensure the jenkins service name is correct", jenkinsService);
             return false;
         }
 
@@ -132,12 +132,12 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
 
             newJenkins.getMetadata().getAnnotations().put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY, currentFingerprint);
             if (!JenkinsClient.getInstance().updateJenkins(currentJenkins, newJenkins)) {
-                pluginStatus = String.format("[ResourceSyncManager] Unable to generate patch for Jenkins '%s', reason: %s",
+                pluginStatus = String.format("[ResourceControllerManager] Unable to generate patch for Jenkins '%s', reason: %s",
                         jenkinsService, "Patch failed");
                 return false;
             }
         } else if (!org.apache.commons.lang.StringUtils.equals(currentFingerprint, fingerprint)) {
-            pluginStatus = String.format("[ResourceSyncManager] Fingerprint from target Jenkins service %s does not match with current Jenkins %s.", fingerprint, currentFingerprint);
+            pluginStatus = String.format("[ResourceControllerManager] Fingerprint from target Jenkins service %s does not match with current Jenkins %s.", fingerprint, currentFingerprint);
             return false;
         }
         return true;
@@ -162,7 +162,7 @@ public class ResourceSyncManager implements KubernetesClusterConfigurationListen
         this.onConfigChange(cluster, Configuration.getDefaultApiClient());
     }
 
-    public static ResourceSyncManager getSyncManager() {
-        return ExtensionList.lookup(ResourceSyncManager.class).get(0);
+    public static ResourceControllerManager getControllerManager() {
+        return ExtensionList.lookup(ResourceControllerManager.class).get(0);
     }
 }
