@@ -1,30 +1,30 @@
-//package io.alauda.jenkins.devops.sync.util;
+// package io.alauda.jenkins.devops.sync.util;
 //
-//import antlr.ANTLRException;
-//import hudson.model.*;
-//import hudson.triggers.SCMTrigger;
-//import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
-//import io.alauda.devops.java.client.models.V1alpha1PipelineParameterBuilder;
-//import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
-//import io.alauda.jenkins.devops.sync.WithoutK8s;
-//import io.alauda.kubernetes.api.model.*;
-//import jenkins.model.JenkinsLocationConfiguration;
-//import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-//import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
-//import org.junit.Rule;
-//import org.junit.Test;
-//import org.jvnet.hudson.test.WithoutJenkins;
+// import antlr.ANTLRException;
+// import hudson.model.*;
+// import hudson.triggers.SCMTrigger;
+// import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
+// import io.alauda.devops.java.client.models.V1alpha1PipelineParameterBuilder;
+// import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
+// import io.alauda.jenkins.devops.sync.WithoutK8s;
+// import io.alauda.kubernetes.api.model.*;
+// import jenkins.model.JenkinsLocationConfiguration;
+// import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+// import org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty;
+// import org.junit.Rule;
+// import org.junit.Test;
+// import org.jvnet.hudson.test.WithoutJenkins;
 //
-//import java.io.IOException;
-//import java.util.ArrayList;
-//import java.util.Collections;
-//import java.util.List;
-//import java.util.Map;
+// import java.io.IOException;
+// import java.util.ArrayList;
+// import java.util.Collections;
+// import java.util.List;
+// import java.util.Map;
 //
-//import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-//import static org.junit.Assert.*;
+// import static io.alauda.jenkins.devops.sync.constants.Constants.*;
+// import static org.junit.Assert.*;
 //
-//public class JenkinsUtilsTest {
+// public class JenkinsUtilsTest {
 //    @Rule
 //    public JenkinsK8sRule j = new JenkinsK8sRule();
 //
@@ -50,9 +50,11 @@
 //        // not support param type
 //        params = new ArrayList<>();
 //        params.add(new V1alpha1PipelineParameterBuilder()
-//                .withType("not-support").withName("name").withValue("value").withDescription("desc")
+//
+// .withType("not-support").withName("name").withValue("value").withDescription("desc")
 //                .build());
-//        Map<String, ParameterDefinition> resultParams = JenkinsUtils.addJobParamForPipelineParameters(wfJob, params, true);
+//        Map<String, ParameterDefinition> resultParams =
+// JenkinsUtils.addJobParamForPipelineParameters(wfJob, params, true);
 //        assertNotNull(resultParams);
 //        assertEquals(0, resultParams.size());
 //    }
@@ -74,7 +76,8 @@
 //
 //    @Test
 //    public void getBuildConfigName() throws InterruptedException, IOException {
-//        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), "sleep 9999");
+//        PipelineConfig config = j.getDevOpsInit().createPipelineConfig(j.getClient(), "sleep
+// 9999");
 //        assertNotNull(config);
 //
 //        final String configName = config.getMetadata().getName();
@@ -95,7 +98,8 @@
 //        JenkinsUtils.cancelQueuedBuilds(job, "fake");
 //
 //        JenkinsUtils.deleteRun(job, pipeline);
-//        assertNull(j.getDevOpsInit().getPipeline(j.getClient(), pipeline.getMetadata().getName()));
+//        assertNull(j.getDevOpsInit().getPipeline(j.getClient(),
+// pipeline.getMetadata().getName()));
 //
 //        // not synced workflowJob
 //        WorkflowJob wf = j.createProject(WorkflowJob.class);
@@ -117,20 +121,25 @@
 //
 //        // one of them is null
 //        assertNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(Collections.EMPTY_LIST, null));
-//        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(null, Collections.EMPTY_LIST));
+//        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(null,
+// Collections.EMPTY_LIST));
 //
 //        List<Action> buildActions = new ArrayList<>();
 //        // empty
 //        List<PipelineParameter> pipelineParameters = new ArrayList<>();
-//        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions));
+//        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters,
+// buildActions));
 //
 //        // not supported type
 //        pipelineParameters.add(new PipelineParameter());
-//        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions));
+//        assertNotNull(JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters,
+// buildActions));
 //
 //        // supported type
-//        pipelineParameters.add(new PipelineParameter("", "WatcherAliveCheck", PIPELINE_PARAMETER_TYPE_STRING, "WatcherAliveCheck"));
-//        buildActions = JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters, buildActions);
+//        pipelineParameters.add(new PipelineParameter("", "WatcherAliveCheck",
+// PIPELINE_PARAMETER_TYPE_STRING, "WatcherAliveCheck"));
+//        buildActions = JenkinsUtils.putJobRunParamsFromEnvAndUIParams(pipelineParameters,
+// buildActions);
 //        assertNotNull(buildActions);
 //        assertEquals(1, buildActions.size());
 //    }
@@ -152,11 +161,13 @@
 ////
 ////        {
 ////            // not replace exists
-////            Map<String, ParameterDefinition> defMap = JenkinsUtils.addJobParamForBuildEnvs(wfJob, strategy, false);
+////            Map<String, ParameterDefinition> defMap =
+// JenkinsUtils.addJobParamForBuildEnvs(wfJob, strategy, false);
 ////            assertNotNull(defMap);
 ////            assertEquals(1, defMap.size());
 ////
-////            ParametersDefinitionProperty paramDefProperty = wfJob.getProperty(ParametersDefinitionProperty.class);
+////            ParametersDefinitionProperty paramDefProperty =
+// wfJob.getProperty(ParametersDefinitionProperty.class);
 ////            assertNotNull(paramDefProperty);
 ////
 ////            ParameterDefinition def = paramDefProperty.getParameterDefinition(envName);
@@ -165,12 +176,14 @@
 ////                    def.getClass());
 ////            assertEquals("wrong with value of parameters", envNameVal,
 ////                    ((StringParameterDefinition) def).getDefaultValue());
-////            assertEquals("wrong with description", PARAM_FROM_ENV_DESCRIPTION, def.getDescription());
+////            assertEquals("wrong with description", PARAM_FROM_ENV_DESCRIPTION,
+// def.getDescription());
 ////        }
 ////
 ////        {
 ////            // replace exists
-////            Map<String, ParameterDefinition> defMap = JenkinsUtils.addJobParamForBuildEnvs(wfJob, strategy, true);
+////            Map<String, ParameterDefinition> defMap =
+// JenkinsUtils.addJobParamForBuildEnvs(wfJob, strategy, true);
 ////            assertNotNull(defMap);
 ////            assertEquals(1, defMap.size());
 ////        }
@@ -182,11 +195,13 @@
 ////
 ////        {
 ////            // not replace exists
-////            Map<String, ParameterDefinition> defMap = JenkinsUtils.addJobParamForBuildEnvs(wfJob, strategy, false);
+////            Map<String, ParameterDefinition> defMap =
+// JenkinsUtils.addJobParamForBuildEnvs(wfJob, strategy, false);
 ////            assertNotNull(defMap);
 ////            assertEquals(2, defMap.size());
 ////
-////            ParametersDefinitionProperty defPro = wfJob.getProperty(ParametersDefinitionProperty.class);
+////            ParametersDefinitionProperty defPro =
+// wfJob.getProperty(ParametersDefinitionProperty.class);
 ////            assertNotNull(defPro);
 ////            List<ParameterDefinition> defs = defPro.getParameterDefinitions();
 ////            assertNotNull(defs);
@@ -204,7 +219,8 @@
 //        assertNotNull(exs);
 //        assertEquals(0, exs.size());
 //
-//        PipelineTriggersJobProperty triggerPro = wfJob.getProperty(PipelineTriggersJobProperty.class);
+//        PipelineTriggersJobProperty triggerPro =
+// wfJob.getProperty(PipelineTriggersJobProperty.class);
 //        assertNotNull(triggerPro);
 //        assertNotNull(triggerPro.getTriggers());
 //        assertEquals(1, triggerPro.getTriggers().size());
@@ -253,11 +269,12 @@
 //
 //        // PIPELINE_PARAMETER_TYPE_BOOLEAN
 //        List<PipelineParameter> pipelineParameters = new ArrayList<>();
-//        pipelineParameters.add(new PipelineParameterBuilder().withType(PIPELINE_PARAMETER_TYPE_BOOLEAN)
+//        pipelineParameters.add(new
+// PipelineParameterBuilder().withType(PIPELINE_PARAMETER_TYPE_BOOLEAN)
 //                .withName("name").withValue("value").build());
 //        pipelineParameters.add(new PipelineParameterBuilder().withType("fake")
 //                .withName("name").withValue("value").build());
 //        values = JenkinsUtils.getParameterValues(pipelineParameters);
 //        assertEquals(1, values.size());
 //    }
-//}
+// }

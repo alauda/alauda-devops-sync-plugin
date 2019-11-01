@@ -6,16 +6,13 @@ import io.kubernetes.client.models.V1Status;
 
 public interface ResourceClient<ApiType> {
 
-    SharedIndexInformer<ApiType> informer();
+  SharedIndexInformer<ApiType> informer();
 
-    Lister<ApiType> lister();
+  Lister<ApiType> lister();
 
-    boolean update(ApiType oldObj, ApiType newObj);
+  boolean update(ApiType oldObj, ApiType newObj);
 
-    ApiType create(ApiType obj);
+  ApiType create(ApiType obj);
 
-    V1Status delete(String namespace, String name);
-
-
-
+  V1Status delete(String namespace, String name);
 }

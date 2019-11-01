@@ -8,33 +8,34 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineParameterBuilder;
 
 /**
  * Convert between PipelineParameter and ParameterValue
+ *
  * @author suren
  */
 public abstract class ParameterUtils {
-    private ParameterUtils(){}
+  private ParameterUtils() {}
 
-    public static V1alpha1PipelineParameter to(ParameterValue parameterValue) {
-        if(parameterValue == null) {
-            return null;
-        }
-
-        String type;
-        String value = null;
-        if(parameterValue instanceof StringParameterValue) {
-            type = "string";
-            value = String.valueOf(parameterValue.getValue());
-        } else if(parameterValue instanceof BooleanParameterValue) {
-            type = "boolean";
-            value = ((BooleanParameterValue) parameterValue).getValue().toString();
-        } else {
-            return null;
-        }
-
-        return new V1alpha1PipelineParameterBuilder()
-                .withType(type)
-                .withName(parameterValue.getName())
-                .withDescription(parameterValue.getDescription())
-                .withValue(value)
-                .build();
+  public static V1alpha1PipelineParameter to(ParameterValue parameterValue) {
+    if (parameterValue == null) {
+      return null;
     }
+
+    String type;
+    String value = null;
+    if (parameterValue instanceof StringParameterValue) {
+      type = "string";
+      value = String.valueOf(parameterValue.getValue());
+    } else if (parameterValue instanceof BooleanParameterValue) {
+      type = "boolean";
+      value = ((BooleanParameterValue) parameterValue).getValue().toString();
+    } else {
+      return null;
+    }
+
+    return new V1alpha1PipelineParameterBuilder()
+        .withType(type)
+        .withName(parameterValue.getName())
+        .withDescription(parameterValue.getDescription())
+        .withValue(value)
+        .build();
+  }
 }

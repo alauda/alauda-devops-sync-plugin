@@ -1,16 +1,16 @@
-//package io.alauda.jenkins.devops.sync;
+// package io.alauda.jenkins.devops.sync;
 //
-//import com.gargoylesoftware.htmlunit.html.*;
-//import org.junit.Rule;
-//import org.junit.Test;
-//import org.jvnet.hudson.test.JenkinsRule;
-//import org.xml.sax.SAXException;
+// import com.gargoylesoftware.htmlunit.html.*;
+// import org.junit.Rule;
+// import org.junit.Test;
+// import org.jvnet.hudson.test.JenkinsRule;
+// import org.xml.sax.SAXException;
 //
-//import java.io.IOException;
+// import java.io.IOException;
 //
-//import static org.junit.Assert.*;
+// import static org.junit.Assert.*;
 //
-//public class GlobalPluginConfigurationTest {
+// public class GlobalPluginConfigurationTest {
 //    @Rule
 //    public JenkinsRule j = new JenkinsRule();
 //
@@ -37,7 +37,8 @@
 //        assertTrue(config.isEnabled());
 //
 //        // Constructor TODO connect test is wrong
-////        config = new GlobalPluginConfiguration(false, "fake-server", "hello", null, null, null, null);
+////        config = new GlobalPluginConfiguration(false, "fake-server", "hello", null, null, null,
+// null);
 ////        FormValidation formValidation = config.doVerifyConnect("", "");
 ////        assertNotNull(formValidation);
 ////        assertEquals(FormValidation.Kind.OK, formValidation.kind);
@@ -73,4 +74,4 @@
 //            assertFalse(AlaudaSyncGlobalConfiguration.get().isEnabled());
 //        }
 //    }
-//}
+// }

@@ -1,5 +1,7 @@
 package io.alauda.jenkins.devops.sync.credential;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
+
 import com.cloudbees.plugins.credentials.CredentialsScope;
 import com.cloudbees.plugins.credentials.common.IdCredentials;
 import com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl;
@@ -9,26 +11,34 @@ import io.alauda.jenkins.plugins.credentials.convertor.CredentialsConversionExce
 import io.alauda.jenkins.plugins.credentials.convertor.SecretToCredentialConverter;
 import io.kubernetes.client.models.V1Secret;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-
 @Extension
 public class OAuth2CredentialsConverter extends SecretToCredentialConverter {
-    @Override
-    public boolean canConvert(String s) {
-        return ALAUDA_DEVOPS_SECRETS_TYPE_OAUTH2.equals(s);
-    }
+  @Override
+  public boolean canConvert(String s) {
+    return ALAUDA_DEVOPS_SECRETS_TYPE_OAUTH2.equals(s);
+  }
 
-    @Override
-    public IdCredentials convert(V1Secret secret) throws CredentialsConversionException {
-        SecretUtils.requireNonNull(secret.getData(), "devops.alauda.io/oauth2 definition contains no data");
+  @Override
+  public IdCredentials convert(V1Secret secret) throws CredentialsConversionException {
+    SecretUtils.requireNonNull(
+        secret.getData(), "devops.alauda.io/oauth2 definition contains no data");
 
-        String accessTokenKey = SecretUtils.getNonNullSecretData(secret, ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKENKEY, "devops.alauda.io/oauth2 is missing the accessTokenKey");
-        String clientSecret = SecretUtils.getNonNullSecretData(secret, ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKEN, "devops.alauda.io/oauth2 is missing the accessToken");
+    String accessTokenKey =
+        SecretUtils.getNonNullSecretData(
+            secret,
+            ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKENKEY,
+            "devops.alauda.io/oauth2 is missing the accessTokenKey");
+    String clientSecret =
+        SecretUtils.getNonNullSecretData(
+            secret,
+            ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKEN,
+            "devops.alauda.io/oauth2 is missing the accessToken");
 
-        return new UsernamePasswordCredentialsImpl(CredentialsScope.GLOBAL,
-                SecretUtils.getCredentialId(secret),
-                SecretUtils.getCredentialDescription(secret),
-                accessTokenKey,
-                clientSecret);
-    }
+    return new UsernamePasswordCredentialsImpl(
+        CredentialsScope.GLOBAL,
+        SecretUtils.getCredentialId(secret),
+        SecretUtils.getCredentialDescription(secret),
+        accessTokenKey,
+        clientSecret);
+  }
 }

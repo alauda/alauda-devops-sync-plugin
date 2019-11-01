@@ -1,18 +1,18 @@
-//package io.alauda.jenkins.devops.sync.listener;
+// package io.alauda.jenkins.devops.sync.listener;
 //
-//import hudson.model.listeners.ItemListener;
-//import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
-//import org.jenkinsci.plugins.workflow.job.WorkflowJob;
-//import org.junit.Rule;
-//import org.junit.Test;
-//import org.jvnet.hudson.test.JenkinsRule;
-//import org.jvnet.hudson.test.MockFolder;
+// import hudson.model.listeners.ItemListener;
+// import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+// import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+// import org.junit.Rule;
+// import org.junit.Test;
+// import org.jvnet.hudson.test.JenkinsRule;
+// import org.jvnet.hudson.test.MockFolder;
 //
-//import java.io.IOException;
+// import java.io.IOException;
 //
-//import static org.junit.Assert.assertNotNull;
+// import static org.junit.Assert.assertNotNull;
 //
-//public class JenkinsPipelineJobListenerTest {
+// public class JenkinsPipelineJobListenerTest {
 //    @Rule
 //    public JenkinsRule j = new JenkinsRule();
 //
@@ -32,4 +32,4 @@
 //        ItemListener.fireOnUpdated(wfJob);
 //        wfJob.delete();
 //    }
-//}
+// }

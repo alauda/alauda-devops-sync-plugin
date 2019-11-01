@@ -10,17 +10,18 @@ import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
 public class AlaudaGloablVariableTest {
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
+  @Rule public JenkinsRule j = new JenkinsRule();
 
-    @Test
-    public void name() throws Exception {
-        WorkflowJob wf = j.createProject(WorkflowJob.class);
-        wf.addProperty(new WorkflowJobProperty("", "hello", "", "", "{\"alauda.io/pipelinecontext.project\":\"projectname\"}"));
-        wf.setDefinition(new CpsFlowDefinition("echo alaudaContext.getItem(\"project\")"));
+  @Test
+  public void name() throws Exception {
+    WorkflowJob wf = j.createProject(WorkflowJob.class);
+    wf.addProperty(
+        new WorkflowJobProperty(
+            "", "hello", "", "", "{\"alauda.io/pipelinecontext.project\":\"projectname\"}"));
+    wf.setDefinition(new CpsFlowDefinition("echo alaudaContext.getItem(\"project\")"));
 
-        QueueTaskFuture<WorkflowRun> run = wf.scheduleBuild2(0);
-        j.assertBuildStatusSuccess(run);
-        j.assertLogContains("projectname", run.waitForStart());
-    }
+    QueueTaskFuture<WorkflowRun> run = wf.scheduleBuild2(0);
+    j.assertBuildStatusSuccess(run);
+    j.assertLogContains("projectname", run.waitForStart());
+  }
 }

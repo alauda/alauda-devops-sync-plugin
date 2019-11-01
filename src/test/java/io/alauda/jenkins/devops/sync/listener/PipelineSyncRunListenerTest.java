@@ -5,11 +5,10 @@ import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
 public class PipelineSyncRunListenerTest {
-    @Rule
-    public JenkinsRule j = new JenkinsRule();
+  @Rule public JenkinsRule j = new JenkinsRule();
 
-    @Test
-    public void constructor() {
-        new PipelineSyncRunListener();
-    }
+  @Test
+  public void constructor() {
+    new PipelineSyncRunListener();
+  }
 }

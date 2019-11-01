@@ -1,16 +1,16 @@
-//package io.alauda.jenkins.devops.sync.util;
+// package io.alauda.jenkins.devops.sync.util;
 //
-//import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
-//import io.alauda.kubernetes.api.model.Pod;
-//import io.alauda.kubernetes.api.model.ServiceAccount;
-//import org.csanchez.jenkins.plugins.kubernetes.PodTemplate;
-//import org.junit.Rule;
-//import org.junit.Test;
-//import org.jvnet.hudson.test.JenkinsRule;
+// import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
+// import io.alauda.kubernetes.api.model.Pod;
+// import io.alauda.kubernetes.api.model.ServiceAccount;
+// import org.csanchez.jenkins.plugins.kubernetes.PodTemplate;
+// import org.junit.Rule;
+// import org.junit.Test;
+// import org.jvnet.hudson.test.JenkinsRule;
 //
-//import static org.junit.Assert.*;
+// import static org.junit.Assert.*;
 //
-//public class PodTemplateUtilsTest {
+// public class PodTemplateUtilsTest {
 //    @Rule
 //    public JenkinsK8sRule j = new JenkinsK8sRule();
 //
@@ -53,4 +53,4 @@
 //
 //        PodTemplateUtils.addPodTemplate(podTemplate);
 //    }
-//}
+// }

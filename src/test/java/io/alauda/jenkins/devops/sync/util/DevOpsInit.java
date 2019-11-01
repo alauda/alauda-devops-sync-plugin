@@ -1,27 +1,27 @@
-//package io.alauda.jenkins.devops.sync.util;
+// package io.alauda.jenkins.devops.sync.util;
 //
-//import hudson.remoting.Base64;
-//import io.alauda.devops.client.AlaudaDevOpsClient;
-//import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
-//import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
-//import io.alauda.devops.java.client.models.*;
-//import io.alauda.jenkins.devops.sync.constants.Constants;
-//import io.alauda.kubernetes.api.model.*;
-//import io.alauda.kubernetes.client.Config;
-//import io.kubernetes.client.ApiClient;
-//import io.kubernetes.client.util.Config;
+// import hudson.remoting.Base64;
+// import io.alauda.devops.client.AlaudaDevOpsClient;
+// import io.alauda.devops.client.AlaudaDevOpsConfigBuilder;
+// import io.alauda.devops.client.DefaultAlaudaDevOpsClient;
+// import io.alauda.devops.java.client.models.*;
+// import io.alauda.jenkins.devops.sync.constants.Constants;
+// import io.alauda.kubernetes.api.model.*;
+// import io.alauda.kubernetes.client.Config;
+// import io.kubernetes.client.ApiClient;
+// import io.kubernetes.client.util.Config;
 //
-//import java.io.IOException;
-//import java.text.ParseException;
-//import java.text.SimpleDateFormat;
-//import java.util.*;
-//import java.util.logging.Level;
-//import java.util.logging.Logger;
+// import java.io.IOException;
+// import java.text.ParseException;
+// import java.text.SimpleDateFormat;
+// import java.util.*;
+// import java.util.logging.Level;
+// import java.util.logging.Logger;
 //
-//import static io.alauda.devops.client.models.PipelineConfigStatus.PipelineConfigPhaseCreating;
-//import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_RUN_POLICY_SERIAL;
+// import static io.alauda.devops.client.models.PipelineConfigStatus.PipelineConfigPhaseCreating;
+// import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_RUN_POLICY_SERIAL;
 //
-//public class DevOpsInit {
+// public class DevOpsInit {
 //    private final static Logger logger = Logger.getLogger(DevOpsInit.class.getName());
 //
 //    public static final String TEST_FLAG = "alauda.test";
@@ -79,19 +79,23 @@
 //        return createPipelineConfig(client, script, null);
 //    }
 //
-//    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String cron) {
+//    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String
+// cron) {
 //        return createPipelineConfig(client, script, null, cron);
 //    }
 //
-//    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String jenkinsFilePath, String cron) {
+//    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String
+// jenkinsFilePath, String cron) {
 //        return createPipelineConfig(client, script, jenkinsFilePath, cron, null);
 //    }
 //
-//    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String jenkinsFilePath, String cron, String secret) {
+//    public V1alpha1PipelineConfig createPipelineConfig(ApiClient client, String script, String
+// jenkinsFilePath, String cron, String secret) {
 //        V1alpha1PipelineConfigSpecBuilder specBuilder = new V1alpha1PipelineConfigSpecBuilder()
 ////                .withNewSource().withNewSecret().endSecret().endSource()
 //                .withNewStrategy()
-//                .withNewJenkins().withJenkinsfile(script).withJenkinsfilePath(jenkinsFilePath).endJenkins()
+//
+// .withNewJenkins().withJenkinsfile(script).withJenkinsfilePath(jenkinsFilePath).endJenkins()
 //                .endStrategy()
 //                .withNewJenkinsBinding(bindingName)
 //                .withRunPolicy(PIPELINE_RUN_POLICY_SERIAL);
@@ -105,7 +109,8 @@
 //
 //        if(cron != null) {
 //            V1alpha1PipelineTrigger trigger = new V1alpha1PipelineTriggerBuilder()
-//                    .withType("cron").withNewCron().withEnabled(true).withRule(cron).endCron().build();
+//
+// .withType("cron").withNewCron().withEnabled(true).withRule(cron).endCron().build();
 //            specBuilder.withTriggers(trigger);
 //        }
 //
@@ -186,8 +191,10 @@
 //        return client.pipelineConfigs().inNamespace(namespace).withName(name).get();
 //    }
 //
-//    public Pipeline createPipeline(ApiClient client, String configName, Map<String, String> paramMap) {
-//        PipelineConfig pipelineConfig = client.pipelineConfigs().inNamespace(namespace).withName(configName).get();
+//    public Pipeline createPipeline(ApiClient client, String configName, Map<String, String>
+// paramMap) {
+//        PipelineConfig pipelineConfig =
+// client.pipelineConfigs().inNamespace(namespace).withName(configName).get();
 //        List<PipelineParameter> params = pipelineConfig.getSpec().getParameters();
 //        List<PipelineParameter> pipelineParameters = new ArrayList<>();
 //
@@ -209,7 +216,8 @@
 //                .withNewPipelineConfig(configName)
 //                .withNewJenkinsBinding(bindingName)
 //                .withRunPolicy(PIPELINE_RUN_POLICY_SERIAL)
-//                .withNewStrategy().withNewJenkins().withJenkinsfile("a").withJenkinsfilePath("a").endJenkins().endStrategy()
+//
+// .withNewStrategy().withNewJenkins().withJenkinsfile("a").withJenkinsfilePath("a").endJenkins().endStrategy()
 //                .endSpec()
 //                .done();
 //    }
@@ -223,7 +231,8 @@
 //    }
 //
 //    public void abortPipeline(ApiClient client, String pipelineName) {
-//        Pipeline pipeline = client.pipelines().inNamespace(namespace).withName(pipelineName).get();
+//        Pipeline pipeline =
+// client.pipelines().inNamespace(namespace).withName(pipelineName).get();
 //        PipelineStatus status = pipeline.getStatus();
 //        status.setAborted(true);
 //
@@ -249,7 +258,8 @@
 //                .withNewPipelineConfig(pipelineConfig)
 //                .withNewJenkinsBinding(bindingName)
 //                .withRunPolicy(pipCfgSpec.getRunPolicy())
-//                .withNewStrategy().withNewJenkins().withJenkinsfile(jenkins.getJenkinsfile()).withJenkinsfilePath(jenkins.getJenkinsfilePath()).endJenkins().endStrategy()
+//
+// .withNewStrategy().withNewJenkins().withJenkinsfile(jenkins.getJenkinsfile()).withJenkinsfilePath(jenkins.getJenkinsfilePath()).endJenkins().endStrategy()
 //                .endSpec()
 //                .done();
 //    }
@@ -320,7 +330,8 @@
 //
 //    public Pod createPod(ApiClient client, final String accountName) {
 //        return client.pods().createNew()
-//                .withNewMetadata().withNamespace(namespace).withGenerateName("pod-test-").endMetadata()
+//
+// .withNewMetadata().withNamespace(namespace).withGenerateName("pod-test-").endMetadata()
 //                .withNewSpec().withServiceAccountName(accountName)
 //                .addNewContainer().withName("as").withImage("WatcherAliveCheck").endContainer()
 //                .endSpec()
@@ -375,7 +386,8 @@
 //
 //                    expire = format.parse(createTime).after(expireTime.getTime());
 //                } catch (ParseException e) {
-//                    logger.log(Level.SEVERE, String.format("wrong time format: %s", formatTxt), e);
+//                    logger.log(Level.SEVERE, String.format("wrong time format: %s", formatTxt),
+// e);
 //                }
 //
 //                if(expire) {
@@ -393,4 +405,4 @@
 //
 //        return TEST_FLAG_VALUE.equals(labels.get(TEST_FLAG));
 //    }
-//}
+// }

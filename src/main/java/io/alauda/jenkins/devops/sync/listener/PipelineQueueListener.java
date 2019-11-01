@@ -20,31 +20,30 @@ import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
-
 import java.util.logging.Logger;
 
 @Extension
 public class PipelineQueueListener extends QueueListener {
-    private static final Logger logger = Logger.getLogger(PipelineQueueListener.class.getName());
+  private static final Logger logger = Logger.getLogger(PipelineQueueListener.class.getName());
 
-    @Override
-    public void onLeft(Queue.LeftItem leftItem) {
-        logger.info(leftItem + " was left");
-        boolean isCancelled = leftItem.isCancelled();
-        if (!isCancelled) {
-            return;
-        }
-
-        JenkinsPipelineCause pipelineCause = PipelineUtils.findAlaudaCause(leftItem);
-        if (pipelineCause != null) {
-            String namespace = pipelineCause.getNamespace();
-            String name = pipelineCause.getName();
-
-            PipelineUtils.delete(namespace, name);
-            logger.info(String.format("Pipeline %s-%s was deleted.", namespace, name));
-        } else {
-            String itemUrl = leftItem.getUrl();
-            logger.warning("Can not found JenkinsPipelineCause, item url: " + itemUrl);
-        }
+  @Override
+  public void onLeft(Queue.LeftItem leftItem) {
+    logger.info(leftItem + " was left");
+    boolean isCancelled = leftItem.isCancelled();
+    if (!isCancelled) {
+      return;
     }
+
+    JenkinsPipelineCause pipelineCause = PipelineUtils.findAlaudaCause(leftItem);
+    if (pipelineCause != null) {
+      String namespace = pipelineCause.getNamespace();
+      String name = pipelineCause.getName();
+
+      PipelineUtils.delete(namespace, name);
+      logger.info(String.format("Pipeline %s-%s was deleted.", namespace, name));
+    } else {
+      String itemUrl = leftItem.getUrl();
+      logger.warning("Can not found JenkinsPipelineCause, item url: " + itemUrl);
+    }
+  }
 }
