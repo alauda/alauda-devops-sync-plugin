@@ -1,13 +1,12 @@
 package io.alauda.jenkins.devops.sync.constants;
 
-/**
- * PipelineConfig phase constants
- */
+/** PipelineConfig phase constants */
 public final class PipelineConfigPhase {
-    private PipelineConfigPhase(){}
-    public static final String CREATING = "Creating";
-    public static final String SYNCING = "Syncing";
-    public static final String READY = "Ready";
-    public static final String ERROR = "Error";
-    public static final String DISABLED = "Disabled";
+  private PipelineConfigPhase() {}
+
+  public static final String CREATING = "Creating";
+  public static final String SYNCING = "Syncing";
+  public static final String READY = "Ready";
+  public static final String ERROR = "Error";
+  public static final String DISABLED = "Disabled";
 }

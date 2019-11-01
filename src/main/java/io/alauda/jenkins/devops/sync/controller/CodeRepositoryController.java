@@ -16,93 +16,101 @@ import io.kubernetes.client.extended.controller.reconciler.Request;
 import io.kubernetes.client.extended.controller.reconciler.Result;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
+import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
-
 @Extension
-public class CodeRepositoryController implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+public class CodeRepositoryController
+    implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
-    private static final Logger logger = LoggerFactory.getLogger(NamespaceController.class);
-    private LocalDateTime lastEventComingTime;
+  private static final Logger logger = LoggerFactory.getLogger(NamespaceController.class);
+  private LocalDateTime lastEventComingTime;
 
-    @Override
-    public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
-        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+  @Override
+  public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
+    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
-        SharedIndexInformer<V1alpha1CodeRepository> informer = factory.getExistingSharedIndexInformer(V1alpha1CodeRepository.class);
-        if (informer == null) {
-            informer = factory.sharedIndexInformerFor(
-                    callGeneratorParams -> api.listCodeRepositoryForAllNamespacesCall(
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            callGeneratorParams.resourceVersion,
-                            callGeneratorParams.timeoutSeconds,
-                            callGeneratorParams.watch,
-                            null,
-                            null
-                    ), V1alpha1CodeRepository.class, V1alpha1CodeRepositoryList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
-        }
-
-
-        CodeRepositoryClient client = new CodeRepositoryClient(informer);
-        Clients.register(V1alpha1CodeRepository.class, client);
-
-        Controller controller =
-                ControllerBuilder.defaultBuilder(factory)
-                        .watch(workQueue -> ControllerBuilder.controllerWatchBuilder(V1alpha1CodeRepository.class, workQueue)
-                                .withWorkQueueKeyFunc(repository ->
-                                        new Request(repository.getMetadata().getNamespace(),
-                                                repository.getMetadata().getName()))
-                                .withOnUpdateFilter((oldCodeRepository, newCodeRepository) -> {
-                                    if (!oldCodeRepository.getMetadata().getResourceVersion().equals(newCodeRepository.getMetadata().getResourceVersion())) {
-                                        lastEventComingTime = LocalDateTime.now();
-                                    }
-                                    return true;
-                                })
-                                .build())
-                        .withReconciler(request -> new Result(false))
-                        .withName("CodeRepositoryController")
-                        .withWorkerCount(1)
-                        .withReadyFunc(informer::hasSynced)
-                        .build();
-
-        managerBuilder.addController(controller);
+    SharedIndexInformer<V1alpha1CodeRepository> informer =
+        factory.getExistingSharedIndexInformer(V1alpha1CodeRepository.class);
+    if (informer == null) {
+      informer =
+          factory.sharedIndexInformerFor(
+              callGeneratorParams ->
+                  api.listCodeRepositoryForAllNamespacesCall(
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      callGeneratorParams.resourceVersion,
+                      callGeneratorParams.timeoutSeconds,
+                      callGeneratorParams.watch,
+                      null,
+                      null),
+              V1alpha1CodeRepository.class,
+              V1alpha1CodeRepositoryList.class,
+              TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
     }
 
-    @Override
-    public LocalDateTime lastEventComingTime() {
-        return lastEventComingTime;
+    CodeRepositoryClient client = new CodeRepositoryClient(informer);
+    Clients.register(V1alpha1CodeRepository.class, client);
+
+    Controller controller =
+        ControllerBuilder.defaultBuilder(factory)
+            .watch(
+                workQueue ->
+                    ControllerBuilder.controllerWatchBuilder(
+                            V1alpha1CodeRepository.class, workQueue)
+                        .withWorkQueueKeyFunc(
+                            repository ->
+                                new Request(
+                                    repository.getMetadata().getNamespace(),
+                                    repository.getMetadata().getName()))
+                        .withOnUpdateFilter(
+                            (oldCodeRepository, newCodeRepository) -> {
+                              if (!oldCodeRepository
+                                  .getMetadata()
+                                  .getResourceVersion()
+                                  .equals(newCodeRepository.getMetadata().getResourceVersion())) {
+                                lastEventComingTime = LocalDateTime.now();
+                              }
+                              return true;
+                            })
+                        .build())
+            .withReconciler(request -> new Result(false))
+            .withName("CodeRepositoryController")
+            .withWorkerCount(1)
+            .withReadyFunc(informer::hasSynced)
+            .build();
+
+    managerBuilder.addController(controller);
+  }
+
+  @Override
+  public LocalDateTime lastEventComingTime() {
+    return lastEventComingTime;
+  }
+
+  @Override
+  public String resourceName() {
+    return "CodeRepository";
+  }
+
+  @Override
+  public boolean hasResourceExists() throws ApiException {
+    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+    V1alpha1CodeRepositoryList repositoryList =
+        api.listCodeRepositoryForAllNamespaces(null, null, null, null, 1, null, "0", null, null);
+
+    if (repositoryList == null
+        || repositoryList.getItems() == null
+        || repositoryList.getItems().size() == 0) {
+      return false;
     }
 
-    @Override
-    public String resourceName() {
-        return "CodeRepository";
-    }
-
-    @Override
-    public boolean hasResourceExists() throws ApiException {
-        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-        V1alpha1CodeRepositoryList repositoryList = api.listCodeRepositoryForAllNamespaces(null,
-                null,
-                null,
-                null,
-                1,
-                null,
-                "0",
-                null,
-                null);
-
-        if (repositoryList == null || repositoryList.getItems() == null || repositoryList.getItems().size() == 0) {
-            return false;
-        }
-
-        return true;
-    }
+    return true;
+  }
 }

@@ -1,15 +1,15 @@
-//package io.alauda.jenkins.devops.sync.util;
+// package io.alauda.jenkins.devops.sync.util;
 //
-//import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
-//import io.alauda.kubernetes.api.model.PipelineConfig;
-//import org.junit.Rule;
-//import org.junit.Test;
+// import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
+// import io.alauda.kubernetes.api.model.PipelineConfig;
+// import org.junit.Rule;
+// import org.junit.Test;
 //
-//import static org.junit.Assert.assertFalse;
-//import static org.junit.Assert.assertTrue;
-//import static org.junit.Assert.fail;
+// import static org.junit.Assert.assertFalse;
+// import static org.junit.Assert.assertTrue;
+// import static org.junit.Assert.fail;
 //
-//public class PipelineConfigUtilsTest {
+// public class PipelineConfigUtilsTest {
 //    @Rule
 //    public JenkinsK8sRule j = new JenkinsK8sRule();
 //
@@ -38,4 +38,4 @@
 //            assertTrue(e instanceof IllegalArgumentException);
 //        }
 //    }
-//}
+// }

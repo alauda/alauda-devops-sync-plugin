@@ -8,28 +8,31 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Stapler;
 
 public class AlaudaFolderIcon extends FolderIcon {
-    @DataBoundConstructor
-    public AlaudaFolderIcon(){}
+  @DataBoundConstructor
+  public AlaudaFolderIcon() {}
 
+  @Override
+  public String getImageOf(String size) {
+    String image = iconClassNameImageOf(size);
+    return image != null
+        ? image
+        : (Stapler.getCurrentRequest().getContextPath()
+            + Hudson.RESOURCE_PATH
+            + "/plugin/alauda-devops-sync/images/"
+            + size
+            + "/alauda.png");
+  }
+
+  @Override
+  public String getDescription() {
+    return "Alauda Folder";
+  }
+
+  @Extension(ordinal = 100)
+  public static class DescriptorImpl extends FolderIconDescriptor {
     @Override
-    public String getImageOf(String size) {
-        String image = iconClassNameImageOf(size);
-        return image != null
-                ? image
-                : (Stapler.getCurrentRequest().getContextPath() + Hudson.RESOURCE_PATH
-                + "/plugin/alauda-devops-sync/images/"+size+"/alauda.png");
+    public String getDisplayName() {
+      return "Alauda Folder";
     }
-
-    @Override
-    public String getDescription() {
-        return "Alauda Folder";
-    }
-
-    @Extension(ordinal=100)
-    public static class DescriptorImpl extends FolderIconDescriptor {
-        @Override
-        public String getDisplayName() {
-            return "Alauda Folder";
-        }
-    }
+  }
 }

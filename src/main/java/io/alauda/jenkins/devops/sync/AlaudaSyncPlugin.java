@@ -7,9 +7,8 @@ import org.slf4j.LoggerFactory;
 
 @Extension
 public class AlaudaSyncPlugin extends Plugin {
-    private Logger logger = LoggerFactory.getLogger(AlaudaSyncPlugin.class);
+  private Logger logger = LoggerFactory.getLogger(AlaudaSyncPlugin.class);
 
-    @Override
-    public void postInitialize() {
-    }
+  @Override
+  public void postInitialize() {}
 }

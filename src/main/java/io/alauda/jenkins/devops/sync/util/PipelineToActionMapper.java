@@ -17,35 +17,32 @@ package io.alauda.jenkins.devops.sync.util;
 
 import hudson.model.CauseAction;
 import hudson.model.ParametersAction;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipelineToActionMapper {
 
-    private static Map<String, ParametersAction> buildToParametersMap;
-    private static Map<String, CauseAction> buildToCauseMap;
+  private static Map<String, ParametersAction> buildToParametersMap;
+  private static Map<String, CauseAction> buildToCauseMap;
 
-    static {
-        buildToParametersMap = new ConcurrentHashMap<>();
-        buildToCauseMap = new ConcurrentHashMap<>();
-    }
+  static {
+    buildToParametersMap = new ConcurrentHashMap<>();
+    buildToCauseMap = new ConcurrentHashMap<>();
+  }
 
-    public static synchronized void addParameterAction(String pipelineId,
-            ParametersAction params) {
-        buildToParametersMap.put(pipelineId, params);
-    }
+  public static synchronized void addParameterAction(String pipelineId, ParametersAction params) {
+    buildToParametersMap.put(pipelineId, params);
+  }
 
-    static synchronized ParametersAction removeParameterAction(String pipelineId) {
-        return buildToParametersMap.remove(pipelineId);
-    }
+  static synchronized ParametersAction removeParameterAction(String pipelineId) {
+    return buildToParametersMap.remove(pipelineId);
+  }
 
-    public static synchronized void addCauseAction(String pipelineId, CauseAction cause) {
-        buildToCauseMap.put(pipelineId, cause);
-    }
+  public static synchronized void addCauseAction(String pipelineId, CauseAction cause) {
+    buildToCauseMap.put(pipelineId, cause);
+  }
 
-    static synchronized CauseAction removeCauseAction(String pipelineId) {
-        return buildToCauseMap.remove(pipelineId);
-    }
-
+  static synchronized CauseAction removeCauseAction(String pipelineId) {
+    return buildToCauseMap.remove(pipelineId);
+  }
 }

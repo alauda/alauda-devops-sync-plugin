@@ -9,42 +9,43 @@ import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMSourceTrait;
 
 public interface GitProviderMultiBranch extends ExtensionPoint {
-    boolean accept(String type);
+  boolean accept(String type);
 
-    SCMSource getSCMSource(String repoOwner, String repository);
+  SCMSource getSCMSource(String repoOwner, String repository);
 
-    default Class<?> loadClass(String clazz) throws ClassNotFoundException {
-        PluginManager pluginMgr = Jenkins.getInstance().getPluginManager();
-        if (pluginMgr != null) {
-            ClassLoader loader = pluginMgr.uberClassLoader;
-            if (loader != null) {
-                return loader.loadClass(clazz);
-            }
-        }
-
-        return null;
+  default Class<?> loadClass(String clazz) throws ClassNotFoundException {
+    PluginManager pluginMgr = Jenkins.getInstance().getPluginManager();
+    if (pluginMgr != null) {
+      ClassLoader loader = pluginMgr.uberClassLoader;
+      if (loader != null) {
+        return loader.loadClass(clazz);
+      }
     }
 
-    SCMSourceTrait getBranchDiscoverTrait(int code);
+    return null;
+  }
 
-    SCMSourceTrait getOriginPRTrait(int code);
+  SCMSourceTrait getBranchDiscoverTrait(int code);
 
-    SCMSourceTrait getForkPRTrait(int code);
+  SCMSourceTrait getOriginPRTrait(int code);
 
-    /**
-     * clone option trait for this branch
-     * @return CloneOption trait<br/>
-     * Default behaviours are below:<br/>
-     * shallow: true<br/>
-     * noTags: false<br/>
-     * reference: null<br/>
-     * timeout: null<br/>
-     * honorRefspec: true<br/>
-     */
-    default CloneOptionTrait getCloneTrait() {
-        CloneOption cloneOption = new CloneOption(true, false,null, null);
-        cloneOption.setHonorRefspec(true);
+  SCMSourceTrait getForkPRTrait(int code);
 
-        return new CloneOptionTrait(cloneOption);
-    }
+  /**
+   * clone option trait for this branch
+   *
+   * @return CloneOption trait<br>
+   *     Default behaviours are below:<br>
+   *     shallow: true<br>
+   *     noTags: false<br>
+   *     reference: null<br>
+   *     timeout: null<br>
+   *     honorRefspec: true<br>
+   */
+  default CloneOptionTrait getCloneTrait() {
+    CloneOption cloneOption = new CloneOption(true, false, null, null);
+    cloneOption.setHonorRefspec(true);
+
+    return new CloneOptionTrait(cloneOption);
+  }
 }

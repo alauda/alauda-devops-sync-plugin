@@ -1,14 +1,14 @@
-//package io.alauda.jenkins.devops.sync.util;
+// package io.alauda.jenkins.devops.sync.util;
 //
-//import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
-//import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
-//import io.alauda.kubernetes.api.model.PipelineConfig;
-//import org.junit.Rule;
-//import org.junit.Test;
+// import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+// import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
+// import io.alauda.kubernetes.api.model.PipelineConfig;
+// import org.junit.Rule;
+// import org.junit.Test;
 //
-//import static org.junit.Assert.*;
+// import static org.junit.Assert.*;
 //
-//public class AlaudaUtilsTest {
+// public class AlaudaUtilsTest {
 //    @Rule
 //    public JenkinsK8sRule j = new JenkinsK8sRule();
 //
@@ -36,4 +36,4 @@
 //        jobName = AlaudaUtils.jenkinsJobFullName(config);
 //        assertNotNull(jobName);
 //    }
-//}
+// }

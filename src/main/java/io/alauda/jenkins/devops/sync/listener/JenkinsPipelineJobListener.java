@@ -21,98 +21,104 @@ import hudson.model.Item;
 import hudson.model.listeners.ItemListener;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
+import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-import java.util.logging.Logger;
-
 /**
- * Listens to {@link WorkflowJob} objects being updated via the web console or
- * Jenkins REST API and replicating the changes back to the Alauda DevOps
- * {@link io.alauda.devops.java.client.models.V1alpha1PipelineConfig} for the case where folks edit inline Jenkinsfile flows
- * inside the Jenkins UI
+ * Listens to {@link WorkflowJob} objects being updated via the web console or Jenkins REST API and
+ * replicating the changes back to the Alauda DevOps {@link
+ * io.alauda.devops.java.client.models.V1alpha1PipelineConfig} for the case where folks edit inline
+ * Jenkinsfile flows inside the Jenkins UI
  */
 @Extension
 public class JenkinsPipelineJobListener extends ItemListener {
-    private static final Logger logger = Logger.getLogger(JenkinsPipelineJobListener.class.getName());
-    private final ExtensionList<ItemEventHandler> handler;
+  private static final Logger logger = Logger.getLogger(JenkinsPipelineJobListener.class.getName());
+  private final ExtensionList<ItemEventHandler> handler;
 
-    private String jenkinsService;
-    private String jobNamePattern;
+  private String jenkinsService;
+  private String jobNamePattern;
 
-    @DataBoundConstructor
-    public JenkinsPipelineJobListener() {
-        handler = Jenkins.getInstance().getExtensionList(ItemEventHandler.class);
-        AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
-        this.jenkinsService = config.getJenkinsService();
-        this.jobNamePattern = config.getJobNamePattern();
-        init();
+  @DataBoundConstructor
+  public JenkinsPipelineJobListener() {
+    handler = Jenkins.getInstance().getExtensionList(ItemEventHandler.class);
+    AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
+    this.jenkinsService = config.getJenkinsService();
+    this.jobNamePattern = config.getJobNamePattern();
+    init();
+  }
+
+  private void init() {}
+
+  @Override
+  public void onCreated(Item item) {
+    if (!ResourceControllerManager.getControllerManager().isStarted()) {
+      return;
     }
 
-    private void init() {
+    logger.info(String.format("created item: %s", item.getFullName()));
+
+    handler
+        .stream()
+        .filter(handler -> handler.accept(item))
+        .forEach(handler -> handler.onCreated(item));
+    reconfigure();
+  }
+
+  @Override
+  public void onUpdated(Item item) {
+    if (!ResourceControllerManager.getControllerManager().isStarted()) {
+      return;
     }
 
-    @Override
-    public void onCreated(Item item) {
-        if (!ResourceControllerManager.getControllerManager().isStarted()) {
-            return;
-        }
+    logger.info(String.format("updated item: %s", item.getFullName()));
 
-        logger.info(String.format("created item: %s", item.getFullName()));
+    handler
+        .stream()
+        .filter(handler -> handler.accept(item))
+        .forEach(handler -> handler.onUpdated(item));
+    reconfigure();
+  }
 
-        handler.stream().
-                filter(handler -> handler.accept(item)).
-                forEach(handler -> handler.onCreated(item));
-        reconfigure();
+  @Override
+  public void onDeleted(Item item) {
+    if (!ResourceControllerManager.getControllerManager().isStarted()) {
+      logger.info("no configuration... onDelete ignored...");
+      return;
     }
 
-    @Override
-    public void onUpdated(Item item) {
-        if (!ResourceControllerManager.getControllerManager().isStarted()) {
-            return;
-        }
+    logger.info(String.format("deleted Item: %s", item.getFullName()));
 
-        logger.info(String.format("updated item: %s", item.getFullName()));
+    handler
+        .stream()
+        .filter(handler -> handler.accept(item))
+        .forEach(handler -> handler.onDeleted(item));
+    reconfigure();
+  }
 
-        handler.stream().
-                filter(handler -> handler.accept(item)).
-                forEach(handler -> handler.onUpdated(item));
-        reconfigure();
+  /**
+   * TODO is there a cleaner way to get this class injected with any new configuration from
+   * GlobalPluginConfiguration?
+   */
+  private void reconfigure() {
+    AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
+    if (config != null) {
+      this.jobNamePattern = config.getJobNamePattern();
+      this.jenkinsService = config.getJenkinsService();
+      init();
     }
+  }
 
-    @Override
-    public void onDeleted(Item item) {
-        if (!ResourceControllerManager.getControllerManager().isStarted()) {
-            logger.info("no configuration... onDelete ignored...");
-            return;
-        }
-
-        logger.info(String.format("deleted Item: %s", item.getFullName()));
-
-        handler.stream().
-                filter(handler -> handler.accept(item)).
-                forEach(handler -> handler.onDeleted(item));
-        reconfigure();
-    }
-
-    /**
-     * TODO is there a cleaner way to get this class injected with any new
-     * configuration from GlobalPluginConfiguration?
-     */
-    private void reconfigure() {
-        AlaudaSyncGlobalConfiguration config = AlaudaSyncGlobalConfiguration.get();
-        if (config != null) {
-            this.jobNamePattern = config.getJobNamePattern();
-            this.jenkinsService = config.getJenkinsService();
-            init();
-        }
-    }
-
-    @Override
-    public String toString() {
-        return "JenkinsPipelineJobListener{" + ", jenkinsService='" +
-                jenkinsService + '\'' + ", jobNamePattern='" +
-                jobNamePattern + '\'' + '}';
-    }
+  @Override
+  public String toString() {
+    return "JenkinsPipelineJobListener{"
+        + ", jenkinsService='"
+        + jenkinsService
+        + '\''
+        + ", jobNamePattern='"
+        + jobNamePattern
+        + '\''
+        + '}';
+  }
 }

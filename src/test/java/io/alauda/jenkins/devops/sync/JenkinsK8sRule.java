@@ -1,12 +1,12 @@
-//package io.alauda.jenkins.devops.sync;
+// package io.alauda.jenkins.devops.sync;
 //
-//import io.alauda.jenkins.devops.sync.util.DevOpsInit;
-//import io.kubernetes.client.ApiClient;
-//import org.junit.runner.Description;
-//import org.junit.runners.model.Statement;
-//import org.jvnet.hudson.test.JenkinsRule;
+// import io.alauda.jenkins.devops.sync.util.DevOpsInit;
+// import io.kubernetes.client.ApiClient;
+// import org.junit.runner.Description;
+// import org.junit.runners.model.Statement;
+// import org.jvnet.hudson.test.JenkinsRule;
 //
-//public class JenkinsK8sRule extends JenkinsRule {
+// public class JenkinsK8sRule extends JenkinsRule {
 //    private boolean withK8s = true;
 //    private final boolean inK8s;
 //    private DevOpsInit devOpsInit;
@@ -76,4 +76,4 @@
 //    public int getRetryCount() {
 //        return retryCount;
 //    }
-//}
+// }

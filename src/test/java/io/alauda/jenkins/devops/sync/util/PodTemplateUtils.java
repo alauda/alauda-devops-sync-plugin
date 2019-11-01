@@ -1,25 +1,25 @@
-//package io.alauda.jenkins.devops.sync.util;
+// package io.alauda.jenkins.devops.sync.util;
 //
-//import hudson.slaves.Cloud;
-//import io.alauda.devops.client.AlaudaDevOpsClient;
-//import io.alauda.kubernetes.api.model.Pod;
-//import jenkins.model.Jenkins;
-//import org.apache.commons.lang.StringUtils;
-//import org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud;
-//import org.csanchez.jenkins.plugins.kubernetes.PodTemplate;
-//import org.csanchez.jenkins.plugins.kubernetes.PodVolumes;
+// import hudson.slaves.Cloud;
+// import io.alauda.devops.client.AlaudaDevOpsClient;
+// import io.alauda.kubernetes.api.model.Pod;
+// import jenkins.model.Jenkins;
+// import org.apache.commons.lang.StringUtils;
+// import org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud;
+// import org.csanchez.jenkins.plugins.kubernetes.PodTemplate;
+// import org.csanchez.jenkins.plugins.kubernetes.PodVolumes;
 //
-//import javax.annotation.Nonnull;
-//import java.io.IOException;
-//import java.util.ArrayList;
-//import java.util.Iterator;
-//import java.util.List;
-//import java.util.logging.Level;
-//import java.util.logging.Logger;
+// import javax.annotation.Nonnull;
+// import java.io.IOException;
+// import java.util.ArrayList;
+// import java.util.Iterator;
+// import java.util.List;
+// import java.util.logging.Level;
+// import java.util.logging.Logger;
 //
-//import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
+// import static io.alauda.jenkins.devops.sync.util.AlaudaUtils.getAuthenticatedAlaudaClient;
 //
-//public abstract class PodTemplateUtils {
+// public abstract class PodTemplateUtils {
 //    private static final Logger LOGGER = Logger.getLogger(PodTemplateUtils.class.getName());
 //
 //    private PodTemplateUtils() {}
@@ -164,4 +164,4 @@
 //
 //        return podTemplate;
 //    }
-//}
+// }

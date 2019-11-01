@@ -15,143 +15,156 @@
  */
 package io.alauda.jenkins.devops.sync;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_COMMIT;
+
 import hudson.model.Cause;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.kubernetes.client.models.V1ObjectMeta;
+import java.util.Objects;
 import org.apache.commons.lang.StringUtils;
 
-import java.util.Objects;
-
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_COMMIT;
-
 public class JenkinsPipelineCause extends Cause {
-    private String uid;
-    private String namespace;
-    private String name;
-    private String gitUri;
-    private String commit;
-    private String pipelineConfigUid;
-    private int numStages = -1;
-    private int numFlowNodes = -1;
-    private long lastUpdateToAlaudaDevOps = -1;
+  private String uid;
+  private String namespace;
+  private String name;
+  private String gitUri;
+  private String commit;
+  private String pipelineConfigUid;
+  private int numStages = -1;
+  private int numFlowNodes = -1;
+  private long lastUpdateToAlaudaDevOps = -1;
 
-    public JenkinsPipelineCause(String uid, String namespace, String name, String gitUri,
-                                String commit, String pipelineConfigUid) {
-        this.uid = uid;
-        this.namespace = namespace;
-        this.name = name;
-        this.gitUri = gitUri;
-        this.commit = commit;
-        this.pipelineConfigUid = pipelineConfigUid;
+  public JenkinsPipelineCause(
+      String uid,
+      String namespace,
+      String name,
+      String gitUri,
+      String commit,
+      String pipelineConfigUid) {
+    this.uid = uid;
+    this.namespace = namespace;
+    this.name = name;
+    this.gitUri = gitUri;
+    this.commit = commit;
+    this.pipelineConfigUid = pipelineConfigUid;
+  }
+
+  public JenkinsPipelineCause(
+      String uid,
+      String namespace,
+      String name,
+      String gitUri,
+      String commit,
+      String pipelineConfigUid,
+      int numStages,
+      int numFlowNodes,
+      long lastUpdateToAlaudaDevOps) {
+    this(uid, namespace, name, gitUri, commit, pipelineConfigUid);
+    this.numStages = numStages;
+    this.numFlowNodes = numFlowNodes;
+    this.lastUpdateToAlaudaDevOps = lastUpdateToAlaudaDevOps;
+  }
+
+  public JenkinsPipelineCause(V1alpha1Pipeline pipeline, String pipelineConfigUid) {
+    this.pipelineConfigUid = pipelineConfigUid;
+    if (pipeline == null || pipeline.getMetadata() == null) {
+      return;
+    }
+    V1ObjectMeta meta = pipeline.getMetadata();
+    uid = meta.getUid();
+    namespace = meta.getNamespace();
+    name = meta.getName();
+
+    if (pipeline.getSpec() != null) {
+      if (pipeline.getSpec().getSource() != null
+          && pipeline.getSpec().getSource().getGit() != null) {
+        gitUri = pipeline.getSpec().getSource().getGit().getUri();
+      }
+      // TODO: add commit to pipeline spec
+      // currently lets used annotations for that
+      if (pipeline.getMetadata().getAnnotations() != null
+          && pipeline
+              .getMetadata()
+              .getAnnotations()
+              .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
+        commit = pipeline.getMetadata().getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
+      }
+    }
+  }
+
+  @Override
+  public String getShortDescription() {
+    StringBuilder sb =
+        new StringBuilder("Alauda DevOps Pipeline ").append(namespace).append("/").append(name);
+
+    if (StringUtils.isNotBlank(gitUri)) {
+      sb.append(" from ").append(gitUri);
+      if (StringUtils.isNotBlank(commit)) {
+        sb.append(", commit ").append(commit);
+      }
     }
 
-    public JenkinsPipelineCause(String uid, String namespace, String name, String gitUri,
-                                String commit, String pipelineConfigUid, int numStages,
-                                int numFlowNodes, long lastUpdateToAlaudaDevOps) {
-        this(uid, namespace, name, gitUri, commit, pipelineConfigUid);
-        this.numStages = numStages;
-        this.numFlowNodes = numFlowNodes;
-        this.lastUpdateToAlaudaDevOps = lastUpdateToAlaudaDevOps;
-    }
+    return sb.toString();
+  }
 
-    public JenkinsPipelineCause(V1alpha1Pipeline pipeline, String pipelineConfigUid) {
-        this.pipelineConfigUid = pipelineConfigUid;
-        if (pipeline == null || pipeline.getMetadata() == null) {
-            return;
-        }
-        V1ObjectMeta meta = pipeline.getMetadata();
-        uid = meta.getUid();
-        namespace = meta.getNamespace();
-        name = meta.getName();
+  public String getUid() {
+    return uid;
+  }
 
-        if (pipeline.getSpec() != null) {
-            if (pipeline.getSpec().getSource() != null
-                    && pipeline.getSpec().getSource().getGit() != null) {
-                gitUri = pipeline.getSpec().getSource().getGit().getUri();
-            }
-            // TODO: add commit to pipeline spec
-            // currently lets used annotations for that
-            if (pipeline.getMetadata().getAnnotations() != null &&
-                pipeline.getMetadata().getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
-              commit = pipeline.getMetadata().getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
-            }
-        }
-    }
+  public String getNamespace() {
+    return namespace;
+  }
 
-    @Override
-    public String getShortDescription() {
-        StringBuilder sb = new StringBuilder("Alauda DevOps Pipeline ")
-                .append(namespace).append("/").append(name);
+  public String getName() {
+    return name;
+  }
 
-        if (StringUtils.isNotBlank(gitUri)) {
-            sb.append(" from ").append(gitUri);
-            if (StringUtils.isNotBlank(commit)) {
-                sb.append(", commit ").append(commit);
-            }
-        }
+  public String getGitUri() {
+    return gitUri;
+  }
 
-        return sb.toString();
-    }
+  public String getCommit() {
+    return commit;
+  }
 
-    public String getUid() {
-        return uid;
-    }
+  public String getPipelineConfigUid() {
+    return pipelineConfigUid;
+  }
 
-    public String getNamespace() {
-        return namespace;
-    }
+  public int getNumStages() {
+    return numStages;
+  }
 
-    public String getName() {
-        return name;
-    }
+  public void setNumStages(int numStages) {
+    this.numStages = numStages;
+  }
 
-    public String getGitUri() {
-        return gitUri;
-    }
+  public int getNumFlowNodes() {
+    return numFlowNodes;
+  }
 
-    public String getCommit() {
-        return commit;
-    }
+  public void setNumFlowNodes(int numFlowNodes) {
+    this.numFlowNodes = numFlowNodes;
+  }
 
-    public String getPipelineConfigUid() {
-        return pipelineConfigUid;
-    }
+  public long getLastUpdateToAlaudaDevOps() {
+    return lastUpdateToAlaudaDevOps;
+  }
 
-    public int getNumStages() {
-        return numStages;
-    }
+  public void setLastUpdateToAlaudaDevOps(long lastUpdateToAlaudaDevOps) {
+    this.lastUpdateToAlaudaDevOps = lastUpdateToAlaudaDevOps;
+  }
 
-    public void setNumStages(int numStages) {
-        this.numStages = numStages;
-    }
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    JenkinsPipelineCause that = (JenkinsPipelineCause) o;
+    return Objects.equals(namespace, that.namespace) && Objects.equals(name, that.name);
+  }
 
-    public int getNumFlowNodes() {
-        return numFlowNodes;
-    }
-
-    public void setNumFlowNodes(int numFlowNodes) {
-        this.numFlowNodes = numFlowNodes;
-    }
-
-    public long getLastUpdateToAlaudaDevOps() {
-        return lastUpdateToAlaudaDevOps;
-    }
-
-    public void setLastUpdateToAlaudaDevOps(long lastUpdateToAlaudaDevOps) {
-        this.lastUpdateToAlaudaDevOps = lastUpdateToAlaudaDevOps;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        JenkinsPipelineCause that = (JenkinsPipelineCause) o;
-        return Objects.equals(namespace, that.namespace) &&
-                Objects.equals(name, that.name);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(namespace, name);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(namespace, name);
+  }
 }

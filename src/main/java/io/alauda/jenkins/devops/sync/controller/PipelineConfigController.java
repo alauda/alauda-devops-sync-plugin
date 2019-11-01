@@ -27,211 +27,283 @@ import io.kubernetes.client.extended.controller.reconciler.Result;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
-import org.apache.commons.lang.StringUtils;
-import org.joda.time.DateTime;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang.StringUtils;
+import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Extension
-public class PipelineConfigController implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+public class PipelineConfigController
+    implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
-    private static final Logger logger = LoggerFactory.getLogger(PipelineConfigController.class);
-    private static final String CONTROLLER_NAME = "PipelineConfigController";
+  private static final Logger logger = LoggerFactory.getLogger(PipelineConfigController.class);
+  private static final String CONTROLLER_NAME = "PipelineConfigController";
 
-    private LocalDateTime lastEventComingTime;
+  private LocalDateTime lastEventComingTime;
 
-    @Override
-    public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
-        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+  @Override
+  public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
+    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
-        SharedIndexInformer<V1alpha1PipelineConfig> informer = factory.getExistingSharedIndexInformer(V1alpha1PipelineConfig.class);
-        if (informer == null) {
-            informer = factory.sharedIndexInformerFor(
-                    callGeneratorParams -> api.listPipelineConfigForAllNamespacesCall(
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            callGeneratorParams.resourceVersion,
-                            callGeneratorParams.timeoutSeconds,
-                            callGeneratorParams.watch,
-                            null,
-                            null
-                    ), V1alpha1PipelineConfig.class, V1alpha1PipelineConfigList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
-        }
+    SharedIndexInformer<V1alpha1PipelineConfig> informer =
+        factory.getExistingSharedIndexInformer(V1alpha1PipelineConfig.class);
+    if (informer == null) {
+      informer =
+          factory.sharedIndexInformerFor(
+              callGeneratorParams ->
+                  api.listPipelineConfigForAllNamespacesCall(
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      null,
+                      callGeneratorParams.resourceVersion,
+                      callGeneratorParams.timeoutSeconds,
+                      callGeneratorParams.watch,
+                      null,
+                      null),
+              V1alpha1PipelineConfig.class,
+              V1alpha1PipelineConfigList.class,
+              TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+    }
 
+    PipelineConfigClient client = new PipelineConfigClient(informer);
+    Clients.register(V1alpha1PipelineConfig.class, client);
 
-        PipelineConfigClient client = new PipelineConfigClient(informer);
-        Clients.register(V1alpha1PipelineConfig.class, client);
+    Controller controller =
+        ControllerBuilder.defaultBuilder(factory)
+            .watch(
+                (workQueue) ->
+                    ControllerBuilder.controllerWatchBuilder(
+                            V1alpha1PipelineConfig.class, workQueue)
+                        .withWorkQueueKeyFunc(
+                            pipelineConfig ->
+                                new Request(
+                                    pipelineConfig.getMetadata().getNamespace(),
+                                    pipelineConfig.getMetadata().getName()))
+                        .withOnAddFilter(
+                            pipelineConfig -> {
+                              if (pipelineConfig
+                                  .getStatus()
+                                  .getPhase()
+                                  .equals(PipelineConfigPhase.CREATING)) {
+                                logger.debug(
+                                    "[{}] phase of PipelineConfig '{}/{}' is {}, will skip it",
+                                    CONTROLLER_NAME,
+                                    pipelineConfig.getMetadata().getNamespace(),
+                                    pipelineConfig.getMetadata().getName(),
+                                    PipelineConfigPhase.CREATING);
+                                return false;
+                              }
 
-        Controller controller =
-                ControllerBuilder.defaultBuilder(factory).watch(
-                        (workQueue) -> ControllerBuilder.controllerWatchBuilder(V1alpha1PipelineConfig.class, workQueue)
-                                .withWorkQueueKeyFunc(pipelineConfig ->
-                                        new Request(pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName()))
-                                .withOnAddFilter(pipelineConfig -> {
-                                    if (pipelineConfig.getStatus().getPhase().equals(PipelineConfigPhase.CREATING)) {
-                                        logger.debug("[{}] phase of PipelineConfig '{}/{}' is {}, will skip it", CONTROLLER_NAME, pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName(), PipelineConfigPhase.CREATING);
-                                        return false;
-                                    }
+                              logger.debug(
+                                  "[{}] receives event: Add; PipelineConfig '{}/{}'",
+                                  CONTROLLER_NAME,
+                                  pipelineConfig.getMetadata().getNamespace(),
+                                  pipelineConfig.getMetadata().getName());
+                              return true;
+                            })
+                        .withOnUpdateFilter(
+                            (oldPipelineConfig, newPipelineConfig) -> {
+                              String namespace = oldPipelineConfig.getMetadata().getNamespace();
+                              String name = oldPipelineConfig.getMetadata().getName();
+                              if (oldPipelineConfig
+                                  .getMetadata()
+                                  .getResourceVersion()
+                                  .equals(newPipelineConfig.getMetadata().getResourceVersion())) {
+                                logger.debug(
+                                    "[{}] resourceVersion of PipelineConfig '{}/{}' is equal, will skip update event for it",
+                                    CONTROLLER_NAME,
+                                    namespace,
+                                    name);
+                                return false;
+                              }
 
-                                    logger.debug("[{}] receives event: Add; PipelineConfig '{}/{}'",
-                                            CONTROLLER_NAME,
-                                            pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName());
-                                    return true;
-                                })
-                                .withOnUpdateFilter((oldPipelineConfig, newPipelineConfig) -> {
-                                    String namespace = oldPipelineConfig.getMetadata().getNamespace();
-                                    String name = oldPipelineConfig.getMetadata().getName();
-                                    if (oldPipelineConfig.getMetadata().getResourceVersion().equals(newPipelineConfig.getMetadata().getResourceVersion())) {
-                                        logger.debug("[{}] resourceVersion of PipelineConfig '{}/{}' is equal, will skip update event for it", CONTROLLER_NAME, namespace, name);
-                                        return false;
-                                    }
+                              lastEventComingTime = LocalDateTime.now();
 
-                                    lastEventComingTime = LocalDateTime.now();
+                              if (newPipelineConfig
+                                  .getStatus()
+                                  .getPhase()
+                                  .equals(PipelineConfigPhase.CREATING)) {
+                                logger.debug(
+                                    "[{}] phase of PipelineConfig '{}/{}' is {}, will skip it",
+                                    CONTROLLER_NAME,
+                                    namespace,
+                                    name,
+                                    PipelineConfigPhase.CREATING);
+                                return false;
+                              }
 
-                                    if (newPipelineConfig.getStatus().getPhase().equals(PipelineConfigPhase.CREATING)) {
-                                        logger.debug("[{}] phase of PipelineConfig '{}/{}' is {}, will skip it", CONTROLLER_NAME, namespace, name, PipelineConfigPhase.CREATING);
-                                        return false;
-                                    }
+                              logger.debug(
+                                  "[{}] receives event: Update; PipelineConfig '{}/{}'",
+                                  CONTROLLER_NAME,
+                                  namespace,
+                                  name);
 
-                                    logger.debug("[{}] receives event: Update; PipelineConfig '{}/{}'",
-                                            CONTROLLER_NAME,
-                                            namespace, name);
+                              return true;
+                            })
+                        .withOnDeleteFilter(
+                            (pipelineConfig, aBoolean) -> {
+                              logger.debug(
+                                  "[{}] receives event: Delete; PipelineConfig '{}/{}'",
+                                  CONTROLLER_NAME,
+                                  pipelineConfig.getMetadata().getNamespace(),
+                                  pipelineConfig.getMetadata().getName());
+                              return true;
+                            })
+                        .build())
+            .withReconciler(new PipelineConfigReconciler(new Lister<>(informer.getIndexer())))
+            .withName(CONTROLLER_NAME)
+            .withReadyFunc(Clients::allRegisteredResourcesSynced)
+            .withWorkerCount(4)
+            .build();
 
-                                    return true;
-                                })
-                                .withOnDeleteFilter((pipelineConfig, aBoolean) -> {
-                                    logger.debug("[{}] receives event: Delete; PipelineConfig '{}/{}'",
-                                            CONTROLLER_NAME,
-                                            pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName());
-                                    return true;
-                                }).build())
-                        .withReconciler(new PipelineConfigReconciler(new Lister<>(informer.getIndexer())))
-                        .withName(CONTROLLER_NAME)
-                        .withReadyFunc(Clients::allRegisteredResourcesSynced)
-                        .withWorkerCount(4)
-                        .build();
+    managerBuilder.addController(controller);
+  }
 
-        managerBuilder.addController(controller);
+  @Override
+  public LocalDateTime lastEventComingTime() {
+    return lastEventComingTime;
+  }
+
+  @Override
+  public String resourceName() {
+    return "PipelineConfig";
+  }
+
+  @Override
+  public boolean hasResourceExists() throws ApiException {
+    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+    V1alpha1PipelineConfigList pipelineConfigList =
+        api.listPipelineConfigForAllNamespaces(null, null, null, null, 1, null, "0", null, null);
+
+    if (pipelineConfigList == null
+        || pipelineConfigList.getItems() == null
+        || pipelineConfigList.getItems().size() == 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  static class PipelineConfigReconciler implements Reconciler {
+    private Lister<V1alpha1PipelineConfig> lister;
+    private JenkinsClient jenkinsClient;
+
+    PipelineConfigReconciler(Lister<V1alpha1PipelineConfig> lister) {
+      this.lister = lister;
+      this.jenkinsClient = JenkinsClient.getInstance();
     }
 
     @Override
-    public LocalDateTime lastEventComingTime() {
-        return lastEventComingTime;
-    }
+    public Result reconcile(Request request) {
+      String namespace = request.getNamespace();
+      String name = request.getName();
 
-    @Override
-    public String resourceName() {
-        return "PipelineConfig";
-    }
+      V1alpha1PipelineConfig pc = lister.namespace(namespace).get(name);
+      if (pc == null) {
+        logger.debug(
+            "[{}] Cannot found PipelineConfig '{}/{}' in local lister, will try to remove it's correspondent Jenkins job",
+            getControllerName(),
+            namespace,
+            name);
+        boolean deleteSucceed;
+        try {
+          deleteSucceed = jenkinsClient.deleteJob(new NamespaceName(namespace, name));
+          if (!deleteSucceed) {
+            logger.warn(
+                "[{}] Failed to delete job for PipelineConfig '{}/{}'",
+                getControllerName(),
+                namespace,
+                name);
+          }
+        } catch (IOException | InterruptedException e) {
+          logger.warn(
+              "[{}] Failed to delete job for PipelineConfig '{}/{}', reason {}",
+              getControllerName(),
+              namespace,
+              name,
+              e.getMessage());
+          Thread.currentThread().interrupt();
+        }
+        return new Result(false);
+      }
 
-    @Override
-    public boolean hasResourceExists() throws ApiException {
-        DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-        V1alpha1PipelineConfigList pipelineConfigList = api.listPipelineConfigForAllNamespaces(null,
-                null,
-                null,
-                null,
-                1,
-                null,
-                "0",
-                null,
-                null);
+      if (!BindResourcePredicate.isBindedResource(
+          namespace, pc.getSpec().getJenkinsBinding().getName())) {
+        logger.debug(
+            "[{}] PipelineConfigController: {}/{}' is not bind to correct jenkinsbinding, will skip it",
+            getControllerName(),
+            namespace,
+            name);
+        return new Result(false);
+      }
 
-        if (pipelineConfigList == null || pipelineConfigList.getItems() == null || pipelineConfigList.getItems().size() == 0) {
-            return false;
+      logger.debug(
+          "[{}] Start to create or update Jenkins job for PipelineConfig '{}/{}'",
+          getControllerName(),
+          namespace,
+          name);
+      V1alpha1PipelineConfig pipelineConfigCopy = DeepCopyUtils.deepCopy(pc);
+
+      synchronized (pc.getMetadata().getUid().intern()) {
+        // clean conditions first, any error info will be put it into conditions
+        List<V1alpha1Condition> conditions = new ArrayList<>();
+        pipelineConfigCopy.getStatus().setConditions(conditions);
+
+        PipelineConfigUtils.dependencyCheck(
+            pipelineConfigCopy, pipelineConfigCopy.getStatus().getConditions());
+        try {
+          if (jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
+            return new Result(false);
+          }
+
+          if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
+            return new Result(false);
+          }
+        } catch (PipelineConfigConvertException e) {
+          logger.warn(
+              "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
+              getControllerName(),
+              namespace,
+              name,
+              StringUtils.join(e.getCauses(), " or "));
+          conditions.addAll(ConditionsUtils.convertToConditions(e.getCauses()));
+        } catch (IOException e) {
+          logger.warn(
+              "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
+              getControllerName(),
+              namespace,
+              name,
+              e.getMessage());
+          conditions.add(ConditionsUtils.convertToCondition(e));
         }
 
-        return true;
+        if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
+          pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
+          DateTime now = DateTime.now();
+          pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
+        } else {
+          pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
+        }
+
+        logger.debug(
+            "[{}] Will update PipelineConfig '{}/{}'", getControllerName(), namespace, name);
+        PipelineConfigClient pipelineConfigClient =
+            (PipelineConfigClient) Clients.get(V1alpha1PipelineConfig.class);
+        boolean succeed = pipelineConfigClient.update(pc, pipelineConfigCopy);
+        return new Result(!succeed);
+      }
     }
 
-    static class PipelineConfigReconciler implements Reconciler {
-        private Lister<V1alpha1PipelineConfig> lister;
-        private JenkinsClient jenkinsClient;
-
-        PipelineConfigReconciler(Lister<V1alpha1PipelineConfig> lister) {
-            this.lister = lister;
-            this.jenkinsClient = JenkinsClient.getInstance();
-        }
-
-        @Override
-        public Result reconcile(Request request) {
-            String namespace = request.getNamespace();
-            String name = request.getName();
-
-            V1alpha1PipelineConfig pc = lister.namespace(namespace).get(name);
-            if (pc == null) {
-                logger.debug("[{}] Cannot found PipelineConfig '{}/{}' in local lister, will try to remove it's correspondent Jenkins job", getControllerName(), namespace, name);
-                boolean deleteSucceed;
-                try {
-                    deleteSucceed = jenkinsClient.deleteJob(new NamespaceName(namespace, name));
-                    if (!deleteSucceed) {
-                        logger.warn("[{}] Failed to delete job for PipelineConfig '{}/{}'", getControllerName(), namespace, name);
-                    }
-                } catch (IOException | InterruptedException e) {
-                    logger.warn("[{}] Failed to delete job for PipelineConfig '{}/{}', reason {}", getControllerName(), namespace, name, e.getMessage());
-                    Thread.currentThread().interrupt();
-                }
-                return new Result(false);
-            }
-
-
-            if (!BindResourcePredicate.isBindedResource(namespace, pc.getSpec().getJenkinsBinding().getName())) {
-                logger.debug("[{}] PipelineConfigController: {}/{}' is not bind to correct jenkinsbinding, will skip it", getControllerName(), namespace, name);
-                return new Result(false);
-            }
-
-            logger.debug("[{}] Start to create or update Jenkins job for PipelineConfig '{}/{}'", getControllerName(), namespace, name);
-            V1alpha1PipelineConfig pipelineConfigCopy = DeepCopyUtils.deepCopy(pc);
-
-            synchronized (pc.getMetadata().getUid().intern()) {
-                // clean conditions first, any error info will be put it into conditions
-                List<V1alpha1Condition> conditions = new ArrayList<>();
-                pipelineConfigCopy.getStatus().setConditions(conditions);
-
-                PipelineConfigUtils.dependencyCheck(pipelineConfigCopy, pipelineConfigCopy.getStatus().getConditions());
-                try {
-                    if (jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
-                        return new Result(false);
-                    }
-
-                    if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
-                        return new Result(false);
-                    }
-                } catch (PipelineConfigConvertException e) {
-                    logger.warn("[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}", getControllerName(), namespace, name, StringUtils.join(e.getCauses(), " or "));
-                    conditions.addAll(ConditionsUtils.convertToConditions(e.getCauses()));
-                } catch (IOException e) {
-                    logger.warn("[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}", getControllerName(), namespace, name, e.getMessage());
-                    conditions.add(ConditionsUtils.convertToCondition(e));
-                }
-
-                if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
-                    pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
-                    DateTime now = DateTime.now();
-                    pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
-                } else {
-                    pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
-                }
-
-                logger.debug("[{}] Will update PipelineConfig '{}/{}'", getControllerName(), namespace, name);
-                PipelineConfigClient pipelineConfigClient = (PipelineConfigClient) Clients.get(V1alpha1PipelineConfig.class);
-                boolean succeed = pipelineConfigClient.update(pc, pipelineConfigCopy);
-                return new Result(!succeed);
-            }
-        }
-
-        private String getControllerName() {
-            return CONTROLLER_NAME;
-        }
+    private String getControllerName() {
+      return CONTROLLER_NAME;
     }
+  }
 }

@@ -1,24 +1,24 @@
-//package io.alauda.jenkins.devops.sync.action;
+// package io.alauda.jenkins.devops.sync.action;
 //
-//import com.gargoylesoftware.htmlunit.Page;
-//import com.gargoylesoftware.htmlunit.WebResponse;
-//import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
-//import io.alauda.jenkins.devops.sync.WithoutK8s;
-//import net.sf.json.JSONObject;
-//import org.junit.Rule;
-//import org.junit.Test;
-//import org.jvnet.hudson.test.JenkinsRule;
-//import org.jvnet.hudson.test.WithoutJenkins;
-//import org.xml.sax.SAXException;
+// import com.gargoylesoftware.htmlunit.Page;
+// import com.gargoylesoftware.htmlunit.WebResponse;
+// import io.alauda.jenkins.devops.sync.JenkinsK8sRule;
+// import io.alauda.jenkins.devops.sync.WithoutK8s;
+// import net.sf.json.JSONObject;
+// import org.junit.Rule;
+// import org.junit.Test;
+// import org.jvnet.hudson.test.JenkinsRule;
+// import org.jvnet.hudson.test.WithoutJenkins;
+// import org.xml.sax.SAXException;
 //
-//import java.io.IOException;
-//import java.util.Locale;
+// import java.io.IOException;
+// import java.util.Locale;
 //
-//import static org.hamcrest.Matchers.anyOf;
-//import static org.hamcrest.Matchers.equalTo;
-//import static org.junit.Assert.*;
+// import static org.hamcrest.Matchers.anyOf;
+// import static org.hamcrest.Matchers.equalTo;
+// import static org.junit.Assert.*;
 //
-//public class KubernetesClientActionTest {
+// public class KubernetesClientActionTest {
 //    @Rule
 //    public JenkinsK8sRule j = new JenkinsK8sRule();
 //
@@ -96,4 +96,4 @@
 //        assertNotNull(json.getJSONObject("data").get("sanity_" + Locale.SIMPLIFIED_CHINESE));
 //        assertNotNull(json.getJSONObject("data").get("sanity_" + Locale.ENGLISH));
 //    }
-//}
+// }
