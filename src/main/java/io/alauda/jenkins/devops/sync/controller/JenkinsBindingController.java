@@ -8,7 +8,6 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsBindingClient;
-import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
@@ -22,7 +21,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Extension
-public class JenkinsBindingController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+public class JenkinsBindingController implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
     private LocalDateTime lastEventComingTime;
 
@@ -30,28 +29,22 @@ public class JenkinsBindingController implements ResourceSyncController, Connect
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
-        SharedIndexInformer<V1alpha1JenkinsBinding> informer = InformerUtils.getExistingSharedIndexInformer(factory, V1alpha1JenkinsBinding.class);
+        SharedIndexInformer<V1alpha1JenkinsBinding> informer = factory.getExistingSharedIndexInformer(V1alpha1JenkinsBinding.class);
         if (informer == null) {
             informer = factory.sharedIndexInformerFor(
-                    callGeneratorParams -> {
-                        try {
-                            return api.listJenkinsBindingForAllNamespacesCall(
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    callGeneratorParams.resourceVersion,
-                                    callGeneratorParams.timeoutSeconds,
-                                    callGeneratorParams.watch,
-                                    null,
-                                    null
-                            );
-                        } catch (ApiException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }, V1alpha1JenkinsBinding.class, V1alpha1JenkinsBindingList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
+                    callGeneratorParams -> api.listJenkinsBindingForAllNamespacesCall(
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            callGeneratorParams.resourceVersion,
+                            callGeneratorParams.timeoutSeconds,
+                            callGeneratorParams.watch,
+                            null,
+                            null
+                    ), V1alpha1JenkinsBinding.class, V1alpha1JenkinsBindingList.class, TimeUnit.MINUTES.toMillis(AlaudaSyncGlobalConfiguration.get().getResyncPeriod()));
         }
 
 
@@ -68,7 +61,7 @@ public class JenkinsBindingController implements ResourceSyncController, Connect
                                         lastEventComingTime = LocalDateTime.now();
                                     }
                                     return true;
-                                } )
+                                })
                                 .build())
                         .withReconciler(request -> new Result(false))
                         .withName("JenkinsBindingController")

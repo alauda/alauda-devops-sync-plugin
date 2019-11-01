@@ -8,7 +8,6 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.CodeRepositoryClient;
-import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
@@ -24,7 +23,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Extension
-public class CodeRepositoryController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+public class CodeRepositoryController implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
     private static final Logger logger = LoggerFactory.getLogger(NamespaceController.class);
     private LocalDateTime lastEventComingTime;
@@ -33,7 +32,7 @@ public class CodeRepositoryController implements ResourceSyncController, Connect
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
-        SharedIndexInformer<V1alpha1CodeRepository> informer = InformerUtils.getExistingSharedIndexInformer(factory, V1alpha1CodeRepository.class);
+        SharedIndexInformer<V1alpha1CodeRepository> informer = factory.getExistingSharedIndexInformer(V1alpha1CodeRepository.class);
         if (informer == null) {
             informer = factory.sharedIndexInformerFor(
                     callGeneratorParams -> api.listCodeRepositoryForAllNamespacesCall(

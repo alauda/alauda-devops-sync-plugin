@@ -14,7 +14,6 @@ import io.alauda.jenkins.devops.sync.client.PipelineClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
-import io.alauda.jenkins.devops.sync.controller.util.InformerUtils;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -42,7 +41,7 @@ import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 
 @Extension
-public class PipelineController implements ResourceSyncController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+public class PipelineController implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
 
     private static final Logger logger = LoggerFactory.getLogger(PipelineController.class);
     private static final String CONTROLLER_NAME = "PipelineController";
@@ -53,7 +52,7 @@ public class PipelineController implements ResourceSyncController, ConnectionAli
     public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
-        SharedIndexInformer<V1alpha1Pipeline> informer = InformerUtils.getExistingSharedIndexInformer(factory, V1alpha1Pipeline.class);
+        SharedIndexInformer<V1alpha1Pipeline> informer = factory.getExistingSharedIndexInformer(V1alpha1Pipeline.class);
         if (informer == null) {
             informer = factory.sharedIndexInformerFor(
                     callGeneratorParams -> api.listPipelineForAllNamespacesCall(
@@ -147,7 +146,7 @@ public class PipelineController implements ResourceSyncController, ConnectionAli
         private Lister<V1alpha1Pipeline> lister;
         private JenkinsClient jenkinsClient;
 
-        public PipelineReconciler(Lister<V1alpha1Pipeline> lister) {
+        PipelineReconciler(Lister<V1alpha1Pipeline> lister) {
             this.lister = lister;
             jenkinsClient = JenkinsClient.getInstance();
         }

@@ -27,8 +27,8 @@ public class PipelineToActionMapper {
     private static Map<String, CauseAction> buildToCauseMap;
 
     static {
-        buildToParametersMap = new ConcurrentHashMap<String, ParametersAction>();
-        buildToCauseMap = new ConcurrentHashMap<String, CauseAction>();
+        buildToParametersMap = new ConcurrentHashMap<>();
+        buildToCauseMap = new ConcurrentHashMap<>();
     }
 
     public static synchronized void addParameterAction(String pipelineId,

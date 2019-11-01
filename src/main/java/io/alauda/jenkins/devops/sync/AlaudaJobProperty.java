@@ -48,6 +48,7 @@ public interface AlaudaJobProperty {
 
     /**
      * Get all annotations which start with {@link Annotations#ALAUDA_PIPELINE_CONTEXT}
+     *
      * @param pc instance of V1alpha1PipelineConfig
      * @return annotation as the JSON format
      */
@@ -55,10 +56,10 @@ public interface AlaudaJobProperty {
         V1ObjectMeta meta = pc.getMetadata();
         Map<String, String> Annotation = meta.getAnnotations();
         String contextAnnotation = "{}";
-        if(Annotation!=null){
-            Map<String,String> annotationResult = new HashMap<>();
-            for(String key:Annotation.keySet()){
-                if(key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)){
+        if (Annotation != null) {
+            Map<String, String> annotationResult = new HashMap<>();
+            for (String key : Annotation.keySet()) {
+                if (key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)) {
                     annotationResult.put(key, Annotation.get(key));
                 }
             }

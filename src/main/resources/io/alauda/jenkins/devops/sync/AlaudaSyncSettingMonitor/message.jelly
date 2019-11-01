@@ -29,7 +29,7 @@ THE SOFTWARE.
       <f:submit name="yes" value="${%Go to Configure}"/>
       <f:submit name="no" value="${%Dismiss}"/>
     </form>
-    <div>${%AlaudaSync setting is invalid.} >> ${%ServiceName:} ${it.syncServiceName} >> ${%Sync Enable:} ${it.syncEnable}</div>
-    <div>${it.message}</div>
+    <div>Alauda DevOps Sync plugin is not working, cannot sync resource to Jenkins now. </div>
+    <div>reason: ${it.message}</div>
   </div>
 </j:jelly>
