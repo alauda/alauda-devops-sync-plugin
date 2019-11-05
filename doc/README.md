@@ -23,6 +23,25 @@
 ## 其他使用方法
 本插件还提供了流水线步骤（DSL），点击[dsl.md](dsl.md)查看细节。
 
+## 事件
+#### PipelineConfig
+- 平台创建新的 PipelineConfig，在 Jenkins 上创建 Job 成功/失败时
+- 平台更新 PipelineConfig，在 Jenkins 上更新 Job 成功/失败时
+- 平台删除 PipelineConfig，在 Jenkins 上删除 Job 成功/失败时
+- Jenkins 上删除 Job 时
+- Jenkins 上更新 Job 时
+- 多分支流水线新的分支被发现时 
+- 多分支流水线已有的分支更新时(例如从正常状态变为 stale 状态) 
+- 多分支流水线分支被删除时
+- Jenkins 上删除/更新 PipelineConfig 失败时
+- Jenkins 上删除/更新 PipelineConfig 成功时
+#### Pipeline
+- 平台创建新的 Pipeline 触发构建成功/失败时
+- 平台取消构建成功/失败时
+- 平台删除构建成功/失败时
+- Jenkins 上删除/更新 Pipeline 失败时
+- Jenkins 上删除/更新 Pipeline 成功时
+
 ## 术语说明
 
 每个 Kubernetes 集群都有自己的 `apiserver`，但为了方便起见，我们本文中的 `apiserver` 指的是"管理集群"所在的 `apiserver`。

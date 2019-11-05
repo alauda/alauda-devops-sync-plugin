@@ -9,6 +9,7 @@ import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.event.PipelineEvents;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.models.V1ObjectMetaBuilder;
@@ -196,7 +197,9 @@ public abstract class PipelineGenerator {
             .withSpec(pipelineSpec)
             .build();
 
-    return Clients.get(V1alpha1Pipeline.class).create(pipe);
+    pipe = Clients.get(V1alpha1Pipeline.class).create(pipe);
+    PipelineEvents.newBuildTriggeredEvent(pipe, "Trigger pipeline in Jenkins");
+    return pipe;
   }
 
   public static V1alpha1PipelineSpec buildPipelineSpec(V1alpha1PipelineConfig config) {

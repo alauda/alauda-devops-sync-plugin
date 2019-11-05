@@ -19,6 +19,7 @@ import hudson.Extension;
 import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.event.PipelineEvents;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import java.util.logging.Logger;
 
@@ -38,6 +39,8 @@ public class PipelineQueueListener extends QueueListener {
     if (pipelineCause != null) {
       String namespace = pipelineCause.getNamespace();
       String name = pipelineCause.getName();
+      PipelineEvents.newBuildDeletedEvent(namespace, name, "Build cancelled when left from queue")
+          .submit();
 
       PipelineUtils.delete(namespace, name);
       logger.info(String.format("Pipeline %s-%s was deleted.", namespace, name));

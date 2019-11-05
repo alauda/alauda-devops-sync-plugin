@@ -4,16 +4,21 @@ import com.google.common.base.Objects;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
-import io.alauda.devops.java.client.models.*;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfigSpec;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSource;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSourceGit;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStrategy;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStrategyJenkins;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
+import io.alauda.jenkins.devops.sync.event.PipelineConfigEvents;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.models.V1ObjectMeta;
-import io.kubernetes.client.models.V1Status;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.lang.StringUtils;
@@ -22,6 +27,7 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 @Extension
 public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
+
   private static final Logger logger = Logger.getLogger(WorkflowEventHandler.class.getName());
   private JenkinsClient jenkinsClient = JenkinsClient.getInstance();
 
@@ -62,11 +68,11 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
       if (pipelineConfig != null) {
         logger.info(() -> "Got pipeline config for  " + namespace + "/" + pipelineConfigName);
 
-        V1Status result =
-            Clients.get(V1alpha1PipelineConfig.class).delete(namespace, pipelineConfigName);
-
+        PipelineConfigEvents.newJobDeletedEvent(
+                namespace, pipelineConfigName, "Job deleted in Jenkins")
+            .submit();
+        Clients.get(V1alpha1PipelineConfig.class).delete(namespace, pipelineConfigName);
         logger.info(() -> "Deleting PipelineConfig " + namespace + "/" + pipelineConfigName);
-
       } else {
         logger.info(() -> "No pipeline config for " + namespace + "/" + pipelineConfigName);
       }
@@ -176,13 +182,11 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
         return;
       }
 
-      try {
-        Clients.get(V1alpha1PipelineConfig.class).update(jobPipelineConfig, newJobPipelineConfig);
-        logger.info("PipelineConfig update success, " + jobName);
-      } catch (Exception e) {
-        logger.log(
-            Level.WARNING, "Failed to update PipelineConfig: " + namespace + jobName + ". " + e, e);
-      }
+      PipelineConfigEvents.newJobUpdatedEvent(
+              newJobPipelineConfig, "Workflow job configuration changed in Jenkins")
+          .submit();
+
+      Clients.get(V1alpha1PipelineConfig.class).update(jobPipelineConfig, newJobPipelineConfig);
     }
   }
 

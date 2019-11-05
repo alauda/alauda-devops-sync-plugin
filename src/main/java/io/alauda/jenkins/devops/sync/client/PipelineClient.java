@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.utils.PatchGenerator;
+import io.alauda.jenkins.devops.sync.event.PipelineEvents;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.cache.Lister;
@@ -19,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
+
   private static final Logger logger = LoggerFactory.getLogger(PipelineClient.class);
 
   private SharedIndexInformer<V1alpha1Pipeline> informer;
@@ -41,17 +43,14 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
 
   @Override
   public boolean update(V1alpha1Pipeline oldPipeline, V1alpha1Pipeline newPipeline) {
-    String name = oldPipeline.getMetadata().getName();
-    String namespace = oldPipeline.getMetadata().getNamespace();
-
     String patch;
     try {
       patch = new PatchGenerator().generatePatchBetween(oldPipeline, newPipeline);
     } catch (IOException e) {
       logger.warn(
           "Unable to generate patch for Pipeline '{}/{}', reason: {}",
-          namespace,
-          name,
+          newPipeline.getMetadata().getNamespace(),
+          newPipeline.getMetadata().getName(),
           e.getMessage());
       return false;
     }
@@ -73,25 +72,36 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
           }
         });
 
-    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-    try {
-      api.patchNamespacedPipeline(name, namespace, bodyWithoutRemove, null, null);
-    } catch (ApiException e) {
-      logger.warn(
-          String.format(
-              "Unable to patch Pipeline '%s/%s', reason: %s, body: %s",
-              namespace, name, e.getMessage(), e.getResponseBody()),
-          e);
+    if (!updatePipeline(oldPipeline, bodyWithoutRemove)) {
       return false;
     }
+    if (!updatePipeline(oldPipeline, bodyOnlyRemove)) {
+      return false;
+    }
+    return true;
+  }
+
+  private boolean updatePipeline(V1alpha1Pipeline pipeline, List<JsonObject> body) {
+    String name = pipeline.getMetadata().getName();
+    String namespace = pipeline.getMetadata().getNamespace();
+
     try {
-      api.patchNamespacedPipeline(name, namespace, bodyOnlyRemove, null, null);
+      DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+      V1alpha1Pipeline updatedPipeline = api
+          .patchNamespacedPipeline(name, namespace, body, null, null);
+
+      PipelineEvents
+          .newBuildUpdatedEvent(updatedPipeline, "Pipeline updated in Jenkins")
+          .submit();
     } catch (ApiException e) {
       logger.warn(
           String.format(
               "Unable to patch Pipeline '%s/%s', reason: %s, body: %s",
               namespace, name, e.getMessage(), e.getResponseBody()),
           e);
+      PipelineEvents.newFailedUpdateBuildEvent(
+          pipeline, String.format("Failed update pipeline, message %s", e.getMessage()))
+          .submit();
       return false;
     }
     return true;
@@ -120,13 +130,30 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
     try {
-      return api.deleteNamespacedPipeline(
+      V1Status result = api.deleteNamespacedPipeline(
           name, namespace, null, new V1DeleteOptions(), null, null, null, null);
+
+      if (!result.getStatus().equals("Success")) {
+        PipelineEvents.newFailedDeleteBuildEvent(
+            namespace,
+            name,
+            String.format("Failed to delete Pipeline, reason %s", result.getMessage()))
+            .submit();
+      } else {
+        PipelineEvents.newBuildDeletedEvent(namespace, name, "Pipeline deleted in Jenkins")
+            .submit();
+      }
+      return result;
     } catch (ApiException e) {
       logger.warn(
           String.format(
               "Unable to delete Pipeline '%s/%s', reason: %s", namespace, name, e.getMessage()),
           e);
+      PipelineEvents.newFailedDeleteBuildEvent(
+          namespace,
+          name,
+          String.format("Failed to delete Pipeline, reason %s", e.getMessage()))
+          .submit();
       return null;
     }
   }

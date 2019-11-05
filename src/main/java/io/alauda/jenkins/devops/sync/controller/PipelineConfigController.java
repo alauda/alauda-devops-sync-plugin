@@ -13,6 +13,7 @@ import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineConfigClient;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
+import io.alauda.jenkins.devops.sync.event.PipelineConfigEvents;
 import io.alauda.jenkins.devops.sync.exception.ConditionsUtils;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
@@ -242,6 +244,10 @@ public class PipelineConfigController
                 getControllerName(),
                 namespace,
                 name);
+          } else {
+            PipelineConfigEvents.newJobDeletedEvent(
+                    namespace, name, "no pipeline config found in jenkins local cache")
+                .submit();
           }
         } catch (IOException | InterruptedException e) {
           logger.warn(
@@ -250,6 +256,9 @@ public class PipelineConfigController
               namespace,
               name,
               e.getMessage());
+          PipelineConfigEvents.newFailedDeleteJobEvent(
+                  namespace, name, String.format("Failed delete job, reason %s", e.getMessage()))
+              .submit();
           Thread.currentThread().interrupt();
         }
         return new Result(false);
@@ -272,6 +281,8 @@ public class PipelineConfigController
           name);
       V1alpha1PipelineConfig pipelineConfigCopy = DeepCopyUtils.deepCopy(pc);
 
+      boolean alreadyHasJobInJenkins =
+          jenkinsClient.getJob(new NamespaceName(namespace, name)) != null;
       synchronized (pc.getMetadata().getUid().intern()) {
         // clean conditions first, any error info will be put it into conditions
         List<V1alpha1Condition> conditions = new ArrayList<>();
@@ -280,7 +291,7 @@ public class PipelineConfigController
         PipelineConfigUtils.dependencyCheck(
             pipelineConfigCopy, pipelineConfigCopy.getStatus().getConditions());
         try {
-          if (jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
+          if (alreadyHasJobInJenkins && jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
             return new Result(false);
           }
 
@@ -309,8 +320,35 @@ public class PipelineConfigController
           pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
           DateTime now = DateTime.now();
           pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
+
+          if (alreadyHasJobInJenkins) {
+            PipelineConfigEvents.newFailedUpdateJobEvent(
+                    pipelineConfigCopy,
+                    conditions
+                        .stream()
+                        .map(V1alpha1Condition::getMessage)
+                        .collect(Collectors.joining(" or ")))
+                .submit();
+          } else {
+            PipelineConfigEvents.newFailedCreateJobEvent(
+                    pipelineConfigCopy,
+                    conditions
+                        .stream()
+                        .map(V1alpha1Condition::getMessage)
+                        .collect(Collectors.joining(" or ")))
+                .submit();
+          }
         } else {
           pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
+          if (alreadyHasJobInJenkins) {
+            PipelineConfigEvents.newJobUpdatedEvent(
+                    pipelineConfigCopy, "Updated Jenkins job successfully")
+                .submit();
+          } else {
+            PipelineConfigEvents.newJobCreatedEvent(
+                    pipelineConfigCopy, "Created Jenkins job successfully")
+                .submit();
+          }
         }
 
         logger.debug(

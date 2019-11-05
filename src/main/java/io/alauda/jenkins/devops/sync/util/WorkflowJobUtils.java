@@ -28,6 +28,7 @@ import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 public final class WorkflowJobUtils {
+
   private static final Logger logger = Logger.getLogger(WorkflowJobUtils.class.getName());
 
   private WorkflowJobUtils() {}
@@ -188,6 +189,7 @@ public final class WorkflowJobUtils {
   }
 
   static class BranchItem {
+
     private List<String> branchList = new ArrayList<>();
     private List<String> staleBranchList = new ArrayList<>();
     private List<String> prList = new ArrayList<>();

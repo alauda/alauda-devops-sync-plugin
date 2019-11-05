@@ -47,6 +47,7 @@ import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
+import io.alauda.jenkins.devops.sync.event.PipelineEvents;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
@@ -91,6 +92,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  */
 @Extension
 public class PipelineSyncRunListener extends RunListener<Run> {
+
   private static final Logger logger = Logger.getLogger(PipelineSyncRunListener.class.getName());
 
   private long pollPeriodMs = 1000L * 5; // 5 seconds
@@ -186,6 +188,9 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     if (cause != null) {
       String namespace = cause.getNamespace();
       String pipelineName = cause.getName();
+
+      PipelineEvents.newBuildDeletedEvent(namespace, pipelineName, "Build delete in Jenkins")
+          .submit();
 
       V1Status result = PipelineUtils.delete(namespace, pipelineName);
 
@@ -470,7 +475,9 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         }
       }
     } catch (Throwable t) {
-      if (logger.isLoggable(Level.FINE)) logger.log(Level.FINE, "upsertPipeline", t);
+      if (logger.isLoggable(Level.FINE)) {
+        logger.log(Level.FINE, "upsertPipeline", t);
+      }
     }
 
     Map<String, BlueRunResult> blueRunResults = new HashMap<>();
@@ -855,6 +862,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class BlueJsonStage {
+
     public StageNodeExt stage;
     public BlueRunResult result;
     public List<BluePipelineNode.Edge> edges;
@@ -871,6 +879,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class PipelineJson {
+
     public String start_stage_id;
     public List<PipelineStage> stages;
 
@@ -888,6 +897,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class PipelineStage {
+
     public String id;
     public String name;
     public String status;

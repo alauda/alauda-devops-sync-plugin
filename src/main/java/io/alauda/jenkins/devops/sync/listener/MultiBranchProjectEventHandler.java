@@ -11,6 +11,7 @@ import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.event.PipelineConfigEvents;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.kubernetes.client.models.V1Status;
 import java.lang.reflect.InvocationTargetException;
@@ -30,6 +31,7 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 @Extension
 public class MultiBranchProjectEventHandler
     implements ItemEventHandler<WorkflowMultiBranchProject> {
+
   private static final Logger logger =
       Logger.getLogger(MultiBranchProjectEventHandler.class.getName());
 
@@ -115,10 +117,17 @@ public class MultiBranchProjectEventHandler
         multiBranchPipeline.setOrphaned(null);
       }
 
-      Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
-      pc.setSpec(newPc.getSpec());
+      PipelineConfigEvents.newJobUpdatedEvent(
+              pc, "Multi-branch job configuration changed in Jenkins")
+          .submit();
 
-      logger.info(String.format("Done with update pipelineconfig %s.", nsName.toString()));
+      boolean succeed = Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
+      if (!succeed) {
+        PipelineConfigEvents.newFailedUpdateJobEvent(
+                pc,
+                "Multi-branch job configuration changed but not update PipelineConfig, reason: update failed")
+            .submit();
+      }
     }
   }
 
@@ -137,8 +146,9 @@ public class MultiBranchProjectEventHandler
 
     V1alpha1PipelineConfig pc =
         Clients.get(V1alpha1PipelineConfig.class).lister().namespace(ns).get(name);
-    ;
+
     if (pc != null) {
+      PipelineConfigEvents.newJobDeletedEvent(ns, name, "Job deleted in Jenkins").submit();
       V1Status result = Clients.get(V1alpha1PipelineConfig.class).delete(ns, name);
       logger.info(
           String.format(

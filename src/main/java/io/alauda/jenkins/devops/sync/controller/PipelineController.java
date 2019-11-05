@@ -18,6 +18,7 @@ import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
+import io.alauda.jenkins.devops.sync.event.PipelineEvents;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -298,9 +299,13 @@ public class PipelineController
           }
           logger.debug("[{}] Will update Pipeline '{}/{}'", getControllerName(), namespace, name);
           if (succeed) {
+            PipelineEvents.newBuildTriggeredEvent(pipeline, "Trigger Jenkins Build successfully")
+                .submit();
             succeed = pipelineClient.update(pipeline, pipelineCopy);
             return new Result(!succeed);
           } else {
+            PipelineEvents.newFailedTriggerBuildEvent(pipeline, "Trigger Jenkins Build failed")
+                .submit();
             pipelineClient.update(pipeline, pipelineCopy);
             return new Result(true);
           }
@@ -312,10 +317,14 @@ public class PipelineController
               "[{}] Starting cancel Pipeline '{}/{}'", getControllerName(), namespace, name);
           boolean succeed = jenkinsClient.cancelPipeline(new NamespaceName(namespace, name));
           if (succeed) {
+            PipelineEvents.newBuildCancelledEvent(pipeline, "Build cancelled successfully")
+                .submit();
             pipelineCopy.getStatus().setPhase(CANCELLED);
             succeed = pipelineClient.update(pipeline, pipelineCopy);
             return new Result(!succeed);
           } else {
+            // TODO change the code structure to get reason of why canceling failed
+            PipelineEvents.newFailedCancelBuildEvent(pipeline, "Failed to cancel build").submit();
             pipelineClient.update(pipeline, pipelineCopy);
             return new Result(true);
           }

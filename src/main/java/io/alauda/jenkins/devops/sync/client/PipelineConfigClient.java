@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.utils.PatchGenerator;
+import io.alauda.jenkins.devops.sync.event.PipelineConfigEvents;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.cache.Lister;
@@ -19,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConfig> {
+
   private static final Logger logger = LoggerFactory.getLogger(PipelineConfigClient.class);
 
   private SharedIndexInformer<V1alpha1PipelineConfig> informer;
@@ -42,8 +44,6 @@ public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConf
   @Override
   public boolean update(
       V1alpha1PipelineConfig oldPipelineConfig, V1alpha1PipelineConfig newPipelineConfig) {
-    String name = oldPipelineConfig.getMetadata().getName();
-    String namespace = oldPipelineConfig.getMetadata().getNamespace();
 
     String patch;
     try {
@@ -51,8 +51,8 @@ public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConf
     } catch (IOException e) {
       logger.warn(
           "Unable to generate patch for PipelineConfig '{}/{}', reason: {}",
-          namespace,
-          name,
+          oldPipelineConfig.getMetadata().getNamespace(),
+          oldPipelineConfig.getMetadata().getName(),
           e.getMessage());
       return false;
     }
@@ -76,46 +76,47 @@ public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConf
           }
         });
 
-    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-    try {
-      api.patchNamespacedPipelineConfig(name, namespace, bodyWithoutRemove, null, null);
-    } catch (ApiException e) {
-      logger.warn(
-          String.format(
-              "Unable to patch PipelineConfig '%s/%s', reason: %s, body: %s",
-              namespace, name, e.getMessage(), e.getResponseBody()),
-          e);
+    if (!updatePipelineConfig(oldPipelineConfig, bodyWithoutRemove)) {
       return false;
     }
-    try {
-      api.patchNamespacedPipelineConfig(name, namespace, bodyOnlyRemove, null, null);
-    } catch (ApiException e) {
-      logger.warn(
-          String.format(
-              "Unable to patch PipelineConfig '%s/%s', reason: %s, body: %s",
-              namespace, name, e.getMessage(), e.getResponseBody()),
-          e);
+    if (!updatePipelineConfig(oldPipelineConfig, bodyOnlyRemove)) {
       return false;
     }
     return true;
   }
 
-  @Override
-  public V1alpha1PipelineConfig create(V1alpha1PipelineConfig pipelineConfig) {
-    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+  private boolean updatePipelineConfig(
+      V1alpha1PipelineConfig oldPipelineConfig, List<JsonObject> body) {
+    String name = oldPipelineConfig.getMetadata().getName();
+    String namespace = oldPipelineConfig.getMetadata().getNamespace();
+
     try {
-      return api.createNamespacedPipelineConfig(
-          pipelineConfig.getMetadata().getNamespace(), pipelineConfig, null, null, null);
+      DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+      V1alpha1PipelineConfig updatedPipelineConfig = api
+          .patchNamespacedPipelineConfig(name, namespace, body, null, null);
+
+      PipelineConfigEvents.newJobUpdatedEvent(updatedPipelineConfig,
+          "PipelineConfig updated in Jenkins")
+          .submit();
     } catch (ApiException e) {
       logger.warn(
           String.format(
-              "Unable to create PipelineConfig '%s/%s', reason: %s",
-              pipelineConfig.getMetadata().getNamespace(),
-              pipelineConfig.getMetadata().getName(),
-              e.getMessage()),
+              "Unable to patch PipelineConfig '%s/%s', reason: %s, body: %s",
+              namespace, name, e.getMessage(), e.getResponseBody()),
           e);
-      return null;
+      PipelineConfigEvents.newFailedUpdateJobEvent(
+          oldPipelineConfig,
+          String.format(
+              "Unable to update PipelineConfig in Jenkins, reason %s", e.getMessage()))
+          .submit();
+      return true;
     }
+    return false;
+  }
+
+  @Override
+  public V1alpha1PipelineConfig create(V1alpha1PipelineConfig pipelineConfig) {
+    throw new UnsupportedOperationException("Should not create PipelineConfig in Jenkins");
   }
 
   @Override
@@ -123,14 +124,32 @@ public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConf
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
 
     try {
-      return api.deleteNamespacedPipelineConfig(
+      V1Status result = api.deleteNamespacedPipelineConfig(
           name, namespace, null, new V1DeleteOptions(), null, null, null, null);
+
+      if (!result.getStatus().equals("Success")) {
+        PipelineConfigEvents.newFailedDeleteJobEvent(
+            namespace,
+            name,
+            String.format("Failed to delete PipelineConfig, reason %s", result.getMessage()))
+            .submit();
+      } else {
+        PipelineConfigEvents
+            .newJobDeletedEvent(namespace, name, "PipelineConfig deleted by Jenkins")
+            .submit();
+      }
+      return result;
     } catch (ApiException e) {
       logger.warn(
           String.format(
               "Unable to delete PipelineConfig '%s/%s', reason: %s",
               namespace, name, e.getMessage()),
           e);
+      PipelineConfigEvents.newFailedDeleteJobEvent(
+          namespace,
+          name,
+          String.format("Failed to delete PipelineConfig, reason %s", e.getMessage()))
+          .submit();
       return null;
     }
   }
