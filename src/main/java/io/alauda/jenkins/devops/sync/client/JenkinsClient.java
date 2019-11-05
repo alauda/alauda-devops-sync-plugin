@@ -386,13 +386,14 @@ public class JenkinsClient {
         return false;
       }
 
-      boolean canceled = false;
+      boolean deleted = false;
       try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
         for (WorkflowJob job : multiBranchProject.getItems()) {
-          canceled = deletePipeline(pipelineNamespaceName, job);
+          deleted = deletePipeline(pipelineNamespaceName, job);
+          break;
         }
       }
-      return canceled;
+      return deleted;
     } else {
       WorkflowJob job =
           getJob(new NamespaceName(namespace, pipelineConfig.getMetadata().getName()));
@@ -400,7 +401,7 @@ public class JenkinsClient {
         logger.error("Unable to cancel pipeline, reason: cannot find correspondent workflow job");
         return false;
       }
-      return cancelPipeline(pipelineNamespaceName, job);
+      return deletePipeline(pipelineNamespaceName, job);
     }
   }
 
