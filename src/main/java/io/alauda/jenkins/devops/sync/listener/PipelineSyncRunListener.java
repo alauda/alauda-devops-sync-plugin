@@ -118,7 +118,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         WorkflowJob job = ((WorkflowRun) run).getParent();
         if (job.getParent() instanceof WorkflowMultiBranchProject
             && WorkflowJobUtils.parametersHasChange(job)) {
-          WorkflowJobUtils.updateAnnotations(job);
+          WorkflowJobUtils.updateBranchAndPRAnnotations(job);
         } else {
           String namespace = property.getNamespace();
           String name = property.getName();

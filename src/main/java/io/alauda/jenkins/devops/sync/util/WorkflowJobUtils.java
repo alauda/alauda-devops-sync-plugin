@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import javax.annotation.Nonnull;
 import jenkins.scm.api.metadata.ObjectMetadataAction;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -74,7 +75,11 @@ public final class WorkflowJobUtils {
     return !StringUtils.equals(toJSON(pipelineParameters), annotations.get(paramKey));
   }
 
-  public static synchronized void updateAnnotations(WorkflowJob item) {
+  public static synchronized void updateBranchAndPRAnnotations(@Nonnull WorkflowJob item) {
+    updateBranchAndPRAnnotations(item, false);
+  }
+
+    public static synchronized void updateBranchAndPRAnnotations(@Nonnull WorkflowJob item, boolean jobDeleted) {
     WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
     V1alpha1PipelineConfig oldPC = getPipelineConfig(parent);
     if (oldPC == null) {
@@ -84,10 +89,15 @@ public final class WorkflowJobUtils {
     V1ObjectMeta meta = newPC.getMetadata();
 
     // clean up all annotations which start with alauda.io/jenkins
-    cleanupAnnotations(meta.getAnnotations());
+    clearBranchAndPRAnnotations(meta.getAnnotations());
 
     BranchItem branchItem = new BranchItem();
     Collection<? extends Job> allJobs = parent.getAllJobs();
+    // if this item is deleted, we should remove it from jobs
+    if (jobDeleted) {
+      allJobs.remove(item);
+    }
+
     for (Job job : allJobs) {
       if (!(job instanceof WorkflowJob)) {
         continue;
@@ -133,7 +143,7 @@ public final class WorkflowJobUtils {
     Clients.get(V1alpha1PipelineConfig.class).update(oldPC, newPC);
   }
 
-  private static void cleanupAnnotations(Map<String, String> annotations) {
+  private static void clearBranchAndPRAnnotations(Map<String, String> annotations) {
     if (annotations == null) {
       return;
     }
