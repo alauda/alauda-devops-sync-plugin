@@ -3,7 +3,10 @@ package io.alauda.jenkins.devops.sync;
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 import hudson.Extension;
+import hudson.plugins.git.extensions.impl.CloneOption;
+import io.alauda.jenkins.devops.sync.constants.CodeRepoServices;
 import java.lang.reflect.InvocationTargetException;
+import jenkins.plugins.git.traits.CloneOptionTrait;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMHeadAuthority;
 import jenkins.scm.api.trait.SCMSourceTrait;
@@ -19,8 +22,7 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
 
   @Override
   public boolean accept(String type) {
-    return false;
-    //        return (CodeRepoServices.Gitlab.name().equals(type));
+    return (CodeRepoServices.Gitlab.name().equals(type));
   }
 
   @Override
@@ -31,7 +33,7 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
       return (SCMSource)
           scmSource
               .getConstructor(String.class, String.class, String.class)
-              .newInstance(server, repoOwner, repository);
+              .newInstance(server, repoOwner, String.format("%s/%s", repoOwner, repository));
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InstantiationException
@@ -90,5 +92,14 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
       LOGGER.warn("Exception happened while getForkPRTrait", e);
     }
     return null;
+  }
+
+  @Override
+  public CloneOptionTrait getCloneTrait() {
+    // if shallow is true, a pr merge problem will occur.
+    CloneOption cloneOption = new CloneOption(false, false, null, null);
+    cloneOption.setHonorRefspec(true);
+
+    return new CloneOptionTrait(cloneOption);
   }
 }

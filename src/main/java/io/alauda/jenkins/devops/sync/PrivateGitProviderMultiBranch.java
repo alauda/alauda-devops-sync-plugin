@@ -1,5 +1,6 @@
 package io.alauda.jenkins.devops.sync;
 
+import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
 import io.alauda.jenkins.devops.sync.mapper.converter.GitProviderMultiBranch;
 import jenkins.scm.api.SCMSource;
 
@@ -12,5 +13,9 @@ public interface PrivateGitProviderMultiBranch extends GitProviderMultiBranch {
   // It's necessary for a private git provider
   default SCMSource getSCMSource(String repoOwner, String repository) {
     throw new UnsupportedOperationException();
+  }
+
+  default String getServerName(V1alpha1CodeRepository repository) {
+    return repository.getMetadata().getLabels().get("codeRepoService");
   }
 }
