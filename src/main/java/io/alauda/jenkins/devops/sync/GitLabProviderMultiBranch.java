@@ -97,6 +97,12 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
   @Override
   public CloneOptionTrait getCloneTrait() {
     // if shallow is true, a pr merge problem will occur.
+    // err message:
+    // 
+    // hudson.plugins.git.GitException: Command "git merge 51aa62cffd8bef407f281ba80bdd8274014a84c9" returned status code 128:
+    // stdout: 
+    // stderr: fatal: refusing to merge unrelated histories
+    // http://10.0.128.67:32001/job/lz-test/job/lz-test-demo/view/change-requests/job/MR-10-merge/1/console
     CloneOption cloneOption = new CloneOption(false, false, null, null);
     cloneOption.setHonorRefspec(true);
 

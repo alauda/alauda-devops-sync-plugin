@@ -155,7 +155,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           if (gitProvider instanceof PrivateGitProviderMultiBranch) {
             PrivateGitProviderMultiBranch privateGitProvider =
                 (PrivateGitProviderMultiBranch) gitProvider;
-            String serverName = privateGitProvider.getServerName(codeRep);
+            // The server name should be the same as the codeRepoService name
+            String serverName = codeRep.getMetadata().getLabels().get("codeRepoService");
             scmSource = privateGitProvider.getSCMSource(serverName, repoOwner, repository);
           } else {
             scmSource = gitProvider.getSCMSource(repoOwner, repository);
