@@ -13,6 +13,7 @@ import io.alauda.jenkins.devops.support.KubernetesClusterConfigurationListener;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
+import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.kubernetes.client.ApiClient;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.Configuration;
@@ -42,7 +43,6 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
 
   @Override
   public synchronized void onConfigChange(KubernetesCluster cluster, ApiClient client) {
-    started.set(false);
     shutdown(null);
 
     controllerManagerThread = Executors.newSingleThreadExecutor();
@@ -82,13 +82,15 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
               ControllerBuilder.controllerManagerBuilder(informerFactory);
 
           resourceControllers.forEach(
-              resourceSyncController ->
-                  resourceSyncController.add(controllerManagerBuilder, informerFactory));
+              resourceSyncController -> {
+                resourceSyncController.add(controllerManagerBuilder, informerFactory);
+              });
 
           controllerManager = controllerManagerBuilder.build();
 
           pluginStatus = "";
           started.set(true);
+          Metrics.syncManagerUpGauge.set(1);
 
           controllerManager.run();
         });
@@ -96,11 +98,13 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
 
   @Override
   public synchronized void onConfigError(KubernetesCluster cluster, Throwable reason) {
-    started.set(false);
     shutdown(reason);
   }
 
   public synchronized void shutdown(Throwable reason) {
+    started.set(false);
+    Metrics.syncManagerUpGauge.set(0);
+
     if (controllerManager != null) {
       controllerManager.shutdown();
       controllerManager = null;

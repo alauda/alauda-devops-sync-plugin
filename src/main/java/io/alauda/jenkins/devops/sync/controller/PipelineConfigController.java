@@ -15,6 +15,7 @@ import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
 import io.alauda.jenkins.devops.sync.exception.ConditionsUtils;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
+import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.kubernetes.client.ApiException;
@@ -24,6 +25,8 @@ import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder
 import io.kubernetes.client.extended.controller.reconciler.Reconciler;
 import io.kubernetes.client.extended.controller.reconciler.Request;
 import io.kubernetes.client.extended.controller.reconciler.Result;
+import io.kubernetes.client.extended.workqueue.DefaultRateLimitingQueue;
+import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
@@ -31,6 +34,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
@@ -45,6 +49,7 @@ public class PipelineConfigController
   private static final String CONTROLLER_NAME = "PipelineConfigController";
 
   private LocalDateTime lastEventComingTime;
+  private RateLimitingQueue<Request> queue;
 
   @Override
   public void add(ControllerManagerBuilder managerBuilder, SharedInformerFactory factory) {
@@ -76,8 +81,11 @@ public class PipelineConfigController
     PipelineConfigClient client = new PipelineConfigClient(informer);
     Clients.register(V1alpha1PipelineConfig.class, client);
 
+    queue = new DefaultRateLimitingQueue<>(Executors.newSingleThreadExecutor());
+
     Controller controller =
         ControllerBuilder.defaultBuilder(factory)
+            .withWorkQueue(queue)
             .watch(
                 (workQueue) ->
                     ControllerBuilder.controllerWatchBuilder(
@@ -89,6 +97,7 @@ public class PipelineConfigController
                                     pipelineConfig.getMetadata().getName()))
                         .withOnAddFilter(
                             pipelineConfig -> {
+                              Metrics.incomingRequestCounter.labels("pipeline_config", "add").inc();
                               if (pipelineConfig
                                   .getStatus()
                                   .getPhase()
@@ -111,6 +120,10 @@ public class PipelineConfigController
                             })
                         .withOnUpdateFilter(
                             (oldPipelineConfig, newPipelineConfig) -> {
+                              Metrics.incomingRequestCounter
+                                  .labels("pipeline_config", "update")
+                                  .inc();
+
                               String namespace = oldPipelineConfig.getMetadata().getNamespace();
                               String name = oldPipelineConfig.getMetadata().getName();
                               if (oldPipelineConfig
@@ -150,6 +163,9 @@ public class PipelineConfigController
                             })
                         .withOnDeleteFilter(
                             (pipelineConfig, aBoolean) -> {
+                              Metrics.incomingRequestCounter
+                                  .labels("pipeline_config", "delete")
+                                  .inc();
                               logger.debug(
                                   "[{}] receives event: Delete; PipelineConfig '{}/{}'",
                                   CONTROLLER_NAME,
@@ -192,17 +208,21 @@ public class PipelineConfigController
     return true;
   }
 
-  static class PipelineConfigReconciler implements Reconciler {
+  class PipelineConfigReconciler implements Reconciler {
+
     private Lister<V1alpha1PipelineConfig> lister;
     private JenkinsClient jenkinsClient;
 
-    PipelineConfigReconciler(Lister<V1alpha1PipelineConfig> lister) {
+    public PipelineConfigReconciler(Lister<V1alpha1PipelineConfig> lister) {
       this.lister = lister;
       this.jenkinsClient = JenkinsClient.getInstance();
     }
 
     @Override
     public Result reconcile(Request request) {
+      Metrics.completedRequestCounter.labels("pipeline_config").inc();
+      Metrics.remainedRequestsGauge.labels("pipeline_config").set(queue.length());
+
       String namespace = request.getNamespace();
       String name = request.getName();
 

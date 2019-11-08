@@ -17,6 +17,7 @@ import io.alauda.jenkins.devops.sync.client.PipelineClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
+import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -27,12 +28,15 @@ import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder
 import io.kubernetes.client.extended.controller.reconciler.Reconciler;
 import io.kubernetes.client.extended.controller.reconciler.Request;
 import io.kubernetes.client.extended.controller.reconciler.Result;
+import io.kubernetes.client.extended.workqueue.DefaultRateLimitingQueue;
+import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.validation.constraints.NotNull;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -46,6 +50,7 @@ public class PipelineController
   private static final Logger logger = LoggerFactory.getLogger(PipelineController.class);
   private static final String CONTROLLER_NAME = "PipelineController";
 
+  private RateLimitingQueue<Request> queue;
   private LocalDateTime lastEventComingTime;
 
   @Override
@@ -78,8 +83,11 @@ public class PipelineController
     PipelineClient client = new PipelineClient(informer);
     Clients.register(V1alpha1Pipeline.class, client);
 
+    queue = new DefaultRateLimitingQueue<>(Executors.newSingleThreadExecutor());
+
     Controller controller =
         ControllerBuilder.defaultBuilder(factory)
+            .withWorkQueue(queue)
             .watch(
                 (workQueue) ->
                     ControllerBuilder.controllerWatchBuilder(V1alpha1Pipeline.class, workQueue)
@@ -90,6 +98,7 @@ public class PipelineController
                                     pipeline.getMetadata().getName()))
                         .withOnAddFilter(
                             pipeline -> {
+                              Metrics.incomingRequestCounter.labels("pipeline", "add").inc();
                               logger.debug(
                                   "[{}] received event: Add, Pipeline '{}/{}'",
                                   CONTROLLER_NAME,
@@ -99,6 +108,7 @@ public class PipelineController
                             })
                         .withOnUpdateFilter(
                             (oldPipeline, newPipeline) -> {
+                              Metrics.incomingRequestCounter.labels("pipeline", "update").inc();
                               String namespace = oldPipeline.getMetadata().getNamespace();
                               String name = oldPipeline.getMetadata().getName();
                               if (oldPipeline
@@ -124,6 +134,7 @@ public class PipelineController
                             })
                         .withOnDeleteFilter(
                             (pipeline, aBoolean) -> {
+                              Metrics.incomingRequestCounter.labels("pipeline", "delete").inc();
                               logger.debug(
                                   "[{}] received event: Delete, Pipeline '{}/{}'",
                                   CONTROLLER_NAME,
@@ -166,18 +177,21 @@ public class PipelineController
     return true;
   }
 
-  static class PipelineReconciler implements Reconciler {
+  class PipelineReconciler implements Reconciler {
 
     private Lister<V1alpha1Pipeline> lister;
     private JenkinsClient jenkinsClient;
 
-    PipelineReconciler(Lister<V1alpha1Pipeline> lister) {
+    public PipelineReconciler(Lister<V1alpha1Pipeline> lister) {
       this.lister = lister;
       jenkinsClient = JenkinsClient.getInstance();
     }
 
     @Override
     public Result reconcile(Request request) {
+      Metrics.completedRequestCounter.labels("pipeline").inc();
+      Metrics.remainedRequestsGauge.labels("pipeline").set(queue.length());
+
       String namespace = request.getNamespace();
       String name = request.getName();
 

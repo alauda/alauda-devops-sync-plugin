@@ -13,6 +13,7 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.JSON;
 import io.kubernetes.client.extended.controller.Controller;
@@ -21,13 +22,18 @@ import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder
 import io.kubernetes.client.extended.controller.reconciler.Reconciler;
 import io.kubernetes.client.extended.controller.reconciler.Request;
 import io.kubernetes.client.extended.controller.reconciler.Result;
+import io.kubernetes.client.extended.workqueue.DefaultRateLimitingQueue;
+import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
+import io.kubernetes.client.extended.workqueue.ratelimiter.BucketRateLimiter;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
@@ -40,9 +46,11 @@ import org.slf4j.LoggerFactory;
 @Extension
 public class JenkinsController
     implements ResourceController, ConnectionAliveDetectTask.HeartbeatResourceDetector {
+
   private static final Logger logger = LoggerFactory.getLogger(JenkinsController.class);
   private static final String CONTROLLER_NAME = "JenkinsController";
 
+  private RateLimitingQueue<Request> queue;
   private LocalDateTime lastEventComingTime;
 
   @Override
@@ -72,22 +80,68 @@ public class JenkinsController
               TimeUnit.MINUTES.toMillis(5));
     }
 
+    queue =
+        new DefaultRateLimitingQueue<>(
+            Executors.newSingleThreadExecutor(),
+            new BucketRateLimiter<>(1, 1, Duration.ofMinutes(5)));
+
     Controller controller =
         ControllerBuilder.defaultBuilder(factory)
+            .withWorkQueue(queue)
             .watch(
                 workQueue ->
                     ControllerBuilder.controllerWatchBuilder(V1alpha1Jenkins.class, workQueue)
                         .withWorkQueueKeyFunc(
                             jenkins -> new Request(jenkins.getMetadata().getName()))
+                        .withOnAddFilter(
+                            v1alpha1Jenkins -> {
+                              Metrics.incomingRequestCounter.labels("jenkins", "add").inc();
+
+                              String configuredJenkinsServiceName =
+                                  AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+                              if (!v1alpha1Jenkins
+                                  .getMetadata()
+                                  .getName()
+                                  .equals(configuredJenkinsServiceName)) {
+                                logger.debug(
+                                    "[{}] Jenkins '{}' not matched the configured Jenkins Service '{}', will skip it",
+                                    CONTROLLER_NAME,
+                                    v1alpha1Jenkins.getMetadata().getName(),
+                                    configuredJenkinsServiceName);
+                                return false;
+                              }
+
+                              return true;
+                            })
                         .withOnUpdateFilter(
                             (oldJenkins, newJenkins) -> {
+                              Metrics.incomingRequestCounter.labels("jenkins", "update").inc();
                               if (!oldJenkins
                                   .getMetadata()
                                   .getResourceVersion()
                                   .equals(newJenkins.getMetadata().getResourceVersion())) {
                                 lastEventComingTime = LocalDateTime.now();
                               }
+
+                              String configuredJenkinsServiceName =
+                                  AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+                              if (!newJenkins
+                                  .getMetadata()
+                                  .getName()
+                                  .equals(configuredJenkinsServiceName)) {
+                                logger.debug(
+                                    "[{}] Jenkins '{}' not matched the configured Jenkins Service '{}', will skip it",
+                                    CONTROLLER_NAME,
+                                    newJenkins.getMetadata().getName(),
+                                    configuredJenkinsServiceName);
+                                return false;
+                              }
                               return true;
+                            })
+                        .withOnDeleteFilter(
+                            (jenkins, includeUninitialized) -> {
+                              Metrics.incomingRequestCounter.labels("jenkins", "delete").inc();
+                              return false;
                             })
                         .build())
             .withWorkerCount(1)
@@ -133,6 +187,8 @@ public class JenkinsController
 
     @Override
     public Result reconcile(Request request) {
+      Metrics.completedRequestCounter.labels("jenkins").inc();
+      Metrics.remainedRequestsGauge.labels("jenkins").set(queue.length());
       String jenkinsName = request.getName();
       String configuredJenkinsServiceName = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
       if (!jenkinsName.equals(configuredJenkinsServiceName)) {
@@ -325,6 +381,7 @@ public class JenkinsController
   }
 
   private static class PluginList {
+
     private List<PluginStatus> plugins;
 
     public List<PluginStatus> getPlugins() {
@@ -337,6 +394,7 @@ public class JenkinsController
   }
 
   private static class PluginStatus {
+
     private String name;
     private String version;
     private String description;
@@ -385,6 +443,7 @@ public class JenkinsController
   }
 
   private static class NodeList {
+
     private List<String> labels;
 
     public List<String> getLabels() {

@@ -197,6 +197,29 @@
       <artifactId>label-linked-jobs</artifactId>
       <version>5.1.2</version>
     </dependency>
+    <dependency>
+    <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>prometheus</artifactId>
+      <version>2.0.6</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.httpcomponents</groupId>
+          <artifactId>httpcore</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.jenkins-ci.plugins</groupId>
+          <artifactId>jackson2-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
+          <artifactId>workflow-job</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
+          <artifactId>workflow-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
 
 
     <dependency>

@@ -9,6 +9,7 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.NamespaceClient;
+import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.apis.CoreV1Api;
 import io.kubernetes.client.extended.controller.Controller;
@@ -17,6 +18,8 @@ import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder
 import io.kubernetes.client.extended.controller.reconciler.Reconciler;
 import io.kubernetes.client.extended.controller.reconciler.Request;
 import io.kubernetes.client.extended.controller.reconciler.Result;
+import io.kubernetes.client.extended.workqueue.DefaultRateLimitingQueue;
+import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
@@ -24,6 +27,7 @@ import io.kubernetes.client.models.V1Namespace;
 import io.kubernetes.client.models.V1NamespaceList;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import jenkins.model.Jenkins;
 import org.slf4j.Logger;
@@ -35,6 +39,7 @@ public class NamespaceController
 
   private static final Logger logger = LoggerFactory.getLogger(NamespaceController.class);
   private static final String CONTROLLER_NAME = "NamespaceController";
+  private RateLimitingQueue<Request> queue;
 
   private LocalDateTime lastEventComingTime;
 
@@ -67,13 +72,21 @@ public class NamespaceController
     NamespaceClient client = new NamespaceClient(informer);
     Clients.register(V1Namespace.class, client);
 
+    queue = new DefaultRateLimitingQueue<>(Executors.newSingleThreadExecutor());
+
     Controller controller =
         ControllerBuilder.defaultBuilder(factory)
+            .withWorkQueue(queue)
             .watch(
                 (workQueue) ->
                     ControllerBuilder.controllerWatchBuilder(V1Namespace.class, workQueue)
                         .withWorkQueueKeyFunc(
                             namespace -> new Request(namespace.getMetadata().getName()))
+                        .withOnAddFilter(
+                            namespace -> {
+                              Metrics.incomingRequestCounter.labels("namespace", "add").inc();
+                              return false;
+                            })
                         .withOnUpdateFilter(
                             (oldNs, newNs) -> {
                               if (!oldNs
@@ -82,6 +95,12 @@ public class NamespaceController
                                   .equals(newNs.getMetadata().getResourceVersion())) {
                                 lastEventComingTime = LocalDateTime.now();
                               }
+                              Metrics.incomingRequestCounter.labels("namespace", "update").inc();
+                              return false;
+                            })
+                        .withOnDeleteFilter(
+                            (namespace, includeUninitialized) -> {
+                              Metrics.incomingRequestCounter.labels("namespace", "delete").inc();
                               return true;
                             })
                         .build())
@@ -118,15 +137,19 @@ public class NamespaceController
     return true;
   }
 
-  static class NamespaceReconciler implements Reconciler {
+  class NamespaceReconciler implements Reconciler {
+
     private Lister<V1Namespace> namespaceLister;
 
-    NamespaceReconciler(Lister<V1Namespace> namespaceLister) {
+    public NamespaceReconciler(Lister<V1Namespace> namespaceLister) {
       this.namespaceLister = namespaceLister;
     }
 
     @Override
     public Result reconcile(Request request) {
+      Metrics.completedRequestCounter.labels("namespace").inc();
+      Metrics.remainedRequestsGauge.labels("namespace").set(queue.length());
+
       V1Namespace namespace = namespaceLister.get(request.getName());
       if (namespace != null) {
         return new Result(false);
