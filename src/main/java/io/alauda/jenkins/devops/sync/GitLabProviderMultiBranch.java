@@ -6,6 +6,7 @@ import hudson.Extension;
 import hudson.plugins.git.extensions.impl.CloneOption;
 import io.alauda.jenkins.devops.sync.constants.CodeRepoServices;
 import java.lang.reflect.InvocationTargetException;
+import jenkins.model.GlobalConfiguration;
 import jenkins.plugins.git.traits.CloneOptionTrait;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMHeadAuthority;
@@ -28,6 +29,13 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
   @Override
   public SCMSource getSCMSource(String server, String repoOwner, String repository) {
     try {
+      Class<?> serversClz = loadClass(GITLAB_CONFIG_SERVERS);
+      GlobalConfiguration servers = (GlobalConfiguration) serversClz.getMethod("get").invoke(null);
+      if (servers.getClass().getMethod("findServer", String.class).invoke(servers, server)
+          == null) {
+        return null;
+      }
+
       Class<?> scmSource = loadClass(GITLAB_SCM_SOURCE);
 
       return (SCMSource)
@@ -98,9 +106,10 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
   public CloneOptionTrait getCloneTrait() {
     // if shallow is true, a pr merge problem will occur.
     // err message:
-    // 
-    // hudson.plugins.git.GitException: Command "git merge 51aa62cffd8bef407f281ba80bdd8274014a84c9" returned status code 128:
-    // stdout: 
+    //
+    // hudson.plugins.git.GitException: Command "git merge 51aa62cffd8bef407f281ba80bdd8274014a84c9"
+    // returned status code 128:
+    // stdout:
     // stderr: fatal: refusing to merge unrelated histories
     // http://10.0.128.67:32001/job/lz-test/job/lz-test-demo/view/change-requests/job/MR-10-merge/1/console
     CloneOption cloneOption = new CloneOption(false, false, null, null);

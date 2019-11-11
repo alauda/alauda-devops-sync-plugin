@@ -164,9 +164,10 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           if (scmSource == null) {
             logger.warn(
                 "Can't create instance for AbstractGitSCMSource. Type is {}.", codeRepoType);
-            return null;
+            // TODO add a downgrade strategy
           }
-        } else {
+        }
+        if (scmSource == null) {
           // TODO should take care of clean up job
           logger.warn(
               "Not support for {}, codeRepo name is {}. Fall back to general git.",
