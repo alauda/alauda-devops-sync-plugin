@@ -73,7 +73,6 @@ public class ConnectionAliveDetectTask extends AsyncPeriodicWork {
               }
 
               Duration elapsed = Duration.between(lastEventComingTime, now);
-              heartbeatLostCount.putIfAbsent(detector, new AtomicInteger(0));
 
               // the apiserver will use heartbeat to update resource per 30 seconds, so if we didn't
               // receive an update event in last 1 minute,
