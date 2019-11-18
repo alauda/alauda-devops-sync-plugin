@@ -138,8 +138,10 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       if (codeRep != null) {
         V1alpha1CodeRepositorySpec codeRepoSpec = codeRep.getSpec();
         V1alpha1OriginCodeRepository codeRepo = codeRepoSpec.getRepository();
-        String repoOwner = codeRepo.getOwner().getName();
-        String repository = codeRepo.getName();
+        String[] repoFullName = codeRepo.getFullName().split("/");
+        String repository = repoFullName[repoFullName.length - 1];
+        String repoOwner =
+            String.join("/", Arrays.copyOfRange(repoFullName, 0, repoFullName.length - 1));
         String codeRepoType = codeRepo.getCodeRepoServiceType();
 
         Optional<GitProviderMultiBranch> gitProviderOpt =

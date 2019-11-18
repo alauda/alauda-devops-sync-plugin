@@ -164,7 +164,7 @@ public final class Constants {
       "io.jenkins.plugins.gitlabbranchsource.ForkMergeRequestDiscoveryTrait";
   public static final String GITLAB_FORK_PR_TRUST_TRAIT =
       "io.jenkins.plugins.gitlabbranchsource.ForkMergeRequestDiscoveryTrait$TrustPermission";
-  public static final String GITLAB_CONFIG_SERVERS = 
+  public static final String GITLAB_CONFIG_SERVERS =
       "io.jenkins.plugins.gitlabserverconfig.servers.GitLabServers";
 
   public static final String SOURCE_TYPE_SVN = "SVN";
