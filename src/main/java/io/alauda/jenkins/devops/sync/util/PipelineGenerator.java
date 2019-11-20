@@ -24,7 +24,9 @@ import jenkins.scm.api.SCMHead;
 import jenkins.scm.api.metadata.ObjectMetadataAction;
 import jenkins.scm.api.mixin.ChangeRequestSCMHead;
 import jenkins.scm.api.mixin.ChangeRequestSCMHead2;
+import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -142,7 +144,7 @@ public abstract class PipelineGenerator {
     if (allCauses.size() > 1) {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
       annotations.put(
-          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS, JSONObject.fromObject(allCauses).toString());
+          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS, JSONArray.fromObject(allCauses).toString());
     } else if (allCauses.size() == 1) {
       cause = causeConvert(allCauses.get(0));
     } else {
