@@ -46,7 +46,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
   @Override
   public void onCreated(WorkflowJob item) {
-    WorkflowJobUtils.updateAnnotations(item);
+    WorkflowJobUtils.updateBranchAndPRAnnotations(item);
     //        synchronized (item) {
     //            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
     //
@@ -115,7 +115,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
   @Override
   public void onUpdated(WorkflowJob item) {
-    WorkflowJobUtils.updateAnnotations(item);
+    WorkflowJobUtils.updateBranchAndPRAnnotations(item);
     //        synchronized (MultiBranchWorkflowEventHandler.class) {
     //            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
     //
@@ -164,7 +164,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
   @Override
   public void onDeleted(WorkflowJob item) {
-    WorkflowJobUtils.updateAnnotations(item);
+    WorkflowJobUtils.updateBranchAndPRAnnotations(item, true);
     //        synchronized (MultiBranchWorkflowEventHandler.class) {
     //            BranchJobProperty pro = item.getProperty(BranchJobProperty.class);
     //            if (pro != null) {
