@@ -390,7 +390,6 @@ public class JenkinsClient {
       try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
         for (WorkflowJob job : multiBranchProject.getItems()) {
           deleted = deletePipeline(pipelineNamespaceName, job);
-          break;
         }
       }
       return deleted;
