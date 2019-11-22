@@ -1,72 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-
-    Copyright (C) 2018 Alauda.io
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-            http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
--->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
-
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
     <version>2.36</version>
-    <relativePath/>
+    <relativePath></relativePath>
   </parent>
-
   <groupId>io.alauda.jenkins.plugins</groupId>
   <artifactId>alauda-devops-sync</artifactId>
   <version>${revision}${sha1}${changelist}</version>
   <packaging>hpi</packaging>
-
-  <properties>
-    <jenkins.version>2.83</jenkins.version>
-    <java.level>8</java.level>
-
-    <log.level>INFO</log.level>
-    <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
-    <findbugs.failOnError>false</findbugs.failOnError>
-
-    <sundrio.version>0.4.2</sundrio.version>
-    <exec-maven-plugin.version>1.5.0</exec-maven-plugin.version>
-    <jackson2.version>2.7.5</jackson2.version>
-    <jackson.version>2.9.8</jackson.version>
-    <okhttp.version>3.12.0</okhttp.version>
-    <org.json.version>20180130</org.json.version>
-    <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
-    <jsonschema2pojo.version>0.4.23</jsonschema2pojo.version>
-    <validation-api.version>1.1.0.Final</validation-api.version>
-    <lombok.version>1.16.10</lombok.version>
-
-    <revision>2.5</revision>
-    <changelist>-SNAPSHOT</changelist>
-    <sha1/>
-  </properties>
-
   <name>Alauda DevOps Sync</name>
   <description>Syncs DevOps PipelineConfigs with Jenkins jobs</description>
   <url>https://wiki.jenkins-ci.org/display/JENKINS/Alauda+DevOps+Sync+Plugin</url>
   <inceptionYear>2018</inceptionYear>
-
   <organization>
     <name>Alauda</name>
     <url>http://alauda.io</url>
   </organization>
-
   <licenses>
     <license>
       <name>The MIT license</name>
@@ -74,52 +27,51 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
-
   <developers>
     <developer>
       <id>alaudaDevelopers</id>
       <name>Alauda Developers</name>
+      <email>devs@alauda.io</email>
       <organization>alauda</organization>
       <organizationUrl>http://alauda.io/</organizationUrl>
-      <email>devs@alauda.io</email>
     </developer>
   </developers>
-
   <scm>
     <connection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</connection>
-    <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git
-    </developerConnection>
-    <url>http://github.com/jenkinsci/${project.artifactId}-plugin/</url>
+    <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
     <tag>${project.version}</tag>
+    <url>http://github.com/jenkinsci/${project.artifactId}-plugin/</url>
   </scm>
-
-  <repositories>
+  <distributionManagement>
     <repository>
-      <id>repo.jenkins-ci.org</id>
-      <url>http://repo.jenkins-ci.org/public/</url>
+      <id>${releases.id}</id>
+      <url>${releases.url}</url>
     </repository>
-    <repository>
-      <id>nexus-oss-snapshots</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-    </repository>
-    <repository>
-      <id>release</id>
-      <url>https://oss.sonatype.org/content/repositories/releases</url>
-    </repository>
-  </repositories>
-  <pluginRepositories>
-    <pluginRepository>
-      <id>repo.jenkins-ci.org</id>
-      <url>http://repo.jenkins-ci.org/public/</url>
-    </pluginRepository>
-  </pluginRepositories>
-
+    <snapshotRepository>
+      <id>${snapshots.id}</id>
+      <url>${snapshots.url}</url>
+    </snapshotRepository>
+  </distributionManagement>
+  <properties>
+    <lombok.version>1.16.10</lombok.version>
+    <changelist>-SNAPSHOT</changelist>
+    <log.level>INFO</log.level>
+    <findbugs.failOnError>false</findbugs.failOnError>
+    <exec-maven-plugin.version>1.5.0</exec-maven-plugin.version>
+    <okhttp.version>3.12.0</okhttp.version>
+    <revision>2.6</revision>
+    <validation-api.version>1.1.0.Final</validation-api.version>
+    <sundrio.version>0.4.2</sundrio.version>
+    <java.level>8</java.level>
+    <sha1></sha1>
+    <jsonschema2pojo.version>0.4.23</jsonschema2pojo.version>
+    <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
+    <org.json.version>20180130</org.json.version>
+    <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
+    <jackson.version>2.9.8</jackson.version>
+    <jenkins.version>2.83</jenkins.version>
+    <jackson2.version>2.7.5</jackson2.version>
+  </properties>
   <dependencies>
     <dependency>
       <groupId>io.jenkins.blueocean</groupId>
@@ -127,12 +79,12 @@
       <version>1.5.0</version>
       <exclusions>
         <exclusion>
-          <groupId>com.fasterxml.jackson.core</groupId>
           <artifactId>jackson-databind</artifactId>
+          <groupId>com.fasterxml.jackson.core</groupId>
         </exclusion>
         <exclusion>
-          <groupId>com.fasterxml.jackson.core</groupId>
           <artifactId>jackson-core</artifactId>
+          <groupId>com.fasterxml.jackson.core</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -142,24 +94,23 @@
       <version>1.5.0</version>
       <exclusions>
         <exclusion>
-          <groupId>com.fasterxml.jackson.core</groupId>
           <artifactId>jackson-databind</artifactId>
-        </exclusion>
-        <exclusion>
           <groupId>com.fasterxml.jackson.core</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>jackson-core</artifactId>
+          <groupId>com.fasterxml.jackson.core</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
           <artifactId>variant</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
           <artifactId>credentials</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>credentials</artifactId>
@@ -170,7 +121,6 @@
       <artifactId>subversion</artifactId>
       <version>2.12.1</version>
     </dependency>
-
     <dependency>
       <groupId>io.alauda.jenkins.plugins</groupId>
       <artifactId>alauda-devops-credentials-provider</artifactId>
@@ -187,8 +137,8 @@
       <version>1.0.5</version>
       <exclusions>
         <exclusion>
-          <groupId>io.swagger</groupId>
           <artifactId>swagger-annotations</artifactId>
+          <groupId>io.swagger</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -198,30 +148,28 @@
       <version>5.1.2</version>
     </dependency>
     <dependency>
-    <groupId>org.jenkins-ci.plugins</groupId>
+      <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>prometheus</artifactId>
       <version>2.0.6</version>
       <exclusions>
         <exclusion>
-          <groupId>org.apache.httpcomponents</groupId>
           <artifactId>httpcore</artifactId>
+          <groupId>org.apache.httpcomponents</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
           <artifactId>jackson2-api</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-job</artifactId>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-api</artifactId>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
         </exclusion>
       </exclusions>
     </dependency>
-
-
     <dependency>
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
@@ -232,55 +180,49 @@
       <artifactId>annotation-indexer</artifactId>
       <version>1.12</version>
     </dependency>
-
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-multibranch</artifactId>
       <version>2.18</version>
       <exclusions>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-support</artifactId>
-          <!-- according to https://jenkins.io/security/advisory/2018-02-05/ -->
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-cps</artifactId>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-support</artifactId>
       <version>2.18</version>
     </dependency>
-
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>git</artifactId>
       <version>3.6.0</version>
       <exclusions>
         <exclusion>
-          <groupId>org.apache.httpcomponents</groupId>
           <artifactId>httpclient</artifactId>
+          <groupId>org.apache.httpcomponents</groupId>
         </exclusion>
       </exclusions>
     </dependency>
-
     <dependency>
       <groupId>org.jenkins-ci.plugins.pipeline-stage-view</groupId>
       <artifactId>pipeline-rest-api</artifactId>
       <version>2.10</version>
       <exclusions>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
           <artifactId>pipeline-input-step</artifactId>
-          <!-- according to https://jenkins.io/security/advisory/2017-08-07/ -->
+          <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-cps</artifactId>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -289,7 +231,6 @@
       <artifactId>pipeline-input-step</artifactId>
       <version>2.8</version>
     </dependency>
-
     <dependency>
       <groupId>org.csanchez.jenkins.plugins</groupId>
       <artifactId>kubernetes</artifactId>
@@ -301,12 +242,12 @@
       <version>1.5</version>
       <exclusions>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-step-api</artifactId>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
           <artifactId>structs</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -326,28 +267,28 @@
       <version>1.3.1</version>
       <exclusions>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
           <artifactId>credentials</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
           <artifactId>workflow-scm-step</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
-          <artifactId>git-client</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
-          <artifactId>pipeline-stage-step</artifactId>
-        </exclusion>
-        <exclusion>
           <groupId>org.jenkins-ci.plugins.workflow</groupId>
-          <artifactId>workflow-basic-steps</artifactId>
         </exclusion>
         <exclusion>
+          <artifactId>git-client</artifactId>
           <groupId>org.jenkins-ci.plugins</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>pipeline-stage-step</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>workflow-basic-steps</artifactId>
+          <groupId>org.jenkins-ci.plugins.workflow</groupId>
+        </exclusion>
+        <exclusion>
           <artifactId>ssh-credentials</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -367,12 +308,12 @@
       <version>2.7.0</version>
       <exclusions>
         <exclusion>
-          <groupId>org.apache.httpcomponents</groupId>
           <artifactId>httpclient</artifactId>
+          <groupId>org.apache.httpcomponents</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.jenkins-ci.plugins</groupId>
           <artifactId>ssh-credentials</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -391,10 +332,6 @@
       <artifactId>pipeline-stage-step</artifactId>
       <version>2.3</version>
     </dependency>
-
-    <!--
-     DIRECT DEPENDENCY... should be fixed
-    -->
     <dependency>
       <groupId>com.fasterxml.jackson.dataformat</groupId>
       <artifactId>jackson-dataformat-yaml</artifactId>
@@ -410,7 +347,6 @@
       <artifactId>jackson-core</artifactId>
       <version>${jackson.version}</version>
     </dependency>
-
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>okhttp</artifactId>
@@ -421,14 +357,11 @@
       <artifactId>logging-interceptor</artifactId>
       <version>${okhttp.version}</version>
     </dependency>
-
-    <!-- parse json -->
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
       <version>${org.json.version}</version>
     </dependency>
-
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-basic-steps</artifactId>
@@ -436,44 +369,32 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
-
-  <profiles>
-    <profile>
-      <id>incrementals</id>
-      <properties>
-        <releases.id>nexus.acp.alauda.cn</releases.id>
-        <releases.name>nexus.acp.alauda.cn</releases.name>
-        <releases.url>https://nexus.acp.alauda.cn/repository/maven-incrementals/</releases.url>
-        <snapshots.id>nexus.acp.alauda.cn</snapshots.id>
-        <snapshots.name>nexus.acp.alauda.cn</snapshots.name>
-        <snapshots.url>https://nexus.acp.alauda.cn/repository/maven-snapshots/</snapshots.url>
-      </properties>
-    </profile>
-    <profile>
-      <id>default</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <properties>
-        <releases.id>nexus.acp.alauda.cn</releases.id>
-        <releases.name>nexus.acp.alauda.cn</releases.name>
-        <releases.url>https://nexus.acp.alauda.cn/repository/maven-releases/</releases.url>
-        <snapshots.id>nexus.acp.alauda.cn</snapshots.id>
-        <snapshots.name>nexus.acp.alauda.cn</snapshots.name>
-        <snapshots.url>https://nexus.acp.alauda.cn/repository/maven-snapshots/</snapshots.url>
-      </properties>
-    </profile>
-  </profiles>
-  <distributionManagement>
+  <repositories>
     <repository>
-      <id>${releases.id}</id>
-      <url>${releases.url}</url>
+      <id>repo.jenkins-ci.org</id>
+      <url>http://repo.jenkins-ci.org/public/</url>
     </repository>
-    <snapshotRepository>
-      <id>${snapshots.id}</id>
-      <url>${snapshots.url}</url>
-    </snapshotRepository>
-  </distributionManagement>
+    <repository>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <id>nexus-oss-snapshots</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+    </repository>
+    <repository>
+      <id>release</id>
+      <url>https://oss.sonatype.org/content/repositories/releases</url>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>repo.jenkins-ci.org</id>
+      <url>http://repo.jenkins-ci.org/public/</url>
+    </pluginRepository>
+  </pluginRepositories>
   <build>
     <plugins>
       <plugin>
@@ -490,4 +411,30 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>incrementals</id>
+      <properties>
+        <snapshots.url>https://nexus.acp.alauda.cn/repository/maven-snapshots/</snapshots.url>
+        <releases.id>nexus.acp.alauda.cn</releases.id>
+        <snapshots.id>nexus.acp.alauda.cn</snapshots.id>
+        <snapshots.name>nexus.acp.alauda.cn</snapshots.name>
+        <releases.url>https://nexus.acp.alauda.cn/repository/maven-incrementals/</releases.url>
+        <releases.name>nexus.acp.alauda.cn</releases.name>
+      </properties>
+    </profile>
+    <profile>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <snapshots.url>https://nexus.acp.alauda.cn/repository/maven-snapshots/</snapshots.url>
+        <releases.id>nexus.acp.alauda.cn</releases.id>
+        <snapshots.id>nexus.acp.alauda.cn</snapshots.id>
+        <snapshots.name>nexus.acp.alauda.cn</snapshots.name>
+        <releases.url>https://nexus.acp.alauda.cn/repository/maven-releases/</releases.url>
+        <releases.name>nexus.acp.alauda.cn</releases.name>
+      </properties>
+    </profile>
+  </profiles>
 </project>
