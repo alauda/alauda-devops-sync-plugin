@@ -46,17 +46,6 @@ public final class Constants {
       "alauda.io/jenkins-progressive-log";
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS = "alauda.io/causes-details";
 
-  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON =
-      "alauda.io/jenkins-pending-input-actions-json";
-
-  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON =
-      "alauda.io/jenkins-status-json";
-  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON =
-      "alauda.io/jenkins-stages-json";
-
-  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE =
-      "alauda.io/jenkins-namespace";
-
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG =
       "alauda.io/multi-branch-scan-log";
 

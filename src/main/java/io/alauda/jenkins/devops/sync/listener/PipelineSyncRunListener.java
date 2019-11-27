@@ -66,7 +66,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -79,8 +78,6 @@ import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
-import org.jenkinsci.plugins.workflow.support.steps.input.InputAction;
-import org.jenkinsci.plugins.workflow.support.steps.input.InputStepExecution;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -705,29 +702,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     statusJenkins.setStatus(wfRunExt.getStatus().name());
 
     return status;
-  }
-
-  // annotate the Build with pending input JSON so consoles can do the
-  // Proceed/Abort stuff if they want
-  private String getPendingActionsJson(WorkflowRun run)
-      throws TimeoutException, InterruptedException {
-    List<PendingInputActionsExt> pendingInputActions = new ArrayList<PendingInputActionsExt>();
-    InputAction inputAction = run.getAction(InputAction.class);
-
-    if (inputAction != null) {
-      List<InputStepExecution> executions = inputAction.getExecutions();
-      if (executions != null && !executions.isEmpty()) {
-        for (InputStepExecution inputStepExecution : executions) {
-          pendingInputActions.add(PendingInputActionsExt.create(inputStepExecution, run));
-        }
-      }
-    }
-    try {
-      return new ObjectMapper().writeValueAsString(pendingInputActions);
-    } catch (JsonProcessingException e) {
-      logger.log(SEVERE, "Failed to serialize pending actions. " + e, e);
-      return null;
-    }
   }
 
   private long getStartTime(Run run) {

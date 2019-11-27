@@ -137,7 +137,6 @@ public class MultiBranchProjectEventHandler
 
     V1alpha1PipelineConfig pc =
         Clients.get(V1alpha1PipelineConfig.class).lister().namespace(ns).get(name);
-    ;
     if (pc != null) {
       V1Status result = Clients.get(V1alpha1PipelineConfig.class).delete(ns, name);
       logger.info(

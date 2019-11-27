@@ -4,5 +4,5 @@ public enum CodeRepoServices {
   Github,
   Gitlab,
   Gitee,
-  Bitbucket;
+  Bitbucket
 }
