@@ -13,21 +13,33 @@
  */
 package io.alauda.jenkins.devops.sync.constants;
 
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
+
 /** Alauda k8s resources annotations */
 public final class Annotations {
   private Annotations() {}
 
-  public static final String JENKINS_JOB_PATH = "jenkins.alauda.io/job-path";
+  public static final String JENKINS_JOB_PATH =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("job-path");
 
-  public static final String MULTI_BRANCH_BRANCH = "alauda.io/jenkins.branch";
-  public static final String MULTI_BRANCH_STALE_BRANCH = "alauda.io/jenkins.stale.branch";
-  public static final String MULTI_BRANCH_STALE_PR = "alauda.io/jenkins.stale.pr";
+  public static final String MULTI_BRANCH_BRANCH =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.branch");
+  public static final String MULTI_BRANCH_STALE_BRANCH =
+      ResourceControllerManager.getControllerManager()
+          .getFormatedAnnotation("jenkins.stale.branch");
+  public static final String MULTI_BRANCH_STALE_PR =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.stale.pr");
 
-  public static final String MULTI_BRANCH_CATEGORY = "alauda.io/multiBranchCategory";
-  public static final String MULTI_BRANCH_NAME = "alauda.io/multiBranchName";
+  public static final String MULTI_BRANCH_CATEGORY =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("multiBranchCategory");
+  public static final String MULTI_BRANCH_NAME =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("multiBranchName");
 
-  public static final String MULTI_BRANCH_PR = "alauda.io/jenkins.pr";
-  public static final String MULTI_BRANCH_PR_DETAIL = "alauda.io/jenkins.pr.detail";
+  public static final String MULTI_BRANCH_PR =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.pr");
+  public static final String MULTI_BRANCH_PR_DETAIL =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.pr.detail");
 
-  public static final String ALAUDA_PIPELINE_CONTEXT = "alauda.io/pipelinecontext.";
+  public static final String ALAUDA_PIPELINE_CONTEXT =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("pipelinecontext.");
 }

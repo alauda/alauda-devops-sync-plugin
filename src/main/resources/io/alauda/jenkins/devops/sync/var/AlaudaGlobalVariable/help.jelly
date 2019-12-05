@@ -27,7 +27,7 @@
     <pre><code> alaudaContext.getItem("subproject")    </code></pre>
 
     <p>
-       If you want konw if your jenkins pipeline support this feature you can use
+       If you want know if your jenkins pipeline support this feature you can use
     </p>
     <pre><code> alaudaContext.isSupport()    </code></pre>
 

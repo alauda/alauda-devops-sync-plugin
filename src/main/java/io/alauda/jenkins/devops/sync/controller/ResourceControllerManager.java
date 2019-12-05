@@ -1,6 +1,8 @@
 package io.alauda.jenkins.devops.sync.controller;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN;
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY;
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_USED_BASEDOMAIN;
 
 import hudson.Extension;
 import hudson.ExtensionList;
@@ -39,6 +41,7 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
   private ControllerManager controllerManager;
   private ExecutorService controllerManagerThread;
   private String pluginStatus;
+  private String baseDomain;
   private AtomicBoolean started = new AtomicBoolean(false);
 
   @Override
@@ -60,6 +63,21 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
                 }
 
                 String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+                V1alpha1Jenkins currentJenkins;
+                String basedomain;
+                try {
+                  currentJenkins = getJenkins(jenkinsService);
+                  Map<String, String> annotations = currentJenkins.getMetadata().getAnnotations();
+                  basedomain = annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN);
+
+                } catch (ApiException e) {
+                  basedomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
+                }
+                if (basedomain == null) {
+                  basedomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
+                }
+                baseDomain = basedomain;
+
                 if (!checkJenkinsService(jenkinsService)) {
                   logger.warn(
                       "[ResourceControllerManager] The target Jenkins service {} is invalid, reason {}",
@@ -184,6 +202,13 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
 
   public String getPluginStatus() {
     return pluginStatus;
+  }
+
+  public String getFormatedAnnotation(String annotation) {
+    if (baseDomain == null) {
+      baseDomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
+    }
+    return String.format("%s/%s", baseDomain, annotation);
   }
 
   public boolean isStarted() {
