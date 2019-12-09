@@ -79,7 +79,8 @@ public final class WorkflowJobUtils {
     updateBranchAndPRAnnotations(item, false);
   }
 
-    public static synchronized void updateBranchAndPRAnnotations(@Nonnull WorkflowJob item, boolean jobDeleted) {
+  public static synchronized void updateBranchAndPRAnnotations(
+      @Nonnull WorkflowJob item, boolean jobDeleted) {
     WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
     V1alpha1PipelineConfig oldPC = getPipelineConfig(parent);
     if (oldPC == null) {

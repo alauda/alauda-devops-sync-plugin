@@ -1,6 +1,8 @@
 package io.alauda.jenkins.devops.sync.controller;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_LABELS_REPLAYED_FROM;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.FAILED;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 
 import hudson.Extension;
@@ -21,6 +23,7 @@ import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
+import io.alauda.jenkins.devops.sync.util.ReplayUtils;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
@@ -39,6 +42,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.validation.constraints.NotNull;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -286,7 +290,20 @@ public class PipelineController
           }
           boolean succeed;
           try {
-            succeed = JenkinsUtils.triggerJob(job, pipelineCopy);
+            if (isRelayed(pipelineCopy)) {
+              String orginalName =
+                  pipelineCopy.getMetadata().getLabels().get(PIPELINE_LABELS_REPLAYED_FROM);
+              V1alpha1Pipeline originalPipeline = lister.namespace(namespace).get(orginalName);
+
+              logger.info("replayed from " + orginalName);
+
+              // 放到到 JenkinsUtils 里
+              succeed =
+                  ReplayUtils.replayJob(
+                      job, pipelineConfig.getMetadata().getUid(), pipelineCopy, originalPipeline);
+            } else {
+              succeed = JenkinsUtils.triggerJob(job, pipelineCopy);
+            }
           } catch (IOException e) {
             logger.info(
                 "[{}] Unable to trigger Pipeline '{}/{}', reason: {}",
@@ -295,12 +312,18 @@ public class PipelineController
                 name,
                 e.getMessage());
             return new Result(true);
+          } catch (Exception e) {
+            logger.error("unknown errors occurred when trigger job", e);
+            return new Result(true);
           }
+
           logger.debug("[{}] Will update Pipeline '{}/{}'", getControllerName(), namespace, name);
           if (succeed) {
+            pipelineCopy.getStatus().setPhase(QUEUED);
             succeed = pipelineClient.update(pipeline, pipelineCopy);
             return new Result(!succeed);
           } else {
+            pipelineCopy.getStatus().setPhase(FAILED);
             pipelineClient.update(pipeline, pipelineCopy);
             return new Result(true);
           }
@@ -323,6 +346,21 @@ public class PipelineController
 
         return new Result(false);
       }
+    }
+
+    /**
+     * Check if the pipeline was replayed from another one
+     *
+     * @param pipeline the pipeline object
+     * @return true, if the pipeline was replayed from another one
+     */
+    private boolean isRelayed(V1alpha1Pipeline pipeline) {
+      Map<String, String> labels = pipeline.getMetadata().getLabels();
+      if (labels != null) {
+        String replayedFrom = labels.get(PIPELINE_LABELS_REPLAYED_FROM);
+        return StringUtils.isNotBlank(replayedFrom);
+      }
+      return false;
     }
 
     private String getControllerName() {

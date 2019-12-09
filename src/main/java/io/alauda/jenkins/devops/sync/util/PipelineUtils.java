@@ -78,22 +78,20 @@ public class PipelineUtils {
 
   public static String runToPipelinePhase(Run run) {
     if (run != null && !run.hasntStartedYet()) {
-      if (run.isBuilding()) {
+      Result result = run.getResult();
+      if (result == null || run.isBuilding()) {
         return PipelinePhases.RUNNING;
       } else {
-        Result result = run.getResult();
-        if (result != null) {
-          if (result.equals(Result.SUCCESS)) {
-            return PipelinePhases.COMPLETE;
-          } else if (result.equals(Result.ABORTED)) {
-            return PipelinePhases.CANCELLED;
-          } else if (result.equals(Result.FAILURE)) {
-            return PipelinePhases.FAILED;
-          } else if (result.equals(Result.UNSTABLE)) {
-            return PipelinePhases.FAILED;
-          } else {
-            return PipelinePhases.QUEUED;
-          }
+        if (result.equals(Result.SUCCESS)) {
+          return PipelinePhases.COMPLETE;
+        } else if (result.equals(Result.ABORTED)) {
+          return PipelinePhases.CANCELLED;
+        } else if (result.equals(Result.FAILURE)) {
+          return PipelinePhases.FAILED;
+        } else if (result.equals(Result.UNSTABLE)) {
+          return PipelinePhases.FAILED;
+        } else {
+          return PipelinePhases.QUEUED;
         }
       }
     }
