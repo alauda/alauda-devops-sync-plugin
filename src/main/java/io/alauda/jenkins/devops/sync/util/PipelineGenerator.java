@@ -190,7 +190,9 @@ public abstract class PipelineGenerator {
         new V1alpha1PipelineBuilder()
             .withMetadata(
                 new V1ObjectMetaBuilder()
-                    .withName(config.getMetadata().getName())
+                    // use generateName field to generate pipeline name
+                    // we should not set field of Name
+                    .withGenerateName(config.getMetadata().getName())
                     .withNamespace(namespace)
                     .addToAnnotations(annotations)
                     .addToLabels(labels)
