@@ -12,6 +12,7 @@ import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.models.V1ObjectMeta;
@@ -208,12 +209,19 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
     void addPRAnnotation(PullRequest pr) {
       addAnnotation(MULTI_BRANCH_PR, branchName);
-      setAnnotation("alauda.io/jenkins." + annotationKeySpec(branchName), pr);
+      setAnnotation(
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + annotationKeySpec(branchName),
+          pr);
     }
 
     void addBranchAnnotation(String scmURL) {
       addAnnotation(MULTI_BRANCH_BRANCH, branchName);
-      setAnnotation("alauda.io/jenkins." + annotationKeySpec(branchName) + ".url", scmURL);
+      setAnnotation(
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + annotationKeySpec(branchName)
+              + ".url",
+          scmURL);
     }
 
     void delPRAnnotation() {
@@ -222,18 +230,29 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
     void delStalePRAnnotation() {
       delAnnotation(MULTI_BRANCH_STALE_PR, branchName);
-      delAnnotation("alauda.io/jenkins." + annotationKeySpec(branchName));
-      delAnnotation("alauda.io/jenkins." + annotationKeySpec(branchName) + ".url");
+      delAnnotation(
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + annotationKeySpec(branchName));
+      delAnnotation(
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + annotationKeySpec(branchName)
+              + ".url");
     }
 
     void addPRAnnotation(PullRequest pr, String prName) {
       addAnnotation(MULTI_BRANCH_PR, prName);
-      setAnnotation("alauda.io/jenkins." + prName, pr);
+      setAnnotation(
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + prName,
+          pr);
     }
 
     void delStaleBranchAnnotation() {
       delAnnotation(MULTI_BRANCH_STALE_BRANCH, branchName);
-      delAnnotation("alauda.io/jenkins." + annotationKeySpec(branchName) + ".url");
+      delAnnotation(
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + annotationKeySpec(branchName)
+              + ".url");
     }
 
     void delAnnotation(String annotation, String name) {
@@ -329,11 +348,17 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
       List<V1alpha1PipelineParameter> pipelineParameters =
           PipelineConfigToJobMapper.getPipelineParameter(job);
       setAnnotation(
-          "alauda.io/jenkins." + annotationKeySpec(branchName) + ".params", pipelineParameters);
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + annotationKeySpec(branchName)
+              + ".params",
+          pipelineParameters);
     }
 
     void delParameters() {
-      delAnnotation("alauda.io/jenkins." + annotationKeySpec(branchName) + ".params");
+      delAnnotation(
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + annotationKeySpec(branchName)
+              + ".params");
     }
 
     void commit() {

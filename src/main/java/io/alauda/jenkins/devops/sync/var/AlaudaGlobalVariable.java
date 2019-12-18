@@ -65,6 +65,6 @@ public class AlaudaGlobalVariable extends GlobalVariable {
           .get(MultiBranchProperty.class);
     }
 
-    return null;
+    return property;
   }
 }
