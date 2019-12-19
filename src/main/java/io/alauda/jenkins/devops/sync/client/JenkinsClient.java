@@ -361,7 +361,7 @@ public class JenkinsClient {
     }
   }
 
-  private static final Pattern PIPELINE_CONFIG_EXACT_PATTERN = Pattern.compile("(.*)(-\\d+)");
+  private static final Pattern PIPELINE_CONFIG_EXACT_PATTERN = Pattern.compile("(.*)(-[\\d\\w]{5})");
 
   public boolean deletePipeline(NamespaceName pipelineNamespaceName) {
     String namespace = pipelineNamespaceName.getNamespace();
