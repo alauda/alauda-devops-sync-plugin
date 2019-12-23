@@ -13,37 +13,65 @@
  */
 package io.alauda.jenkins.devops.sync.constants;
 
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
+
 public final class Constants {
   private Constants() {}
 
   public static final String ALAUDA_SYNC_PLUGIN = "sync.plugin.alauda.io";
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER =
-      "alauda.io/pipeline.number";
-  public static final String ALAUDA_DEVOPS_ANNOTATIONS_COMMIT = "alauda.io/commit";
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("pipeline.number");
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_COMMIT =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("commit");
+  public static final String ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG = "pipelineConfig";
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI =
-      "alauda.io/jenkins-build-uri";
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-build-uri");
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL =
-      "alauda.io/jenkins-log-url";
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-log-url");
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL =
-      "alauda.io/jenkins-console-log-url";
+      ResourceControllerManager.getControllerManager()
+          .getFormatedAnnotation("jenkins-console-log-url");
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL =
-      "alauda.io/jenkins-blueocean-log-url";
+      ResourceControllerManager.getControllerManager()
+          .getFormatedAnnotation("jenkins-blueocean-log-url");
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG =
-      "alauda.io/jenkins-stages-log";
-  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES = "alauda.io/jenkins-stages";
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-stages-log");
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-stages");
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG =
-      "alauda.io/jenkins-steps-log";
-  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS = "alauda.io/jenkins-steps";
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-steps-log");
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-steps");
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG =
-      "alauda.io/jenkins-view-log";
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-view-log");
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG =
-      "alauda.io/jenkins-progressive-log";
-  public static final String ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS = "alauda.io/causes-details";
+      ResourceControllerManager.getControllerManager()
+          .getFormatedAnnotation("jenkins-progressive-log");
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("causes-details");
+
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON =
+      ResourceControllerManager.getControllerManager()
+          .getFormatedAnnotation("jenkins-pending-input-actions-json");
+
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-status-json");
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-stages-json");
+
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-namespace");
+
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG =
-      "alauda.io/multi-branch-scan-log";
+      ResourceControllerManager.getControllerManager()
+          .getFormatedAnnotation("multi-branch-scan-log");
 
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY =
-      "alauda.io/jenkins-instance-identity";
+      ResourceControllerManager.getControllerManager()
+          .getFormatedAnnotation("jenkins-instance-identity");
+
+  public static final String ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN = "platform-basedomain";
+  public static final String ALAUDA_DEVOPS_USED_BASEDOMAIN = "alauda.io";
 
   /** secret keys */
   public static final String ALAUDA_DEVOPS_SECRETS_DATA_USERNAME = "username";
@@ -99,7 +127,8 @@ public final class Constants {
 
   public static final String DEFAULT_JENKINS_FILEPATH = "Jenkinsfile";
 
-  public static final String ANNOTATION_BADGE = "alauda.io/jenkins-badges";
+  public static final String ANNOTATION_BADGE =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins-badges");
 
   public static final String PIPELINECONFIG_KIND_MULTI_BRANCH = "multi-branch";
   public static final String PIPELINECONFIG_KIND = "pipeline.kind";

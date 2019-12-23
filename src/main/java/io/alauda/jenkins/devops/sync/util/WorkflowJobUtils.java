@@ -12,6 +12,7 @@ import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.util.ArrayList;
@@ -69,7 +70,10 @@ public final class WorkflowJobUtils {
     }
 
     String branchName = pro.getBranch().getName();
-    String paramKey = "alauda.io/jenkins." + annotationKeySpec(branchName) + ".params";
+    String paramKey =
+        ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+            + annotationKeySpec(branchName)
+            + ".params";
     List<V1alpha1PipelineParameter> pipelineParameters =
         PipelineConfigToJobMapper.getPipelineParameter(item);
     return !StringUtils.equals(toJSON(pipelineParameters), annotations.get(paramKey));
@@ -121,9 +125,18 @@ public final class WorkflowJobUtils {
       if (pr != null) {
         // we consider it as a pr
         pr.setUrl(scmURL);
-        putIfNotEmpty(meta, "alauda.io/jenkins." + annotationKeySpec(branchName), toJSON(pr));
+        putIfNotEmpty(
+            meta,
+            ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+                + annotationKeySpec(branchName),
+            toJSON(pr));
       } else {
-        putIfNotEmpty(meta, "alauda.io/jenkins." + annotationKeySpec(branchName) + ".url", scmURL);
+        putIfNotEmpty(
+            meta,
+            ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+                + annotationKeySpec(branchName)
+                + ".url",
+            scmURL);
       }
 
       branchItem.add(wfJob, pr != null, branchName);
@@ -132,7 +145,9 @@ public final class WorkflowJobUtils {
           PipelineConfigToJobMapper.getPipelineParameter(wfJob);
       putIfNotEmpty(
           meta,
-          "alauda.io/jenkins." + annotationKeySpec(branchName) + ".params",
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+              + annotationKeySpec(branchName)
+              + ".params",
           toJSON(pipelineParameters));
     }
 
@@ -149,7 +164,15 @@ public final class WorkflowJobUtils {
       return;
     }
 
-    annotations.entrySet().removeIf(entry -> entry.getKey().startsWith("alauda.io/jenkins"));
+    annotations
+        .entrySet()
+        .removeIf(
+            entry ->
+                entry
+                    .getKey()
+                    .startsWith(
+                        ResourceControllerManager.getControllerManager()
+                            .getFormatedAnnotation("jenkins")));
   }
 
   private static void putIfNotEmpty(V1ObjectMeta meta, String key, List<?> value) {
