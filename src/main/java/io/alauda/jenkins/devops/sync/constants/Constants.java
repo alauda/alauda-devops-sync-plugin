@@ -180,5 +180,5 @@ public final class Constants {
   public static final String JENKINS_PLUGIN_STATUS_ACTIVE = "active";
   public static final String JENKINS_PLUGIN_STATUS_INACTIVE = "inactive";
 
-  public static final String PIPELINE_LABELS_REPLAYED_FROM = "replayed_from";
+  public static final String PIPELINE_LABELS_REPLAYED_FROM = "replayed-from";
 }
