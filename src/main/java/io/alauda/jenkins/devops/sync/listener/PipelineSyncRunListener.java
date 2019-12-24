@@ -46,7 +46,6 @@ import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
@@ -568,7 +567,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
       return new Result(true);
     }
 
-    String phase = runToPipelinePhase(run);
+    String phase = PipelineUtils.runToPipelinePhase(run);
     long started = getStartTime(run);
     DateTime startTime = null;
     DateTime completionTime = null;
@@ -736,36 +735,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
   private long getDuration(Run run) {
     return run.getDuration();
-  }
-
-  /**
-   * @param run
-   * @return
-   * @see PipelineUtils#runToPipelinePhase(Run)
-   */
-  @Deprecated
-  private String runToPipelinePhase(Run run) {
-    if (run != null && !run.hasntStartedYet()) {
-      if (run.isBuilding()) {
-        return PipelinePhases.RUNNING;
-      } else {
-        hudson.model.Result result = run.getResult();
-        if (result != null) {
-          if (result.equals(hudson.model.Result.SUCCESS)) {
-            return PipelinePhases.COMPLETE;
-          } else if (result.equals(hudson.model.Result.ABORTED)) {
-            return PipelinePhases.CANCELLED;
-          } else if (result.equals(hudson.model.Result.FAILURE)) {
-            return PipelinePhases.FAILED;
-          } else if (result.equals(hudson.model.Result.UNSTABLE)) {
-            return PipelinePhases.FAILED;
-          } else {
-            return PipelinePhases.QUEUED;
-          }
-        }
-      }
-    }
-    return PipelinePhases.PENDING;
   }
 
   private String getRunResult(Run run) {

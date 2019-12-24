@@ -16,8 +16,6 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.FAILED;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 
 import antlr.ANTLRException;
 import hudson.model.*;
@@ -405,8 +403,6 @@ public abstract class JenkinsUtils {
           }
         }
 
-        pipeline.getStatus().setPhase(QUEUED);
-
         // If builds are queued too quickly, Jenkins can add the cause
         // to the previous queued pipeline so let's add a tiny
         // sleep.
@@ -418,7 +414,7 @@ public abstract class JenkinsUtils {
         }
         return true;
       }
-      pipeline.getStatus().setPhase(FAILED);
+
       logger.info(
           "Cannot schedule build for this Pipeline '{}/{}', reason: queueTaskFuture is null",
           namespace,
@@ -432,7 +428,7 @@ public abstract class JenkinsUtils {
     return getRun(job, pipeline) != null;
   }
 
-  private static WorkflowRun getRun(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline) {
+  public static WorkflowRun getRun(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline) {
     return getRun(job, pipeline.getMetadata().getUid());
   }
 
