@@ -68,7 +68,7 @@
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
     <org.json.version>20180130</org.json.version>
     <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
-    <jackson.version>2.9.8</jackson.version>
+    <jackson.version>2.10.1</jackson.version>
     <jenkins.version>2.83</jenkins.version>
     <jackson2.version>2.7.5</jackson2.version>
   </properties>
