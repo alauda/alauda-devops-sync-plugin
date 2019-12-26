@@ -299,7 +299,7 @@ public class PipelineController
 
               // 放到到 JenkinsUtils 里
               succeed =
-                  ReplayUtils.replayJob(
+                  ReplayUtils.replayJobAndReturn(
                       job, pipelineConfig.getMetadata().getUid(), pipelineCopy, originalPipeline);
             } else {
               succeed = JenkinsUtils.triggerJob(job, pipelineCopy);

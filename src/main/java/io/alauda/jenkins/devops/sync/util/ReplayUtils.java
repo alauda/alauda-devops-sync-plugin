@@ -34,6 +34,45 @@ public class ReplayUtils {
   private static final Logger logger = LoggerFactory.getLogger(ReplayUtils.class);
 
   /**
+   * Replay a pipeline job and return immediately.
+   *
+   * @see #replayJob(WorkflowJob, String, V1alpha1Pipeline, V1alpha1Pipeline)
+   * @param job is a pipeline job of Jenkins
+   * @param pipelineConfigUID is the uid of PipelineConfig
+   * @param currentPipeline the current pipeline
+   * @param originalPipeline the original pipeline
+   * @return true, if there's no any error
+   */
+  public static boolean replayJobAndReturn(
+      WorkflowJob job,
+      String pipelineConfigUID,
+      V1alpha1Pipeline currentPipeline,
+      V1alpha1Pipeline originalPipeline) {
+    new Thread(
+            () -> {
+              for (int i = 0; i < 100; i++) {
+                WorkflowRun originalRun = JenkinsUtils.getRun(job, originalPipeline);
+                FlowExecution execution = ReplayUtils.getExecution(originalRun);
+                if (execution == null) {
+                  try {
+                    Thread.sleep(1000);
+                  } catch (InterruptedException e) {
+                    e.printStackTrace();
+                  }
+                  continue;
+                }
+
+                if (ReplayUtils.replayJob(
+                    job, pipelineConfigUID, currentPipeline, originalPipeline)) {
+                  break;
+                }
+              }
+            })
+        .start();
+    return true;
+  }
+
+  /**
    * Replay a pipeline job base on another one which store in the metadata labels
    *
    * @param job is a pipeline job of Jenkins
@@ -59,25 +98,29 @@ public class ReplayUtils {
     Class<ReplayAction> replayActionCls = ReplayAction.class;
     ReplayAction replayAction = null;
     try {
-      Constructor<ReplayAction> construactor = replayActionCls.getDeclaredConstructor(Run.class);
-      construactor.setAccessible(true);
-      replayAction = construactor.newInstance(originalRun);
+      Constructor<ReplayAction> constructor = replayActionCls.getDeclaredConstructor(Run.class);
+      constructor.setAccessible(true);
+      replayAction = constructor.newInstance(originalRun);
     } catch (Exception e) {
       logger.error("cannot get constructor of ReplayAction", e);
     }
 
     if (replayAction != null) {
       List<Action> actions = new ArrayList<Action>();
-      CpsFlowExecution execution = ReplayUtils.getExecution(originalRun);
+      FlowExecution execution = ReplayUtils.getExecution(originalRun);
       if (execution == null) {
-        logger.error("cannot get CpsFlowExecution from the originalRun " + originalRun);
+        logger.warn("cannot get CpsFlowExecution from the originalRun " + originalRun);
         return false;
       }
 
       logger.debug("CpsFlowExecution " + execution);
 
+      if (!(execution instanceof CpsFlowExecution)) {
+        return false;
+      }
+
       try {
-        actions.add(getReplayFlowFactoryAction(execution));
+        actions.add(getReplayFlowFactoryAction((CpsFlowExecution) execution));
       } catch (Throwable e) {
         logger.error("cannot get ReplayFlowFactoryAction", e);
       }
@@ -159,7 +202,7 @@ public class ReplayUtils {
     return scripts;
   }
 
-  private static CpsFlowExecution getExecution(Run run) {
+  private static FlowExecution getExecution(Run run) {
     FlowExecutionOwner owner = ((FlowExecutionOwner.Executable) run).asFlowExecutionOwner();
     if (owner == null) {
       logger.error("cannot get FlowExecutionOwner from run " + run);
@@ -168,8 +211,7 @@ public class ReplayUtils {
       logger.debug("get FlowExecutionOwner " + owner + " from run " + run);
       logger.debug("get FlowExecution " + owner.getOrNull());
     }
-    FlowExecution exec = owner.getOrNull();
-    return exec instanceof CpsFlowExecution ? (CpsFlowExecution) exec : null;
+    return owner.getOrNull();
   }
 
   private static final Iterable<Class<? extends Action>> COPIED_ACTIONS =
