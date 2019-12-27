@@ -10,6 +10,7 @@ import hudson.model.Queue;
 import hudson.model.Run;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.core.ActionResult;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -41,9 +42,9 @@ public class ReplayUtils {
    * @param pipelineConfigUID is the uid of PipelineConfig
    * @param currentPipeline the current pipeline
    * @param originalPipeline the original pipeline
-   * @return true, if there's no any error
+   * @return ActionResult, if there's no any error
    */
-  public static boolean replayJobAndReturn(
+  public static ActionResult replayJobAndReturn(
       WorkflowJob job,
       String pipelineConfigUID,
       V1alpha1Pipeline currentPipeline,
@@ -69,7 +70,7 @@ public class ReplayUtils {
               }
             })
         .start();
-    return true;
+    return ActionResult.SUCCESS();
   }
 
   /**
@@ -79,7 +80,7 @@ public class ReplayUtils {
    * @param pipelineConfigUID is the uid of PipelineConfig
    * @param currentPipeline the current pipeline
    * @param originalPipeline the original pipeline
-   * @return true, if there's no any error
+   * @return ActionResult, if there's no any error
    */
   public static boolean replayJob(
       WorkflowJob job,
