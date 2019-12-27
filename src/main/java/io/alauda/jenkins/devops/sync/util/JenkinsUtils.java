@@ -285,6 +285,7 @@ public abstract class JenkinsUtils {
     logger.info("will trigger pipeline: " + pipelineName);
 
     if (hasBuildRunningOrCompleted(job, pipeline)) {
+      logger.info("pipeline is running or completed: {}", pipelineName);
       return new ActionResult(ActionResult.Status.REPEAT, "pipeline is running or completed: %s", pipelineName);
     }
 
