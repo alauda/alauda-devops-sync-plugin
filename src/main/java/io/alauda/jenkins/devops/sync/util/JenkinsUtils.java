@@ -277,8 +277,8 @@ public abstract class JenkinsUtils {
     return envVarList;
   }
 
-  public static ActionResult triggerJob(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline)
-      throws IOException {
+  public static ActionResult triggerJob(
+      @Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline) throws IOException {
     final V1ObjectMeta pipMeta = pipeline.getMetadata();
     final String namespace = pipMeta.getNamespace();
     final String pipelineName = pipMeta.getName();
@@ -286,7 +286,8 @@ public abstract class JenkinsUtils {
 
     if (hasBuildRunningOrCompleted(job, pipeline)) {
       logger.info("pipeline is running or completed: {}", pipelineName);
-      return new ActionResult(ActionResult.Status.REPEAT, "pipeline is running or completed: %s", pipelineName);
+      return new ActionResult(
+          ActionResult.Status.REPEAT, "pipeline is running or completed: %s", pipelineName);
     }
 
     AlaudaJobProperty pcProp = job.getProperty(WorkflowJobProperty.class);
