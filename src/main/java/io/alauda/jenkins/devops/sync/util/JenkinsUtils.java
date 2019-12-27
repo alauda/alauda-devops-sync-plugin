@@ -28,6 +28,7 @@ import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.core.ActionResult;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -276,8 +277,8 @@ public abstract class JenkinsUtils {
     return envVarList;
   }
 
-  public static boolean triggerJob(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline)
-      throws IOException {
+  public static ActionResult triggerJob(
+      @Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline) throws IOException {
     final V1ObjectMeta pipMeta = pipeline.getMetadata();
     final String namespace = pipMeta.getNamespace();
     final String pipelineName = pipMeta.getName();
@@ -285,7 +286,8 @@ public abstract class JenkinsUtils {
 
     if (hasBuildRunningOrCompleted(job, pipeline)) {
       logger.info("pipeline is running or completed: {}", pipelineName);
-      return false;
+      return new ActionResult(
+          ActionResult.Status.REPEAT, "pipeline is running or completed: %s", pipelineName);
     }
 
     AlaudaJobProperty pcProp = job.getProperty(WorkflowJobProperty.class);
@@ -303,7 +305,7 @@ public abstract class JenkinsUtils {
           "aborting trigger of Pipeline '{}/{}' because of missing pc project property",
           namespace,
           pipelineName);
-      return false;
+      return ActionResult.FAILURE();
     }
 
     final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
@@ -317,7 +319,7 @@ public abstract class JenkinsUtils {
           "PipelineConfig '{}/{}' cannot found, unable to trigger build",
           namespace,
           pipelineConfigName);
-      return false;
+      return ActionResult.FAILURE();
     }
 
     // sync on intern of name should guarantee sync on same actual obj
@@ -412,7 +414,7 @@ public abstract class JenkinsUtils {
           logger.error("updatePipelinePhase Interrupted: {}", e.getMessage());
           Thread.currentThread().interrupt();
         }
-        return true;
+        return ActionResult.SUCCESS();
       }
 
       logger.info(
@@ -420,7 +422,7 @@ public abstract class JenkinsUtils {
           namespace,
           pipelineName);
 
-      return false;
+      return ActionResult.FAILURE();
     }
   }
 

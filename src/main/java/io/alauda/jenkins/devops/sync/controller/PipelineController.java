@@ -19,6 +19,7 @@ import io.alauda.jenkins.devops.sync.client.PipelineClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
+import io.alauda.jenkins.devops.sync.core.ActionResult;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
@@ -288,7 +289,7 @@ public class PipelineController
                 pipelineConfig.getMetadata().getName());
             return new Result(true);
           }
-          boolean succeed;
+          ActionResult actionResult;
           try {
             if (isRelayed(pipelineCopy)) {
               String orginalName =
@@ -298,11 +299,11 @@ public class PipelineController
               logger.info("replayed from " + orginalName);
 
               // 放到到 JenkinsUtils 里
-              succeed =
-                  ReplayUtils.replayJob(
+              actionResult =
+                  ReplayUtils.replayJobAndReturn(
                       job, pipelineConfig.getMetadata().getUid(), pipelineCopy, originalPipeline);
             } else {
-              succeed = JenkinsUtils.triggerJob(job, pipelineCopy);
+              actionResult = JenkinsUtils.triggerJob(job, pipelineCopy);
             }
           } catch (IOException e) {
             logger.info(
@@ -318,14 +319,16 @@ public class PipelineController
           }
 
           logger.debug("[{}] Will update Pipeline '{}/{}'", getControllerName(), namespace, name);
-          if (succeed) {
-            pipelineCopy.getStatus().setPhase(QUEUED);
-            succeed = pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(!succeed);
-          } else {
-            pipelineCopy.getStatus().setPhase(FAILED);
-            pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(true);
+          switch (actionResult.getStatus()) {
+            case SUCCESS:
+              pipelineCopy.getStatus().setPhase(QUEUED);
+              boolean succeed = pipelineClient.update(pipeline, pipelineCopy);
+              return new Result(!succeed);
+            case FAILURE:
+              pipelineCopy.getStatus().setPhase(FAILED);
+              pipelineClient.update(pipeline, pipelineCopy);
+            default:
+              return new Result(true);
           }
         }
 
