@@ -58,7 +58,8 @@ public class ReplayUtils {
                   try {
                     Thread.sleep(1000);
                   } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    logger.warn("Interrupted!", e);
+                    Thread.currentThread().interrupt();
                   }
                   continue;
                 }
