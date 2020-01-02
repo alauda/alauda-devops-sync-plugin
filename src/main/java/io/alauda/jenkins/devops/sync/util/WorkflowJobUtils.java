@@ -71,7 +71,7 @@ public final class WorkflowJobUtils {
 
     String branchName = pro.getBranch().getName();
     String paramKey =
-        ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+        ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.")
             + annotationKeySpec(branchName)
             + ".params";
     List<V1alpha1PipelineParameter> pipelineParameters =
@@ -127,13 +127,17 @@ public final class WorkflowJobUtils {
         pr.setUrl(scmURL);
         putIfNotEmpty(
             meta,
-            ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+            ResourceControllerManager.getControllerManager()
+                    .getFormattedAnnotation("jenkins.")
+                    .get()
                 + annotationKeySpec(branchName),
             toJSON(pr));
       } else {
         putIfNotEmpty(
             meta,
-            ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+            ResourceControllerManager.getControllerManager()
+                    .getFormattedAnnotation("jenkins.")
+                    .get()
                 + annotationKeySpec(branchName)
                 + ".url",
             scmURL);
@@ -145,16 +149,17 @@ public final class WorkflowJobUtils {
           PipelineConfigToJobMapper.getPipelineParameter(wfJob);
       putIfNotEmpty(
           meta,
-          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
+          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
               + annotationKeySpec(branchName)
               + ".params",
           toJSON(pipelineParameters));
     }
 
-    putIfNotEmpty(meta, MULTI_BRANCH_PR, branchItem.getPrList());
-    putIfNotEmpty(meta, MULTI_BRANCH_STALE_PR, branchItem.getStalePRList());
-    putIfNotEmpty(meta, MULTI_BRANCH_BRANCH, branchItem.getBranchList());
-    putIfNotEmpty(meta, MULTI_BRANCH_STALE_BRANCH, branchItem.getStaleBranchList());
+    putIfNotEmpty(meta, MULTI_BRANCH_PR.get().toString(), branchItem.getPrList());
+    putIfNotEmpty(meta, MULTI_BRANCH_STALE_PR.get().toString(), branchItem.getStalePRList());
+    putIfNotEmpty(meta, MULTI_BRANCH_BRANCH.get().toString(), branchItem.getBranchList());
+    putIfNotEmpty(
+        meta, MULTI_BRANCH_STALE_BRANCH.get().toString(), branchItem.getStaleBranchList());
 
     Clients.get(V1alpha1PipelineConfig.class).update(oldPC, newPC);
   }
@@ -172,7 +177,8 @@ public final class WorkflowJobUtils {
                     .getKey()
                     .startsWith(
                         ResourceControllerManager.getControllerManager()
-                            .getFormatedAnnotation("jenkins")));
+                            .getFormattedAnnotation("jenkins")
+                            .get()));
   }
 
   private static void putIfNotEmpty(V1ObjectMeta meta, String key, List<?> value) {

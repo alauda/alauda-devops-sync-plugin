@@ -354,8 +354,10 @@ public abstract class JenkinsUtils {
       V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
       String commit = null;
       if (pipMeta.getAnnotations() != null
-          && pipMeta.getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
-        commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
+          && pipMeta
+              .getAnnotations()
+              .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
+        commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString());
       }
 
       if (sourceGit != null && commit != null) {

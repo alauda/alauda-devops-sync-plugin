@@ -149,7 +149,8 @@ public abstract class AlaudaUtils {
    * @return the jenkins job name for the given PipelineConfig
    */
   public static String jenkinsJobFullName(V1alpha1PipelineConfig pc) {
-    String jobName = pc.getMetadata().getAnnotations().get(Annotations.JENKINS_JOB_PATH);
+    String jobName =
+        pc.getMetadata().getAnnotations().get(Annotations.JENKINS_JOB_PATH.get().toString());
 
     if (StringUtils.isNotBlank(jobName)) {
       return jobName;

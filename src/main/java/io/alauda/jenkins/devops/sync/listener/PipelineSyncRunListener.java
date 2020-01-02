@@ -604,16 +604,19 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
     Map<String, String> annotations = newPipeline.getMetadata().getAnnotations();
 
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI, buildUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL, logsUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL, logsConsoleUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL, logsBlueOceanUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG, viewLogUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES, stagesUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG, stagesLogUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS, stepsUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG, stepsLogUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG, progressiveLogUrl);
+    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI.get().toString(), buildUrl);
+    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL.get().toString(), logsUrl);
+    annotations.put(
+        ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL.get().toString(), logsConsoleUrl);
+    annotations.put(
+        ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL.get().toString(), logsBlueOceanUrl);
+    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG.get().toString(), viewLogUrl);
+    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES.get().toString(), stagesUrl);
+    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG.get().toString(), stagesLogUrl);
+    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS.get().toString(), stepsUrl);
+    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG.get().toString(), stepsLogUrl);
+    annotations.put(
+        ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG.get().toString(), progressiveLogUrl);
     newPipeline.getMetadata().setAnnotations(annotations);
 
     badgeHandle(run, annotations);
@@ -669,7 +672,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
               jsonArray.add(jsonObject);
             });
-    annotations.put(ANNOTATION_BADGE, jsonArray.toString());
+    annotations.put(ANNOTATION_BADGE.get().toString(), jsonArray.toString());
   }
 
   private V1alpha1PipelineStatus createPipelineStatus(
