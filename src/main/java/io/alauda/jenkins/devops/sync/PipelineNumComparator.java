@@ -16,8 +16,8 @@ public class PipelineNumComparator implements Comparator<V1alpha1Pipeline>, Seri
       return 0;
     }
 
-    String p1Num = p1Anno.get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER);
-    String p2Num = p2Anno.get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER);
+    String p1Num = p1Anno.get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER.get().toString());
+    String p2Num = p2Anno.get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER.get().toString());
     if (p1Num == null || p2Num == null) {
       return 0;
     }
