@@ -153,7 +153,8 @@ public class JenkinsClient {
 
     if (item instanceof WorkflowMultiBranchProject) {
       WorkflowMultiBranchProject project = (WorkflowMultiBranchProject) item;
-      String branchName = pipeline.getMetadata().getAnnotations().get(MULTI_BRANCH_NAME);
+      String branchName =
+          pipeline.getMetadata().getAnnotations().get(MULTI_BRANCH_NAME.get().toString());
 
       if (StringUtils.isEmpty(branchName)) {
         return null;
