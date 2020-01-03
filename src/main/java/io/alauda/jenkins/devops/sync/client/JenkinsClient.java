@@ -576,7 +576,7 @@ public class JenkinsClient {
   }
 
   public boolean isDeleteInProgress(String namespace, String name) {
-    return deleteInProgress.add(new NamespaceName(namespace, name));
+    return deleteInProgress.contains(new NamespaceName(namespace, name));
   }
 
   public boolean updateJenkins(V1alpha1Jenkins oldJenkins, V1alpha1Jenkins newJenkins) {
