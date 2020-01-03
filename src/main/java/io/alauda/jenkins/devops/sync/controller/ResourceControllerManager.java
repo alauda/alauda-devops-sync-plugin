@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import jenkins.model.identity.IdentityRootAction;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -64,6 +63,21 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
                 }
 
                 String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+                V1alpha1Jenkins currentJenkins;
+                String basedomain;
+                try {
+                  currentJenkins = getJenkins(jenkinsService);
+                  Map<String, String> annotations = currentJenkins.getMetadata().getAnnotations();
+                  basedomain = annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN);
+
+                } catch (ApiException e) {
+                  basedomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
+                }
+                if (basedomain == null) {
+                  basedomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
+                }
+                baseDomain = basedomain;
+
                 if (!checkJenkinsService(jenkinsService)) {
                   logger.warn(
                       "[ResourceControllerManager] The target Jenkins service {} is invalid, reason {}",
@@ -155,33 +169,15 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
 
     final String currentFingerprint = new IdentityRootAction().getFingerprint();
     Map<String, String> annotations = currentJenkins.getMetadata().getAnnotations();
-
-    String basedomain =
-        currentJenkins.getMetadata().getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN);
-
-    if (basedomain != null && !basedomain.equals("")) {
-      baseDomain = basedomain;
-      logger.warn(
-          "[ResourceControllerManager] Alauda DevOps Sync plugin use basedomain {} from jenkins service",
-          baseDomain);
-    } else {
-      baseDomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
-      logger.warn(
-          "[ResourceControllerManager] Alauda DevOps Sync plugin use default basedomain: {}",
-          baseDomain);
-    }
-
     String fingerprint;
     if (annotations == null
-        || (fingerprint =
-                annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY.get().toString()))
-            == null) {
+        || (fingerprint = annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY)) == null) {
       V1alpha1Jenkins newJenkins = DeepCopyUtils.deepCopy(currentJenkins);
 
       newJenkins
           .getMetadata()
           .getAnnotations()
-          .put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY.get().toString(), currentFingerprint);
+          .put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY, currentFingerprint);
       if (!JenkinsClient.getInstance().updateJenkins(currentJenkins, newJenkins)) {
         pluginStatus =
             String.format(
@@ -196,7 +192,6 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
               fingerprint, currentFingerprint);
       return false;
     }
-
     return true;
   }
 
@@ -208,14 +203,12 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
   public String getPluginStatus() {
     return pluginStatus;
   }
-  // TODO: should throw Expection or something can warn us when baseDomain is wrong
-  public Supplier<String> getFormattedAnnotation(String annotation) {
-    return new Supplier<String>() {
-      @Override
-      public String get() {
-        return String.format("%s/%s", baseDomain, annotation);
-      }
-    };
+
+  public String getFormatedAnnotation(String annotation) {
+    if (baseDomain == null) {
+      baseDomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
+    }
+    return String.format("%s/%s", baseDomain, annotation);
   }
 
   public boolean isStarted() {

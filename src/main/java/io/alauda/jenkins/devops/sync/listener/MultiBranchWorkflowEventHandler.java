@@ -208,49 +208,49 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     void addPRAnnotation(PullRequest pr) {
-      addAnnotation(MULTI_BRANCH_PR.get().toString(), branchName);
+      addAnnotation(MULTI_BRANCH_PR, branchName);
       setAnnotation(
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
               + annotationKeySpec(branchName),
           pr);
     }
 
     void addBranchAnnotation(String scmURL) {
-      addAnnotation(MULTI_BRANCH_BRANCH.get().toString(), branchName);
+      addAnnotation(MULTI_BRANCH_BRANCH, branchName);
       setAnnotation(
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
               + annotationKeySpec(branchName)
               + ".url",
           scmURL);
     }
 
     void delPRAnnotation() {
-      delAnnotation(MULTI_BRANCH_PR.get().toString(), branchName);
+      delAnnotation(MULTI_BRANCH_PR, branchName);
     }
 
     void delStalePRAnnotation() {
-      delAnnotation(MULTI_BRANCH_STALE_PR.get().toString(), branchName);
+      delAnnotation(MULTI_BRANCH_STALE_PR, branchName);
       delAnnotation(
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
               + annotationKeySpec(branchName));
       delAnnotation(
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
               + annotationKeySpec(branchName)
               + ".url");
     }
 
     void addPRAnnotation(PullRequest pr, String prName) {
-      addAnnotation(MULTI_BRANCH_PR.get().toString(), prName);
+      addAnnotation(MULTI_BRANCH_PR, prName);
       setAnnotation(
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
               + prName,
           pr);
     }
 
     void delStaleBranchAnnotation() {
-      delAnnotation(MULTI_BRANCH_STALE_BRANCH.get().toString(), branchName);
+      delAnnotation(MULTI_BRANCH_STALE_BRANCH, branchName);
       delAnnotation(
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
               + annotationKeySpec(branchName)
               + ".url");
     }
@@ -288,11 +288,11 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     void delBranchAnnotation() {
-      delAnnotation(MULTI_BRANCH_BRANCH.get().toString(), branchName);
+      delAnnotation(MULTI_BRANCH_BRANCH, branchName);
     }
 
     void addStalePRAnnotation() {
-      addAnnotation(MULTI_BRANCH_STALE_PR.get().toString(), branchName);
+      addAnnotation(MULTI_BRANCH_STALE_PR, branchName);
     }
 
     void setAnnotation(final String annotation, Object obj) {
@@ -348,7 +348,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
       List<V1alpha1PipelineParameter> pipelineParameters =
           PipelineConfigToJobMapper.getPipelineParameter(job);
       setAnnotation(
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
               + annotationKeySpec(branchName)
               + ".params",
           pipelineParameters);
@@ -356,7 +356,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
     void delParameters() {
       delAnnotation(
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
+          ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.")
               + annotationKeySpec(branchName)
               + ".params");
     }

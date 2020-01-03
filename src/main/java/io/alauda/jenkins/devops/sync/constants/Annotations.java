@@ -14,34 +14,32 @@
 package io.alauda.jenkins.devops.sync.constants;
 
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
-import java.util.function.Supplier;
 
 /** Alauda k8s resources annotations */
 public final class Annotations {
   private Annotations() {}
 
-  public static final Supplier JENKINS_JOB_PATH =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("job-path");
+  public static final String JENKINS_JOB_PATH =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("job-path");
 
-  public static final Supplier MULTI_BRANCH_BRANCH =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.branch");
-  public static final Supplier MULTI_BRANCH_STALE_BRANCH =
+  public static final String MULTI_BRANCH_BRANCH =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.branch");
+  public static final String MULTI_BRANCH_STALE_BRANCH =
       ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("jenkins.stale.branch");
-  public static final Supplier MULTI_BRANCH_STALE_PR =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.stale.pr");
+          .getFormatedAnnotation("jenkins.stale.branch");
+  public static final String MULTI_BRANCH_STALE_PR =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.stale.pr");
 
-  public static final Supplier MULTI_BRANCH_CATEGORY =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("multiBranchCategory");
-  public static final Supplier MULTI_BRANCH_NAME =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("multiBranchName");
+  public static final String MULTI_BRANCH_CATEGORY =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("multiBranchCategory");
+  public static final String MULTI_BRANCH_NAME =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("multiBranchName");
 
-  public static final Supplier MULTI_BRANCH_PR =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.pr");
-  public static final Supplier MULTI_BRANCH_PR_DETAIL =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.pr.detail");
+  public static final String MULTI_BRANCH_PR =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.pr");
+  public static final String MULTI_BRANCH_PR_DETAIL =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("jenkins.pr.detail");
 
-  public static final Supplier ALAUDA_PIPELINE_CONTEXT =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("pipelinecontext.");
+  public static final String ALAUDA_PIPELINE_CONTEXT =
+      ResourceControllerManager.getControllerManager().getFormatedAnnotation("pipelinecontext.");
 }

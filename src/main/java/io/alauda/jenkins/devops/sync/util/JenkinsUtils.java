@@ -28,7 +28,6 @@ import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.core.ActionResult;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -277,8 +276,8 @@ public abstract class JenkinsUtils {
     return envVarList;
   }
 
-  public static ActionResult triggerJob(
-      @Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline) throws IOException {
+  public static boolean triggerJob(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline)
+      throws IOException {
     final V1ObjectMeta pipMeta = pipeline.getMetadata();
     final String namespace = pipMeta.getNamespace();
     final String pipelineName = pipMeta.getName();
@@ -286,8 +285,7 @@ public abstract class JenkinsUtils {
 
     if (hasBuildRunningOrCompleted(job, pipeline)) {
       logger.info("pipeline is running or completed: {}", pipelineName);
-      return new ActionResult(
-          ActionResult.Status.REPEAT, "pipeline is running or completed: %s", pipelineName);
+      return false;
     }
 
     AlaudaJobProperty pcProp = job.getProperty(WorkflowJobProperty.class);
@@ -305,7 +303,7 @@ public abstract class JenkinsUtils {
           "aborting trigger of Pipeline '{}/{}' because of missing pc project property",
           namespace,
           pipelineName);
-      return ActionResult.FAILURE();
+      return false;
     }
 
     final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
@@ -319,7 +317,7 @@ public abstract class JenkinsUtils {
           "PipelineConfig '{}/{}' cannot found, unable to trigger build",
           namespace,
           pipelineConfigName);
-      return ActionResult.FAILURE();
+      return false;
     }
 
     // sync on intern of name should guarantee sync on same actual obj
@@ -354,10 +352,8 @@ public abstract class JenkinsUtils {
       V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
       String commit = null;
       if (pipMeta.getAnnotations() != null
-          && pipMeta
-              .getAnnotations()
-              .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
-        commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString());
+          && pipMeta.getAnnotations().containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
+        commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
       }
 
       if (sourceGit != null && commit != null) {
@@ -416,7 +412,7 @@ public abstract class JenkinsUtils {
           logger.error("updatePipelinePhase Interrupted: {}", e.getMessage());
           Thread.currentThread().interrupt();
         }
-        return ActionResult.SUCCESS();
+        return true;
       }
 
       logger.info(
@@ -424,7 +420,7 @@ public abstract class JenkinsUtils {
           namespace,
           pipelineName);
 
-      return ActionResult.FAILURE();
+      return false;
     }
   }
 

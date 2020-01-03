@@ -86,12 +86,8 @@ public class JenkinsPipelineCause extends Cause {
           && pipeline
               .getMetadata()
               .getAnnotations()
-              .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
-        commit =
-            pipeline
-                .getMetadata()
-                .getAnnotations()
-                .get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString());
+              .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT)) {
+        commit = pipeline.getMetadata().getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT);
       }
     }
   }
