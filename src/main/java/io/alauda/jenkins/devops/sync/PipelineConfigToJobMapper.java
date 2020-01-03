@@ -347,6 +347,8 @@ public abstract class PipelineConfigToJobMapper {
     if (paramDefs == null || paramDefs.size() == 0) {
       LOGGER.log(Level.FINE, "No parameters defined for job {0}", job);
       return pipelineParameters;
+    } else {
+      LOGGER.log(Level.FINE, "ParameterDefinitions job {0} are {1}", new Object[] {job, paramDefs});
     }
 
     for (ParameterDefinition def : paramDefs) {
