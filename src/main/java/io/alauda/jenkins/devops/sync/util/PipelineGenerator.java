@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import javax.annotation.Nonnull;
 import javax.validation.constraints.NotNull;
 import jenkins.branch.Branch;
 import jenkins.branch.BranchIndexingCause;
@@ -146,7 +147,7 @@ public abstract class PipelineGenerator {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
       annotations.put(
           ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(),
-          JSONArray.fromObject(allCauses).toString());
+          JSONArray.fromObject(getCauseDescription(allCauses)).toString());
     } else if (allCauses.size() == 1) {
       cause = causeConvert(allCauses.get(0));
     } else {
@@ -203,6 +204,15 @@ public abstract class PipelineGenerator {
             .build();
 
     return Clients.get(V1alpha1Pipeline.class).create(pipe);
+  }
+
+  private static List<String> getCauseDescription(@Nonnull List<Cause> allCauses) {
+    List<String> causeDescription = new ArrayList<>();
+    allCauses.forEach(
+        cause -> {
+          causeDescription.add(cause.getShortDescription());
+        });
+    return causeDescription;
   }
 
   public static V1alpha1PipelineSpec buildPipelineSpec(V1alpha1PipelineConfig config) {
