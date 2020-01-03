@@ -19,16 +19,14 @@ import java.util.function.Supplier;
 public final class Constants {
   private Constants() {}
 
-  public static final String ROOT_URL = "http://localhost:8080/";
-
   public static final String ALAUDA_SYNC_PLUGIN = "sync.plugin.alauda.io";
-
   public static final String ALAUDA_DEVOPS_DEFAULT_NAMESPACE = "default";
 
   public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER =
       ResourceControllerManager.getControllerManager().getFormattedAnnotation("pipeline.number");
   public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_COMMIT =
       ResourceControllerManager.getControllerManager().getFormattedAnnotation("commit");
+
   public static final String ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG = "pipelineConfig";
   public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI =
       ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-build-uri");
@@ -87,8 +85,6 @@ public final class Constants {
   public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSWORD = "password"; // NOSONAR
   public static final String ALAUDA_DEVOPS_SECRETS_DATA_SSHPRIVATEKEY = "ssh-privatekey";
   public static final String ALAUDA_DEVOPS_SECRETS_DATA_DOCKER = ".dockerconfigjson";
-  public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTID = "clientID";
-  public static final String ALAUDA_DEVOPS_SECRETS_DATA_CLIENTSECRET = "clientSecret";
   public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKEN = "accessToken";
   public static final String ALAUDA_DEVOPS_SECRETS_DATA_ACCESSTOKENKEY = "accessTokenKey";
   public static final String ALAUDA_DEVOPS_SECRETS_DATA_PASSPHRASE = "passphrase"; // NOSONAR
@@ -96,13 +92,8 @@ public final class Constants {
   /** secret types */
   public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SSH = "kubernetes.io/ssh-auth";
 
-  public static final String ALAUDA_DEVOPS_SECRETS_TYPE_BASICAUTH = "kubernetes.io/basic-auth";
   public static final String ALAUDA_DEVOPS_SECRETS_TYPE_DOCKER = "kubernetes.io/dockerconfigjson";
-  public static final String ALAUDA_DEVOPS_SECRETS_TYPE_OPAQUE = "Opaque";
   public static final String ALAUDA_DEVOPS_SECRETS_TYPE_OAUTH2 = "devops.alauda.io/oauth2";
-  public static final String ALAUDA_DEVOPS_SECRETS_TYPE_SERVICE_ACCOUNT_TOKEN =
-      "kubernetes.io/service-account-token";
-  public static final String ALAUDA_DEVOPS_PIPELINE_STATUS_FIELD = "status";
 
   public static final String ALAUDA_PROJECT_ENV_VAR_NAME = "PROJECT_NAME";
   public static final String KUBERNETES_SERVICE_ACCOUNT_NAMESPACE =
@@ -113,7 +104,6 @@ public final class Constants {
   @Deprecated public static final String PIPELINE_PARAMETER_TYPE_BOOLEAN = "boolean";
   public static final String PIPELINE_PARAMETER_TYPE_BOOLEAN_DEF = "BooleanParameterDefinition";
 
-  public static final String PIPELINE_TRIGGER_TYPE_MANUAL = "manual";
   public static final String PIPELINE_TRIGGER_TYPE_CRON = "cron";
   public static final String PIPELINE_TRIGGER_TYPE_CODE_CHANGE = "codeChange";
   /** Triggered by branch scanning */
@@ -129,7 +119,6 @@ public final class Constants {
 
   public static final String PIPELINE_RUN_POLICY_SERIAL = "Serial";
   public static final String PIPELINE_RUN_POLICY_PARALLEL = "Parallel";
-  public static final String PIPELINE_RUN_POLICY_DEFAULT = PIPELINE_RUN_POLICY_SERIAL;
 
   public static final String PIPELINE_CREATED_BY = "created_by";
 
@@ -137,7 +126,6 @@ public final class Constants {
   public static final String JOB_STATUS_QUEUE = "QUEUED";
   public static final String JOB_STATUS_RUNNING = "RUNNING";
   public static final String JOB_STATUS_FINISHED = "FINISHED";
-  public static final String JOB_STATUS_PAUSED = "PAUSED";
   public static final String JOB_STATUS_SKIPPED = "SKIPPED";
   public static final String JOB_STATUS_NOT_BUILT = "NOT_BUILT";
   public static final String JOB_STATUS_UNKNOWN = "UNKNOWN";
@@ -190,8 +178,11 @@ public final class Constants {
   public static final String JENKINS_NODES_CONDITION = "nodes";
   public static final String JENKINS_PLUGINS_CONDITION = "plugins";
   public static final String JENKINS_WARNINGS_CONDITION = "warnings";
+
   public static final String JENKINS_CONDITION_STATUS_TYPE = "jenkins-status";
   public static final String JENKINS_PLUGIN_STATUS_FAILED = "failed";
   public static final String JENKINS_PLUGIN_STATUS_ACTIVE = "active";
   public static final String JENKINS_PLUGIN_STATUS_INACTIVE = "inactive";
+
+  public static final String PIPELINE_LABELS_REPLAYED_FROM = "replayed-from";
 }
