@@ -58,7 +58,7 @@ public interface AlaudaJobProperty {
     if (Annotation != null) {
       Map<String, String> annotationResult = new HashMap<>();
       for (String key : Annotation.keySet()) {
-        if (key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT)) {
+        if (key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT.get().toString())) {
           annotationResult.put(key, Annotation.get(key));
         }
       }

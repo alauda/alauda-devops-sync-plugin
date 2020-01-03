@@ -221,7 +221,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
     Map<String, String> logURLs =
         Collections.singletonMap(
-            ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG,
+            ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG.get().toString(),
             String.format(
                 "/job/%s/job/%s/indexing/logText/progressiveText",
                 namespace, mapper.jenkinsJobName(namespace, name)));
