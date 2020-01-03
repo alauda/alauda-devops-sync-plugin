@@ -53,7 +53,7 @@ public abstract class PipelineGenerator {
       BranchJobProperty property = job.getProperty(BranchJobProperty.class);
       if (property != null) {
         Branch branch = property.getBranch();
-        annotations.put(Annotations.MULTI_BRANCH_NAME, branch.getName());
+        annotations.put(Annotations.MULTI_BRANCH_NAME.get().toString(), branch.getName());
 
         String scmURL = "";
         ObjectMetadataAction metadataAction = job.getAction(ObjectMetadataAction.class);
@@ -64,10 +64,12 @@ public abstract class PipelineGenerator {
         PullRequest pr = getPR(job);
         if (pr != null) {
           pr.setUrl(scmURL);
-          annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "pr");
-          annotations.put(Annotations.MULTI_BRANCH_PR_DETAIL, JSONObject.fromObject(pr).toString());
+          annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "pr");
+          annotations.put(
+              Annotations.MULTI_BRANCH_PR_DETAIL.get().toString(),
+              JSONObject.fromObject(pr).toString());
         } else {
-          annotations.put(Annotations.MULTI_BRANCH_CATEGORY, "branch");
+          annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "branch");
         }
       }
     }
@@ -144,7 +146,7 @@ public abstract class PipelineGenerator {
     if (allCauses.size() > 1) {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
       annotations.put(
-          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS,
+          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(),
           JSONArray.fromObject(getCauseDescription(allCauses)).toString());
     } else if (allCauses.size() == 1) {
       cause = causeConvert(allCauses.get(0));
