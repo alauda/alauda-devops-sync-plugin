@@ -270,56 +270,54 @@ public class PipelineConfigController
           getControllerName(),
           namespace,
           name);
+      // clone PipelineConfig so that we won't modify it in two places
+      pc = DeepCopyUtils.deepCopy(pc);
       V1alpha1PipelineConfig pipelineConfigCopy = DeepCopyUtils.deepCopy(pc);
 
-      synchronized (pc.getMetadata().getUid().intern()) {
-        // clean conditions first, any error info will be put it into conditions
-        List<V1alpha1Condition> conditions = new ArrayList<>();
-        pipelineConfigCopy.getStatus().setConditions(conditions);
+      // clean conditions first, any error info will be put it into conditions
+      List<V1alpha1Condition> conditions = new ArrayList<>();
+      pipelineConfigCopy.getStatus().setConditions(conditions);
 
-        PipelineConfigUtils.dependencyCheck(
-            pipelineConfigCopy, pipelineConfigCopy.getStatus().getConditions());
-        try {
-          if (jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
-            return new Result(false);
-          }
-
-          if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
-            return new Result(false);
-          }
-        } catch (PipelineConfigConvertException e) {
-          logger.warn(
-              "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
-              getControllerName(),
-              namespace,
-              name,
-              StringUtils.join(e.getCauses(), " or "));
-          conditions.addAll(ConditionsUtils.convertToConditions(e.getCauses()));
-        } catch (IOException e) {
-          logger.warn(
-              "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
-              getControllerName(),
-              namespace,
-              name,
-              e.getMessage());
-          conditions.add(ConditionsUtils.convertToCondition(e));
+      PipelineConfigUtils.dependencyCheck(
+          pipelineConfigCopy, pipelineConfigCopy.getStatus().getConditions());
+      try {
+        if (jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
+          return new Result(false);
         }
 
-        if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
-          pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
-          DateTime now = DateTime.now();
-          pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
-        } else {
-          pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
+        if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
+          return new Result(false);
         }
-
-        logger.debug(
-            "[{}] Will update PipelineConfig '{}/{}'", getControllerName(), namespace, name);
-        PipelineConfigClient pipelineConfigClient =
-            (PipelineConfigClient) Clients.get(V1alpha1PipelineConfig.class);
-        boolean succeed = pipelineConfigClient.update(pc, pipelineConfigCopy);
-        return new Result(!succeed);
+      } catch (PipelineConfigConvertException e) {
+        logger.warn(
+            "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
+            getControllerName(),
+            namespace,
+            name,
+            StringUtils.join(e.getCauses(), " or "));
+        conditions.addAll(ConditionsUtils.convertToConditions(e.getCauses()));
+      } catch (IOException e) {
+        logger.warn(
+            "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
+            getControllerName(),
+            namespace,
+            name,
+            e.getMessage());
+        conditions.add(ConditionsUtils.convertToCondition(e));
       }
+      if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
+        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
+        DateTime now = DateTime.now();
+        pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
+      } else {
+        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
+      }
+
+      logger.debug("[{}] Will update PipelineConfig '{}/{}'", getControllerName(), namespace, name);
+      PipelineConfigClient pipelineConfigClient =
+          (PipelineConfigClient) Clients.get(V1alpha1PipelineConfig.class);
+      boolean succeed = pipelineConfigClient.update(pc, pipelineConfigCopy);
+      return new Result(!succeed);
     }
 
     private String getControllerName() {
