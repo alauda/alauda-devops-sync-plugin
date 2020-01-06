@@ -31,7 +31,7 @@ public class AlaudaContext {
   @Whitelisted
   public String getItem(String key) {
     if (data != null) {
-      String result = data.get(Annotations.ALAUDA_PIPELINE_CONTEXT + key);
+      String result = data.get(Annotations.ALAUDA_PIPELINE_CONTEXT.get().toString() + key);
       if (result != null) {
         return result;
       } else {
