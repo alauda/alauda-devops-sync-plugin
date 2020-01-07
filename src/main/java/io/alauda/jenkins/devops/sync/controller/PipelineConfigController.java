@@ -65,7 +65,7 @@ public class PipelineConfigController
                       null,
                       null,
                       null,
-                      null,
+                      AlaudaSyncGlobalConfiguration.get().getJenkinsService(),
                       null,
                       null,
                       callGeneratorParams.resourceVersion,
