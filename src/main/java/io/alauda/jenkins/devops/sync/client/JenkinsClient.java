@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 // TODO move all jenkins related operation into this class
 public class JenkinsClient {
+
   private Logger logger = LoggerFactory.getLogger(JenkinsClient.class.getName());
 
   private Map<NamespaceName, TopLevelItem> cachedJobMap;
@@ -363,7 +364,7 @@ public class JenkinsClient {
   }
 
   private static final Pattern PIPELINE_CONFIG_EXACT_PATTERN =
-      Pattern.compile("(.*)(-[\\d\\w]{5})");
+      Pattern.compile("(.*)(-([\\w]{5}|\\d+))");
 
   public boolean deletePipeline(NamespaceName pipelineNamespaceName) {
     String namespace = pipelineNamespaceName.getNamespace();
@@ -513,7 +514,7 @@ public class JenkinsClient {
 
     Matcher pipelineConfigNameMatcher = PIPELINE_CONFIG_EXACT_PATTERN.matcher(name);
     if (!pipelineConfigNameMatcher.matches()) {
-      logger.error("Unable to exact pipelineConfig name from Pipeline '{}/{}'", namespace, name);
+      logger.warn("Unable to exact pipelineConfig name from Pipeline '{}/{}'", namespace, name);
       return null;
     }
 
