@@ -153,7 +153,8 @@ public class JenkinsClient {
 
     if (item instanceof WorkflowMultiBranchProject) {
       WorkflowMultiBranchProject project = (WorkflowMultiBranchProject) item;
-      String branchName = pipeline.getMetadata().getAnnotations().get(MULTI_BRANCH_NAME);
+      String branchName =
+          pipeline.getMetadata().getAnnotations().get(MULTI_BRANCH_NAME.get().toString());
 
       if (StringUtils.isEmpty(branchName)) {
         return null;
@@ -576,7 +577,7 @@ public class JenkinsClient {
   }
 
   public boolean isDeleteInProgress(String namespace, String name) {
-    return deleteInProgress.add(new NamespaceName(namespace, name));
+    return deleteInProgress.contains(new NamespaceName(namespace, name));
   }
 
   public boolean updateJenkins(V1alpha1Jenkins oldJenkins, V1alpha1Jenkins newJenkins) {

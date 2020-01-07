@@ -108,4 +108,11 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
       return "Alauda Pipeline job";
     }
   }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "uid: %s, namespace: %s, name: %s, contextAnnotation %s",
+        this.uid, this.namespace, this.name, this.contextAnnotation);
+  }
 }
