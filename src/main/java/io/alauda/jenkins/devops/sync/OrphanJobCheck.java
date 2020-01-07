@@ -11,6 +11,7 @@ import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
+import io.alauda.jenkins.devops.sync.exception.ExceptionUtils;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.ApiException;
 import java.io.IOException;
@@ -24,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 @Extension
 public class OrphanJobCheck extends AsyncPeriodicWork {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(OrphanJobCheck.class.getName());
 
   public OrphanJobCheck() {
@@ -90,15 +92,15 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                         try {
                           newer = api.readNamespacedPipelineConfig(name, ns, null, null, null);
                         } catch (ApiException e) {
-                          LOGGER.debug("Unable to get newer pipelineConfig");
-                          orphanList.add(item);
+                          if (ExceptionUtils.isResourceNotFoundException(e)) {
+                            LOGGER.debug("Unable to get newer pipelineConfig");
+                            orphanList.add(item);
+                          }
                         }
 
                         if (newer == null || !newer.getMetadata().getUid().equals(uid)) {
                           orphanList.add(item);
                         }
-                      } else if (!pc.getMetadata().getUid().equals(uid)) {
-                        orphanList.add(item);
                       }
                     }));
 
