@@ -24,7 +24,6 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.alauda.jenkins.devops.sync.util.PipelineToActionMapper;
-import io.kubernetes.client.ApiException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -86,18 +85,9 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         return false;
       }
 
-      V1alpha1Pipeline pipeline;
-      try {
-        // create k8s resource(Pipeline)
-        pipeline = PipelineGenerator.buildPipeline(config, workflowJob, jobURL, actions);
-      } catch (ApiException e) {
-        LOGGER.log(
-            Level.WARNING,
-            String.format(
-                "Unable to create Pipeline '%s/%s', reason: %s",
-                namespace, config.getMetadata().getName(), e.getMessage()),
-            e);
-
+      V1alpha1Pipeline pipeline =
+          PipelineGenerator.buildPipeline(config, workflowJob, jobURL, actions);
+      if (pipeline == null) {
         return false;
       }
 
