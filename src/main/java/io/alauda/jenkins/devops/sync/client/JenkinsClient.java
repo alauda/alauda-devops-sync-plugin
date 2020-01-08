@@ -1,6 +1,5 @@
 package io.alauda.jenkins.devops.sync.client;
 
-import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_NAME;
 import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
@@ -22,6 +21,7 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineConfigStatus;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.devops.java.client.utils.PatchGenerator;
 import io.alauda.jenkins.devops.sync.*;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 // TODO move all jenkins related operation into this class
 public class JenkinsClient {
+
   private Logger logger = LoggerFactory.getLogger(JenkinsClient.class.getName());
 
   private Map<NamespaceName, TopLevelItem> cachedJobMap;
@@ -154,7 +155,10 @@ public class JenkinsClient {
     if (item instanceof WorkflowMultiBranchProject) {
       WorkflowMultiBranchProject project = (WorkflowMultiBranchProject) item;
       String branchName =
-          pipeline.getMetadata().getAnnotations().get(MULTI_BRANCH_NAME.get().toString());
+          pipeline
+              .getMetadata()
+              .getAnnotations()
+              .get(AnnotationProvider.getInstance().annotationMultiBranchName());
 
       if (StringUtils.isEmpty(branchName)) {
         return null;

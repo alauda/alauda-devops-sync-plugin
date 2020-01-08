@@ -2,7 +2,7 @@ package io.alauda.jenkins.devops.sync;
 
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.constants.Annotations;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +46,7 @@ public interface AlaudaJobProperty {
   }
 
   /**
-   * Get all annotations which start with {@link Annotations#ALAUDA_PIPELINE_CONTEXT}
+   * Get all annotations which start with pipelinecontext
    *
    * @param pc instance of V1alpha1PipelineConfig
    * @return annotation as the JSON format
@@ -58,7 +58,7 @@ public interface AlaudaJobProperty {
     if (Annotation != null) {
       Map<String, String> annotationResult = new HashMap<>();
       for (String key : Annotation.keySet()) {
-        if (key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT.get().toString())) {
+        if (key.startsWith(AnnotationProvider.getInstance().annotationPipelineContext())) {
           annotationResult.put(key, Annotation.get(key));
         }
       }

@@ -13,66 +13,10 @@
  */
 package io.alauda.jenkins.devops.sync.constants;
 
-import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
-import java.util.function.Supplier;
-
 public final class Constants {
   private Constants() {}
 
   public static final String ALAUDA_SYNC_PLUGIN = "sync.plugin.alauda.io";
-
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("pipeline.number");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_COMMIT =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("commit");
-  public static final String ALAUDA_DEVOPS_LABELS_PIPELINE_CONFIG = "pipelineConfig";
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-build-uri");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-log-url");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("jenkins-console-log-url");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("jenkins-blueocean-log-url");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-stages-log");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-stages");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-steps-log");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-steps");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-view-log");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("jenkins-progressive-log");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("causes-details");
-
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PENDING_INPUT_ACTION_JSON =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("jenkins-pending-input-actions-json");
-
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STATUS_JSON =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("jenkins-status-json");
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_JSON =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("jenkins-stages-json");
-
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_NAMESPACE =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-namespace");
-
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("multi-branch-scan-log");
-
-  public static final Supplier<String> ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY =
-      ResourceControllerManager.getControllerManager()
-          .getFormattedAnnotation("jenkins-instance-identity");
 
   public static final String ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN = "platform-basedomain";
   public static final String ALAUDA_DEVOPS_USED_BASEDOMAIN = "alauda.io";
@@ -129,9 +73,6 @@ public final class Constants {
   public static final String JOB_STATUS_UNKNOWN = "UNKNOWN";
 
   public static final String DEFAULT_JENKINS_FILEPATH = "Jenkinsfile";
-
-  public static final Supplier ANNOTATION_BADGE =
-      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-badges");
 
   public static final String PIPELINECONFIG_KIND_MULTI_BRANCH = "multi-branch";
   public static final String PIPELINECONFIG_KIND = "pipeline.kind";

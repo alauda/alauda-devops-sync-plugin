@@ -28,6 +28,7 @@ import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -354,8 +355,8 @@ public abstract class JenkinsUtils {
       if (pipMeta.getAnnotations() != null
           && pipMeta
               .getAnnotations()
-              .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
-        commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString());
+              .containsKey(AnnotationProvider.getInstance().annotationCommit())) {
+        commit = pipMeta.getAnnotations().get(AnnotationProvider.getInstance().annotationCommit());
       }
 
       if (sourceGit != null && commit != null) {

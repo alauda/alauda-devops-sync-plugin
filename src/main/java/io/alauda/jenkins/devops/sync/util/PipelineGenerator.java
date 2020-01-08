@@ -7,7 +7,7 @@ import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.constants.Annotations;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.kubernetes.client.ApiException;
@@ -35,24 +35,21 @@ public abstract class PipelineGenerator {
   private static final Logger LOGGER = Logger.getLogger(PipelineGenerator.class.getName());
   private static String TRIGGER_BY = "Triggered by Jenkins job at ";
 
-  public static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, List<Action> actions)
-      throws ApiException {
-    return buildPipeline(config, null, actions);
-  }
-
   public static V1alpha1Pipeline buildPipeline(
       V1alpha1PipelineConfig config,
       @NotNull WorkflowJob job,
       String triggerURL,
       List<Action> actions)
       throws ApiException {
+    AnnotationProvider provider = AnnotationProvider.getInstance();
+
     ItemGroup parent = job.getParent();
     Map<String, String> annotations = new HashMap<>();
     if (parent instanceof WorkflowMultiBranchProject) {
       BranchJobProperty property = job.getProperty(BranchJobProperty.class);
       if (property != null) {
         Branch branch = property.getBranch();
-        annotations.put(Annotations.MULTI_BRANCH_NAME.get().toString(), branch.getName());
+        annotations.put(provider.annotationMultiBranchName(), branch.getName());
 
         String scmURL = "";
         ObjectMetadataAction metadataAction = job.getAction(ObjectMetadataAction.class);
@@ -63,17 +60,16 @@ public abstract class PipelineGenerator {
         PullRequest pr = getPR(job);
         if (pr != null) {
           pr.setUrl(scmURL);
-          annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "pr");
+          annotations.put(provider.annotationMultiBranchCategory(), "pr");
           annotations.put(
-              Annotations.MULTI_BRANCH_PR_DETAIL.get().toString(),
-              JSONObject.fromObject(pr).toString());
+              provider.annotationMultiBranchPRDetail(), JSONObject.fromObject(pr).toString());
         } else {
-          annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "branch");
+          annotations.put(provider.annotationMultiBranchCategory(), "branch");
         }
       }
     }
 
-    return buildPipeline(config, annotations, triggerURL, actions);
+    return buildPipeline(config, annotations, provider, triggerURL, actions);
   }
 
   public static PullRequest getPR(Item item) {
@@ -93,12 +89,6 @@ public abstract class PipelineGenerator {
     }
 
     return pr;
-  }
-
-  @Deprecated
-  public static V1alpha1Pipeline buildPipeline(
-      V1alpha1PipelineConfig config, String triggerURL, List<Action> actions) throws ApiException {
-    return buildPipeline(config, new HashMap<>(), triggerURL, actions);
   }
 
   /**
@@ -126,6 +116,7 @@ public abstract class PipelineGenerator {
   private static V1alpha1Pipeline buildPipeline(
       V1alpha1PipelineConfig config,
       Map<String, String> annotations,
+      AnnotationProvider provider,
       String triggerURL,
       List<Action> actions)
       throws ApiException {
@@ -145,7 +136,7 @@ public abstract class PipelineGenerator {
     if (allCauses.size() > 1) {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
       annotations.put(
-          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(), JSONArray.fromObject(allCauses).toString());
+          provider.annotationCausesDetails(), JSONArray.fromObject(allCauses).toString());
     } else if (allCauses.size() == 1) {
       cause = causeConvert(allCauses.get(0));
     } else {

@@ -13,6 +13,7 @@ import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PrivateGitProviderMultiBranch;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
@@ -221,7 +222,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
     Map<String, String> logURLs =
         Collections.singletonMap(
-            ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG.get().toString(),
+            AnnotationProvider.getInstance().annotationMultiBranchScanLog(),
             String.format(
                 "/job/%s/job/%s/indexing/logText/progressiveText",
                 namespace, mapper.jenkinsJobName(namespace, name)));

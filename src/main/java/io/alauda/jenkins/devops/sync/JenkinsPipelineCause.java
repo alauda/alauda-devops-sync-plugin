@@ -15,10 +15,9 @@
  */
 package io.alauda.jenkins.devops.sync;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_COMMIT;
-
 import hudson.model.Cause;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.util.Objects;
 import org.apache.commons.lang.StringUtils;
@@ -86,12 +85,12 @@ public class JenkinsPipelineCause extends Cause {
           && pipeline
               .getMetadata()
               .getAnnotations()
-              .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
+              .containsKey(AnnotationProvider.getInstance().annotationCommit())) {
         commit =
             pipeline
                 .getMetadata()
                 .getAnnotations()
-                .get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString());
+                .get(AnnotationProvider.getInstance().annotationCommit());
       }
     }
   }

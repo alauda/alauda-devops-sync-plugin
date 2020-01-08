@@ -1,11 +1,12 @@
 package io.alauda.jenkins.devops.sync.var;
 
-import io.alauda.jenkins.devops.sync.constants.Annotations;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import java.util.Map;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.Whitelisted;
 
 /** Return the annotation、name and namespace of the pipelineconfig */
 public class AlaudaContext {
+
   private String namespace;
   private String name;
   private Map<String, String> data;
@@ -31,7 +32,7 @@ public class AlaudaContext {
   @Whitelisted
   public String getItem(String key) {
     if (data != null) {
-      String result = data.get(Annotations.ALAUDA_PIPELINE_CONTEXT.get().toString() + key);
+      String result = data.get(AnnotationProvider.getInstance().annotationPipelineContext() + key);
       if (result != null) {
         return result;
       } else {

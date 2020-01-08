@@ -1,7 +1,6 @@
 package io.alauda.jenkins.devops.sync.controller;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY;
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_USED_BASEDOMAIN;
 
 import hudson.Extension;
@@ -14,6 +13,7 @@ import io.alauda.jenkins.devops.support.KubernetesClusterConfiguration;
 import io.alauda.jenkins.devops.support.KubernetesClusterConfigurationListener;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.kubernetes.client.ApiClient;
 import io.kubernetes.client.ApiException;
@@ -31,6 +31,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import jenkins.model.identity.IdentityRootAction;
 import org.apache.commons.lang3.StringUtils;
@@ -45,7 +46,6 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
   private ControllerManager controllerManager;
   private ExecutorService controllerManagerThread;
   private String managerStatus;
-  private String baseDomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
   private AtomicBoolean started = new AtomicBoolean(false);
 
   @Override
@@ -132,13 +132,16 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
       jenkinsResource.getMetadata().setAnnotations(annotations);
     }
 
-    baseDomain = annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN);
+    String baseDomain = annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_BASEDOMAIN);
     if (StringUtils.isEmpty(baseDomain)) {
       baseDomain = ALAUDA_DEVOPS_USED_BASEDOMAIN;
     }
 
+    AnnotationProvider.initialize(baseDomain);
+    AnnotationProvider annotationProvider = AnnotationProvider.getInstance();
+
     String fingerprintInJenkinsService =
-        annotations.get(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY.get());
+        annotations.get(annotationProvider.annotationJenkinsIdentity());
     // if Jenkins resource already has fingerprint, check if its fingerprint match the current
     // Jenkins
     if (!StringUtils.isEmpty(fingerprintInJenkinsService)
@@ -155,7 +158,7 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
       newJenkins
           .getMetadata()
           .getAnnotations()
-          .put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY.get(), currentFingerprint);
+          .put(annotationProvider.annotationJenkinsIdentity(), currentFingerprint);
       if (!JenkinsClient.getInstance().updateJenkins(jenkinsResource, newJenkins)) {
         managerStatus =
             String.format(
@@ -205,16 +208,6 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
     return managerStatus;
   }
 
-  // TODO: should throw Expection or something can warn us when baseDomain is wrong
-  public Supplier<String> getFormattedAnnotation(String annotation) {
-    return new Supplier<String>() {
-      @Override
-      public String get() {
-        return String.format("%s/%s", baseDomain, annotation);
-      }
-    };
-  }
-
   public boolean isStarted() {
     return started.get()
         && controllerManagerThread != null
@@ -239,7 +232,7 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
    * @return
    */
   private boolean pollWithNoInitialDelay(
-      Duration interval, Duration timeout, Supplier<Boolean> condition) {
+      Duration interval, Duration timeout, BooleanSupplier condition) {
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     AtomicBoolean result = new AtomicBoolean(false);
     long dueDate = System.currentTimeMillis() + timeout.toMillis();
@@ -247,7 +240,7 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
         executorService.scheduleAtFixedRate(
             () -> {
               try {
-                result.set(condition.get());
+                result.set(condition.getAsBoolean());
               } catch (Exception e) {
                 result.set(false);
               }

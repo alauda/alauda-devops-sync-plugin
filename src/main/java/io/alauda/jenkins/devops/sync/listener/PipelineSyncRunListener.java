@@ -45,6 +45,7 @@ import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
@@ -90,6 +91,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  */
 @Extension
 public class PipelineSyncRunListener extends RunListener<Run> {
+
   private static final Logger logger = Logger.getLogger(PipelineSyncRunListener.class.getName());
 
   private long pollPeriodMs = 1000L * 5; // 5 seconds
@@ -469,7 +471,9 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         }
       }
     } catch (Throwable t) {
-      if (logger.isLoggable(Level.FINE)) logger.log(Level.FINE, "upsertPipeline", t);
+      if (logger.isLoggable(Level.FINE)) {
+        logger.log(Level.FINE, "upsertPipeline", t);
+      }
     }
 
     Map<String, BlueRunResult> blueRunResults = new HashMap<>();
@@ -602,23 +606,22 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     String blueJson = toBlueJson(pipeJson);
 
     Map<String, String> annotations = newPipeline.getMetadata().getAnnotations();
+    AnnotationProvider annotationProvider = AnnotationProvider.getInstance();
 
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI.get().toString(), buildUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL.get().toString(), logsUrl);
-    annotations.put(
-        ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL.get().toString(), logsConsoleUrl);
-    annotations.put(
-        ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL.get().toString(), logsBlueOceanUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG.get().toString(), viewLogUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES.get().toString(), stagesUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG.get().toString(), stagesLogUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS.get().toString(), stepsUrl);
-    annotations.put(ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG.get().toString(), stepsLogUrl);
-    annotations.put(
-        ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG.get().toString(), progressiveLogUrl);
+    annotations.put(annotationProvider.annotationJenkinsBuildURI(), buildUrl);
+    annotations.put(annotationProvider.annotationJenkinsLogURL(), logsUrl);
+    annotations.put(annotationProvider.annotationJenkinsConsoleLogURL(), logsConsoleUrl);
+    annotations.put(annotationProvider.annotationJenkinsBlueOceanLogURL(), logsBlueOceanUrl);
+    annotations.put(annotationProvider.annotationJenkinsViewLog(), viewLogUrl);
+    annotations.put(annotationProvider.annotationJenkinsStages(), stagesUrl);
+    annotations.put(annotationProvider.annotationJenkinsStagesLog(), stagesLogUrl);
+    annotations.put(annotationProvider.annotationJenkinsSteps(), stepsUrl);
+    annotations.put(annotationProvider.annotationJenkinsStepsLog(), stepsLogUrl);
+    annotations.put(annotationProvider.annotationJenkinsProgressiveLog(), progressiveLogUrl);
+
     newPipeline.getMetadata().setAnnotations(annotations);
 
-    badgeHandle(run, annotations);
+    badgeHandle(run, annotationProvider, annotations);
 
     V1alpha1PipelineStatus status =
         createPipelineStatus(
@@ -645,7 +648,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     return new Result(false);
   }
 
-  private void badgeHandle(@NotNull Run run, Map<String, String> annotations) {
+  private void badgeHandle(
+      @NotNull Run run, AnnotationProvider annotationProvider, Map<String, String> annotations) {
     if (annotations == null) {
       return;
     }
@@ -671,7 +675,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
               jsonArray.add(jsonObject);
             });
-    annotations.put(ANNOTATION_BADGE.get().toString(), jsonArray.toString());
+    annotations.put(annotationProvider.annotationJenkinsBadges(), jsonArray.toString());
   }
 
   private V1alpha1PipelineStatus createPipelineStatus(
@@ -827,6 +831,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class BlueJsonStage {
+
     public StageNodeExt stage;
     public BlueRunResult result;
     public List<BluePipelineNode.Edge> edges;
@@ -843,6 +848,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class PipelineJson {
+
     public String start_stage_id;
     public List<PipelineStage> stages;
 
@@ -860,6 +866,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class PipelineStage {
+
     public String id;
     public String name;
     public String status;
