@@ -44,7 +44,7 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
     if (!resourceControllerManager.isStarted()) {
       LOGGER.info(
           "SyncManager has not started yet, reason {}, will skip this Orphan Job check",
-          resourceControllerManager.getPluginStatus());
+          resourceControllerManager.getManagerStatus());
       return;
     }
 

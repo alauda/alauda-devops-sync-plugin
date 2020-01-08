@@ -70,7 +70,7 @@ public final class Constants {
       ResourceControllerManager.getControllerManager()
           .getFormattedAnnotation("multi-branch-scan-log");
 
-  public static final Supplier ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY =
+  public static final Supplier<String> ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY =
       ResourceControllerManager.getControllerManager()
           .getFormattedAnnotation("jenkins-instance-identity");
 

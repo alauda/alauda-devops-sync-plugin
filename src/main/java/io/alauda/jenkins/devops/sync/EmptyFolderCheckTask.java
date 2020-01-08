@@ -45,7 +45,7 @@ public class EmptyFolderCheckTask extends AsyncPeriodicWork {
     if (!resourceSyncManager.isStarted()) {
       logger.info(
           "SyncManager has not started yet, reason {}, will skip this empty folder check",
-          resourceSyncManager.getPluginStatus());
+          resourceSyncManager.getManagerStatus());
       return;
     }
 
