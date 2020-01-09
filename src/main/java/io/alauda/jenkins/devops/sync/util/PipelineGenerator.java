@@ -44,8 +44,7 @@ public abstract class PipelineGenerator {
       V1alpha1PipelineConfig config,
       @NotNull WorkflowJob job,
       String triggerURL,
-      List<Action> actions)
-      throws ApiException {
+      List<Action> actions) {
     ItemGroup parent = job.getParent();
     Map<String, String> annotations = new HashMap<>();
     if (parent instanceof WorkflowMultiBranchProject) {
@@ -127,8 +126,7 @@ public abstract class PipelineGenerator {
       V1alpha1PipelineConfig config,
       Map<String, String> annotations,
       String triggerURL,
-      List<Action> actions)
-      throws ApiException {
+      List<Action> actions) {
     V1alpha1PipelineSpec pipelineSpec = buildPipelineSpec(config, triggerURL);
 
     List<Cause> allCauses = new ArrayList<>();
