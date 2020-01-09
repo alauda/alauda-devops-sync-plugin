@@ -22,10 +22,10 @@ public abstract class ParameterUtils {
     String type;
     String value = null;
     if (parameterValue instanceof StringParameterValue) {
-      type = "string";
+      type = "StringParameterDefinition";
       value = String.valueOf(parameterValue.getValue());
     } else if (parameterValue instanceof BooleanParameterValue) {
-      type = "boolean";
+      type = "BooleanParameterDefinition";
       value = ((BooleanParameterValue) parameterValue).getValue().toString();
     } else {
       return null;

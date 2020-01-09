@@ -108,8 +108,8 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
           String.format(
               "Unable to create Pipeline '%s/%s', reason: %s",
               pipeline.getMetadata().getNamespace(),
-              pipeline.getMetadata().getName(),
-              e.getMessage()),
+              pipeline.getMetadata().getGenerateName(),
+              e.getResponseBody()),
           e);
       return null;
     }
