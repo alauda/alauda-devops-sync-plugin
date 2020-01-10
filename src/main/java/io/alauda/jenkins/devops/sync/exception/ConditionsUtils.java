@@ -7,6 +7,9 @@ import java.util.stream.Collectors;
 
 public class ConditionsUtils {
 
+  private ConditionsUtils() {
+  }
+
   public static V1alpha1Condition convertToCondition(Throwable e) {
     V1alpha1Condition condition = new V1alpha1Condition();
     condition.setMessage(e.getMessage());

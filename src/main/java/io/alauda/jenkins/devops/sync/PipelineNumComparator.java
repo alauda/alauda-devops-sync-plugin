@@ -1,8 +1,7 @@
 package io.alauda.jenkins.devops.sync;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER;
-
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Map;
@@ -16,8 +15,8 @@ public class PipelineNumComparator implements Comparator<V1alpha1Pipeline>, Seri
       return 0;
     }
 
-    String p1Num = p1Anno.get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER.get().toString());
-    String p2Num = p2Anno.get(ALAUDA_DEVOPS_ANNOTATIONS_PIPELINE_NUMBER.get().toString());
+    String p1Num = p1Anno.get(AnnotationProvider.getInstance().annotationPipelineNumber());
+    String p2Num = p2Anno.get(AnnotationProvider.getInstance().annotationPipelineNumber());
     if (p1Num == null || p2Num == null) {
       return 0;
     }

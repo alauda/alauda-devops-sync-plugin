@@ -1,7 +1,5 @@
 package io.alauda.jenkins.devops.sync.util;
 
-import static io.alauda.jenkins.devops.sync.constants.Annotations.*;
-
 import hudson.model.Job;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
@@ -12,7 +10,7 @@ import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
+import io.alauda.jenkins.devops.sync.constants.AnnotationProvider;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.util.ArrayList;
@@ -30,6 +28,7 @@ import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 public final class WorkflowJobUtils {
+
   private static final Logger logger = Logger.getLogger(WorkflowJobUtils.class.getName());
 
   private WorkflowJobUtils() {}
@@ -71,9 +70,8 @@ public final class WorkflowJobUtils {
 
     String branchName = pro.getBranch().getName();
     String paramKey =
-        ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
-            + annotationKeySpec(branchName)
-            + ".params";
+        AnnotationProvider.getInstance()
+            .get("jenkins." + annotationKeySpec(branchName) + ".params");
     List<V1alpha1PipelineParameter> pipelineParameters =
         PipelineConfigToJobMapper.getPipelineParameter(item);
     return !StringUtils.equals(toJSON(pipelineParameters), annotations.get(paramKey));
@@ -85,6 +83,8 @@ public final class WorkflowJobUtils {
 
   public static synchronized void updateBranchAndPRAnnotations(
       @Nonnull WorkflowJob item, boolean jobDeleted) {
+    AnnotationProvider annotationProvider = AnnotationProvider.getInstance();
+
     WorkflowMultiBranchProject parent = (WorkflowMultiBranchProject) item.getParent();
     V1alpha1PipelineConfig oldPC = getPipelineConfig(parent);
     if (oldPC == null) {
@@ -94,7 +94,7 @@ public final class WorkflowJobUtils {
     V1ObjectMeta meta = newPC.getMetadata();
 
     // clean up all annotations which start with alauda.io/jenkins
-    clearBranchAndPRAnnotations(meta.getAnnotations());
+    clearBranchAndPRAnnotations(meta.getAnnotations(), annotationProvider);
 
     BranchItem branchItem = new BranchItem();
     Collection<? extends Job> allJobs = parent.getAllJobs();
@@ -126,20 +126,11 @@ public final class WorkflowJobUtils {
         // we consider it as a pr
         pr.setUrl(scmURL);
         putIfNotEmpty(
-            meta,
-            ResourceControllerManager.getControllerManager()
-                    .getFormattedAnnotation("jenkins.")
-                    .get()
-                + annotationKeySpec(branchName),
-            toJSON(pr));
+            meta, annotationProvider.get("jenkins." + annotationKeySpec(branchName)), toJSON(pr));
       } else {
         putIfNotEmpty(
             meta,
-            ResourceControllerManager.getControllerManager()
-                    .getFormattedAnnotation("jenkins.")
-                    .get()
-                + annotationKeySpec(branchName)
-                + ".url",
+            annotationProvider.get("jenkins." + annotationKeySpec(branchName) + ".url"),
             scmURL);
       }
 
@@ -149,35 +140,32 @@ public final class WorkflowJobUtils {
           PipelineConfigToJobMapper.getPipelineParameter(wfJob);
       putIfNotEmpty(
           meta,
-          ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.").get()
-              + annotationKeySpec(branchName)
-              + ".params",
+          annotationProvider.get("jenkins." + annotationKeySpec(branchName) + ".params"),
           toJSON(pipelineParameters));
     }
 
-    putIfNotEmpty(meta, MULTI_BRANCH_PR.get().toString(), branchItem.getPrList());
-    putIfNotEmpty(meta, MULTI_BRANCH_STALE_PR.get().toString(), branchItem.getStalePRList());
-    putIfNotEmpty(meta, MULTI_BRANCH_BRANCH.get().toString(), branchItem.getBranchList());
+    putIfNotEmpty(meta, annotationProvider.annotationMultiBranchPR(), branchItem.getPrList());
     putIfNotEmpty(
-        meta, MULTI_BRANCH_STALE_BRANCH.get().toString(), branchItem.getStaleBranchList());
+        meta, annotationProvider.annotationMultiBranchStalePR(), branchItem.getStalePRList());
+    putIfNotEmpty(
+        meta, annotationProvider.annotationMultiBranchOpenBranch(), branchItem.getBranchList());
+    putIfNotEmpty(
+        meta,
+        annotationProvider.annotationMultiBranchStaleBranch(),
+        branchItem.getStaleBranchList());
 
     Clients.get(V1alpha1PipelineConfig.class).update(oldPC, newPC);
   }
 
-  private static void clearBranchAndPRAnnotations(Map<String, String> annotations) {
+  private static void clearBranchAndPRAnnotations(
+      Map<String, String> annotations, AnnotationProvider annotationProvider) {
     if (annotations == null) {
       return;
     }
 
     annotations
         .entrySet()
-        .removeIf(
-            entry ->
-                entry
-                    .getKey()
-                    .startsWith(
-                        ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins")
-                            .get()));
+        .removeIf(entry -> entry.getKey().startsWith(annotationProvider.get("jenkins")));
   }
 
   private static void putIfNotEmpty(V1ObjectMeta meta, String key, List<?> value) {
@@ -227,6 +215,7 @@ public final class WorkflowJobUtils {
   }
 
   static class BranchItem {
+
     private List<String> branchList = new ArrayList<>();
     private List<String> staleBranchList = new ArrayList<>();
     private List<String> prList = new ArrayList<>();

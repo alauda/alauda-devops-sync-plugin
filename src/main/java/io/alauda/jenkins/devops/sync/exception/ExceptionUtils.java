@@ -7,6 +7,9 @@ import io.kubernetes.client.models.V1Status;
 
 public class ExceptionUtils {
 
+  private ExceptionUtils() {
+  }
+
   /**
    * This method return true if we can find service but cannot find resource in k8s
    *

@@ -29,7 +29,6 @@ import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import java.io.*;
 import java.util.logging.Level;
@@ -140,23 +139,6 @@ public abstract class AlaudaUtils {
    */
   public static String jenkinsJobName(String namespace, String pipelineConfigName) {
     return namespace + "-" + pipelineConfigName;
-  }
-
-  /**
-   * Finds the full jenkins job path including folders for the given {@link V1alpha1PipelineConfig}.
-   *
-   * @param pc the PipelineConfig
-   * @return the jenkins job name for the given PipelineConfig
-   */
-  public static String jenkinsJobFullName(V1alpha1PipelineConfig pc) {
-    String jobName =
-        pc.getMetadata().getAnnotations().get(Annotations.JENKINS_JOB_PATH.get().toString());
-
-    if (StringUtils.isNotBlank(jobName)) {
-      return jobName;
-    }
-
-    return pc.getMetadata().getNamespace() + "/" + jenkinsJobName(pc);
   }
 
   /**
