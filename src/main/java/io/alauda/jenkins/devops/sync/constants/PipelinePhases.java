@@ -26,6 +26,8 @@ public final class PipelinePhases {
   // FAILED indicates that a build has executed and failed.
   public static final String FAILED = "Failed";
 
+  public static final String CANCELLING = "Cancelling";
+
   // ERROR indicates that an error prevented the build from executing.
   public static final String ERROR = "Error";
 

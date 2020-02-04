@@ -2,8 +2,10 @@ package io.alauda.jenkins.devops.sync.controller;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_LABELS_REPLAYED_FROM;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.FAILED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLING;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.ERROR;
 import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
+import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.RUNNING;
 
 import hudson.Extension;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
@@ -19,8 +21,8 @@ import io.alauda.jenkins.devops.sync.client.PipelineClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
+import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.ReplayUtils;
@@ -36,11 +38,11 @@ import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
 import javax.validation.constraints.NotNull;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
@@ -257,24 +259,16 @@ public class PipelineController
         V1alpha1Pipeline pipelineCopy = DeepCopyUtils.deepCopy(pipeline);
         if (isNewPipeline(pipelineCopy)) {
           logger.debug(
-              "[{}] Pipeline '{}/{} phase is {}, will trigger a new build",
+              "[{}] Pipeline '{}/{} phase is Pending, will trigger a new build",
               getControllerName(),
               namespace,
-              name,
-              pipeline.getStatus().getPhase());
+              name);
 
           if (isCreateByJenkins(pipelineCopy)) {
             logger.debug(
                 "[{}] Pipeline created by Jenkins. It should be triggered, skip create event.",
                 getControllerName());
             pipelineCopy.getStatus().setPhase(QUEUED);
-            boolean succeed = pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(!succeed);
-          }
-
-          if (AlaudaUtils.isCancellable(pipelineCopy.getStatus())
-              && AlaudaUtils.isCancelled(pipelineCopy.getStatus())) {
-            pipelineCopy.getStatus().setPhase(CANCELLED);
             boolean succeed = pipelineClient.update(pipeline, pipelineCopy);
             return new Result(!succeed);
           }
@@ -291,30 +285,29 @@ public class PipelineController
           boolean succeed;
           try {
             if (isRelayed(pipelineCopy)) {
-              String orginalName =
+              String originalName =
                   pipelineCopy.getMetadata().getLabels().get(PIPELINE_LABELS_REPLAYED_FROM);
-              V1alpha1Pipeline originalPipeline = lister.namespace(namespace).get(orginalName);
-
-              logger.info("replayed from " + orginalName);
+              V1alpha1Pipeline originalPipeline = lister.namespace(namespace).get(originalName);
+              logger.info(
+                  "[{}] Replay '{}/{}' from '{}/{}' ",
+                  getControllerName(),
+                  namespace,
+                  name,
+                  namespace,
+                  originalName);
 
               // 放到到 JenkinsUtils 里
               succeed =
                   ReplayUtils.replayJob(
                       job, pipelineConfig.getMetadata().getUid(), pipelineCopy, originalPipeline);
             } else {
-              succeed = JenkinsUtils.triggerJob(job, pipelineCopy);
+              JenkinsUtils.triggerJob(job, pipelineCopy);
+              succeed = true;
             }
-          } catch (IOException e) {
-            logger.info(
-                "[{}] Unable to trigger Pipeline '{}/{}', reason: {}",
-                getControllerName(),
-                namespace,
-                name,
-                e.getMessage());
-            return new Result(true);
           } catch (Exception e) {
-            logger.error("unknown errors occurred when trigger job", e);
-            return new Result(true);
+            logger.error("errors occurred when trigger job", e);
+            pipelineCopy.getStatus().setMessage(e.getMessage());
+            succeed = false;
           }
 
           logger.debug("[{}] Will update Pipeline '{}/{}'", getControllerName(), namespace, name);
@@ -323,24 +316,27 @@ public class PipelineController
             succeed = pipelineClient.update(pipeline, pipelineCopy);
             return new Result(!succeed);
           } else {
-            pipelineCopy.getStatus().setPhase(FAILED);
+            pipelineCopy.getStatus().setPhase(ERROR);
             pipelineClient.update(pipeline, pipelineCopy);
             return new Result(true);
           }
         }
 
-        if (AlaudaUtils.isCancellable(pipelineCopy.getStatus())
-            && AlaudaUtils.isCancelled(pipeline.getStatus())) {
+        if (shouldCancelPipeline(pipeline)) {
           logger.debug(
               "[{}] Starting cancel Pipeline '{}/{}'", getControllerName(), namespace, name);
-          boolean succeed = jenkinsClient.cancelPipeline(new NamespaceName(namespace, name));
-          if (succeed) {
+          try {
+            jenkinsClient.cancelPipeline(new NamespaceName(namespace, name));
             pipelineCopy.getStatus().setPhase(CANCELLED);
-            succeed = pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(!succeed);
-          } else {
-            pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(true);
+          } catch (PipelineException e) {
+            logger.error(
+                "[{}] Failed to cancel Pipeline '{}/{}, reason {}",
+                getControllerName(),
+                namespace,
+                name,
+                e);
+            pipelineCopy.getStatus().setPhase(RUNNING);
+            pipelineCopy.getStatus().setMessage(e.getMessage());
           }
         }
 
@@ -376,5 +372,9 @@ public class PipelineController
       return (labels != null
           && Constants.ALAUDA_SYNC_PLUGIN.equals(labels.get(Constants.PIPELINE_CREATED_BY)));
     }
+  }
+
+  private boolean shouldCancelPipeline(@Nonnull V1alpha1Pipeline pipeline) {
+    return pipeline.getStatus().getPhase().equals(CANCELLING) && pipeline.getStatus().isAborted();
   }
 }

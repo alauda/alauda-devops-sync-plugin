@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 @Extension
 public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMultiBranchProject> {
+
   private static final Logger logger =
       LoggerFactory.getLogger(MultibranchWorkflowJobConverter.class);
 
@@ -120,6 +121,9 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       behaviours = multiBranch.getBehaviours();
     }
 
+    V1alpha1Condition prSupportCondition =
+        new V1alpha1Condition().type(CONDITION_TYPE_PR_DISCOVERY_SUPPORT);
+
     V1alpha1PipelineSource source = pipelineConfig.getSpec().getSource();
     SCMSource scmSource = null;
     V1alpha1CodeRepositoryRef codeRepoRef = source.getCodeRepository();
@@ -166,17 +170,22 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           if (scmSource == null) {
             logger.warn(
                 "Can't create instance for AbstractGitSCMSource. Type is {}.", codeRepoType);
-            // TODO add a downgrade strategy
             gitProvider = null;
+            prSupportCondition.setReason(CONDITION_REASON_INCORRECT);
+            prSupportCondition.setStatus(CONDITION_STATUS_FALSE);
+            scmSource = new GitSCMSource(codeRepo.getCloneURL());
+          } else {
+            prSupportCondition.setReason(CONDITION_REASON_SUPPORTED);
+            prSupportCondition.setStatus(CONDITION_STATUS_TRUE);
           }
-        }
-        if (scmSource == null) {
+        } else {
           // TODO should take care of clean up job
           logger.warn(
               "Not support for {}, codeRepo name is {}. Fall back to general git.",
               codeRepoType,
               codeRepoName);
-
+          prSupportCondition.setReason(CONDITION_REASON_UNSUPPORTED);
+          prSupportCondition.setStatus(CONDITION_STATUS_FALSE);
           scmSource = new GitSCMSource(codeRepo.getCloneURL());
         }
       } else {
@@ -185,9 +194,13 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     } else if (gitSource != null) {
       // general git
       scmSource = new GitSCMSource(gitSource.getUri());
+      prSupportCondition.setReason(CONDITION_REASON_UNSUPPORTED);
+      prSupportCondition.setStatus(CONDITION_STATUS_FALSE);
     } else {
       logger.warn("Not found git repository.");
     }
+
+    pipelineConfig.getStatus().getConditions().add(prSupportCondition);
 
     // handle common settings
     if (scmSource != null) {

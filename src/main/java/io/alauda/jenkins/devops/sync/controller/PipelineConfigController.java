@@ -288,6 +288,8 @@ public class PipelineConfigController
         if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
           return new Result(false);
         }
+
+        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
       } catch (PipelineConfigConvertException e) {
         logger.warn(
             "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
@@ -296,6 +298,7 @@ public class PipelineConfigController
             name,
             StringUtils.join(e.getCauses(), " or "));
         conditions.addAll(ConditionsUtils.convertToConditions(e.getCauses()));
+        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
       } catch (IOException e) {
         logger.warn(
             "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
@@ -304,14 +307,10 @@ public class PipelineConfigController
             name,
             e.getMessage());
         conditions.add(ConditionsUtils.convertToCondition(e));
-      }
-      if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
         pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
-        DateTime now = DateTime.now();
-        pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
-      } else {
-        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
       }
+      DateTime now = DateTime.now();
+      pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
 
       logger.debug("[{}] Will update PipelineConfig '{}/{}'", getControllerName(), namespace, name);
       PipelineConfigClient pipelineConfigClient =

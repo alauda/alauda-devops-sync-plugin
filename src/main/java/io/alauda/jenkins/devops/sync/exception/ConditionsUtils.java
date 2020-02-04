@@ -19,7 +19,7 @@ public class ConditionsUtils {
     return condition;
   }
 
-  public static List<V1alpha1Condition> convertToConditinos(Throwable... throwables) {
+  public static List<V1alpha1Condition> convertToConditions(Throwable... throwables) {
     return Arrays.stream(throwables)
         .map(ConditionsUtils::convertToCondition)
         .collect(Collectors.toList());

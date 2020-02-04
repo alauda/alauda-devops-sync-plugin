@@ -24,6 +24,7 @@ import io.alauda.devops.java.client.utils.PatchGenerator;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
+import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -370,12 +371,15 @@ public class JenkinsClient {
     String namespace = pipelineNamespaceName.getNamespace();
     String name = pipelineNamespaceName.getName();
 
-    cancelPipeline(pipelineNamespaceName);
+    try {
+      cancelPipeline(pipelineNamespaceName);
+    } catch (PipelineException ignore) {
+    }
 
     V1alpha1PipelineConfig pipelineConfig = getPipelineConfigFromPipeline(pipelineNamespaceName);
     if (pipelineConfig == null) {
       logger.error(
-          "Unable to cancel pipeline '{}/{}', reason: cannot find pipelineConfig", namespace, name);
+          "Unable to delete pipeline '{}/{}', reason: cannot find pipelineConfig", namespace, name);
       return false;
     }
 
@@ -385,7 +389,7 @@ public class JenkinsClient {
               new NamespaceName(namespace, pipelineConfig.getMetadata().getName()));
       if (multiBranchProject == null) {
         logger.error(
-            "Unable to cancel pipeline, reason: cannot find correspondent multi-branch job");
+            "Unable to delete pipeline, reason: cannot find correspondent multi-branch job");
         return false;
       }
 
@@ -400,7 +404,7 @@ public class JenkinsClient {
       WorkflowJob job =
           getJob(new NamespaceName(namespace, pipelineConfig.getMetadata().getName()));
       if (job == null) {
-        logger.error("Unable to cancel pipeline, reason: cannot find correspondent workflow job");
+        logger.error("Unable to delete pipeline, reason: cannot find correspondent workflow job");
         return false;
       }
       return deletePipeline(pipelineNamespaceName, job);
@@ -422,54 +426,69 @@ public class JenkinsClient {
     return false;
   }
 
-  public boolean cancelPipeline(NamespaceName pipelineNamespaceName) {
+  public void cancelPipeline(NamespaceName pipelineNamespaceName) throws PipelineException {
     String namespace = pipelineNamespaceName.getNamespace();
     String name = pipelineNamespaceName.getName();
 
     V1alpha1PipelineConfig pipelineConfig = getPipelineConfigFromPipeline(pipelineNamespaceName);
     if (pipelineConfig == null) {
-      logger.error(
-          "Unable to cancel pipeline '{}/{}', reason: cannot find pipelineConfig", namespace, name);
-      return false;
+      throw new PipelineException("Unable to cancel build, reason: cannot find pipelineConfig");
     }
 
     // cancel if in the queue
     try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
       Queue pipelineQueue = jenkins.getQueue();
-      for (Queue.Item item : pipelineQueue.getItems()) {
-        for (JenkinsPipelineCause cause : PipelineUtils.findAllAlaudaCauses(item)) {
-          if (cause.getNamespace().equals(namespace) && cause.getName().equals(name)) {
-            return pipelineQueue.cancel(item);
-          }
+
+      Optional<Queue.Item> buildInQueue =
+          Arrays.stream(pipelineQueue.getItems())
+              .filter(
+                  item ->
+                      PipelineUtils.findAllAlaudaCauses(item)
+                          .stream()
+                          .anyMatch(
+                              cause ->
+                                  cause.getNamespace().equals(namespace)
+                                      && cause.getName().equals(name)))
+              .findFirst();
+
+      // try to cancel the build if it is in the queue
+      if (buildInQueue.isPresent()) {
+        if (pipelineQueue.cancel(buildInQueue.get())) {
+          return;
+        } else {
+          throw new PipelineException("Unable to cancel build, reason: build may not in the queue");
         }
       }
     }
 
+    boolean canceled = false;
     if (PipelineConfigUtils.isMultiBranch(pipelineConfig)) {
       WorkflowMultiBranchProject multiBranchProject =
           getMultiBranchProject(
               new NamespaceName(namespace, pipelineConfig.getMetadata().getName()));
       if (multiBranchProject == null) {
-        logger.error(
-            "Unable to cancel pipeline, reason: cannot find correspondent multi-branch job");
-        return false;
+        throw new PipelineException(
+            "Unable to cancel build, reason: cannot find correspondent multi-branch job");
       }
 
-      boolean canceled = false;
       try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
         for (WorkflowJob job : multiBranchProject.getItems()) {
           canceled = cancelPipeline(pipelineNamespaceName, job);
         }
       }
-      return canceled;
     } else {
       WorkflowJob job =
           getJob(new NamespaceName(namespace, pipelineConfig.getMetadata().getName()));
       if (job == null) {
-        logger.error("Unable to cancel pipeline, reason: cannot find correspondent workflow job");
-        return false;
+        throw new PipelineException(
+            "Unable to cancel build, reason: cannot find correspondent workflow job");
       }
-      return cancelPipeline(pipelineNamespaceName, job);
+      canceled = cancelPipeline(pipelineNamespaceName, job);
+    }
+
+    if (!canceled) {
+      throw new PipelineException(
+          "Unable to cancel build, reason: cannot find correspondent build");
     }
   }
 

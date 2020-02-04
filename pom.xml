@@ -134,7 +134,7 @@
     <dependency>
       <groupId>io.alauda</groupId>
       <artifactId>devops-client-java</artifactId>
-      <version>1.0.5</version>
+      <version>1.0.5-SNAPSHOT</version>
       <exclusions>
         <exclusion>
           <artifactId>swagger-annotations</artifactId>

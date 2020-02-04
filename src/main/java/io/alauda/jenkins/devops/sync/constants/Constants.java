@@ -183,4 +183,11 @@ public final class Constants {
   public static final String JENKINS_PLUGIN_STATUS_INACTIVE = "inactive";
 
   public static final String PIPELINE_LABELS_REPLAYED_FROM = "replayed-from";
+
+  public static final String CONDITION_TYPE_PR_DISCOVERY_SUPPORT = "SupportPRDiscovery";
+  public static final String CONDITION_REASON_SUPPORTED = "Supported";
+  public static final String CONDITION_REASON_UNSUPPORTED = "Unsupported";
+  public static final String CONDITION_REASON_INCORRECT = "Incorrect";
+  public static final String CONDITION_STATUS_TRUE = "True";
+  public static final String CONDITION_STATUS_FALSE = "False";
 }

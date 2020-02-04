@@ -351,11 +351,6 @@ public abstract class AlaudaUtils {
     return dateFormatter.parseMillis(timestamp);
   }
 
-  public static boolean isCancellable(V1alpha1PipelineStatus pipelineStatus) {
-    String phase = pipelineStatus.getPhase();
-    return phase.equals(QUEUED) || phase.equals(PENDING) || phase.equals(RUNNING);
-  }
-
   public static boolean isNew(V1alpha1PipelineStatus pipelineStatus) {
     return pipelineStatus.getPhase().equals(PENDING);
   }
