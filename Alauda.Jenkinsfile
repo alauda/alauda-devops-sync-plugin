@@ -46,7 +46,7 @@ pipeline {
 		SCM_FEEDBACK_ACCOUNT = "alaudabot"
 		SONARQUBE_SCM_CREDENTIALS = "alaudabot"
 		DINGDING_BOT = "devops-chat-bot"
-		TAG_CREDENTIALS = "alaudabot-github"
+		TAG_CREDENTIALS = "github-bot"
 		IN_K8S = "true"
 	}
 	// stages
@@ -120,7 +120,7 @@ pipeline {
 			steps {
 				script {
 					// adding tag to the current commit
-					withCredentials([usernamePassword(credentialsId: TAG_CREDENTIALS, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+					withCredentials([usernamePassword(credentialsId: deploy.getAlaudaCredentialID(TAG_CREDENTIALS), passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
 						sh "git tag -l | xargs git tag -d" // clean local tags
 						sh """
 							git config --global user.email "alaudabot@alauda.io"
