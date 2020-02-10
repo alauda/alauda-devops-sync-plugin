@@ -48,4 +48,6 @@ public interface GitProviderMultiBranch extends ExtensionPoint {
 
     return new CloneOptionTrait(cloneOption);
   }
+
+  boolean isSourceSame(SCMSource current, SCMSource expected);
 }

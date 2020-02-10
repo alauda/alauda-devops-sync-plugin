@@ -296,7 +296,7 @@ public class PipelineConfigController
             name,
             StringUtils.join(e.getCauses(), " or "));
         conditions.addAll(ConditionsUtils.convertToConditions(e.getCauses()));
-      } catch (IOException e) {
+      } catch (Throwable e) {
         logger.warn(
             "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
             getControllerName(),

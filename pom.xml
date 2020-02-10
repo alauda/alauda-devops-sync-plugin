@@ -69,7 +69,7 @@
     <org.json.version>20180130</org.json.version>
     <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
     <jackson.version>2.9.8</jackson.version>
-    <jenkins.version>2.83</jenkins.version>
+    <jenkins.version>2.164.3</jenkins.version>
     <jackson2.version>2.7.5</jackson2.version>
   </properties>
   <dependencies>
@@ -89,6 +89,11 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>4.0.1</version>
+    </dependency>
+    <dependency>
       <groupId>io.jenkins.blueocean</groupId>
       <artifactId>blueocean-rest-impl</artifactId>
       <version>1.5.0</version>
@@ -102,19 +107,14 @@
           <groupId>com.fasterxml.jackson.core</groupId>
         </exclusion>
         <exclusion>
-          <artifactId>variant</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>credentials</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
+          <groupId>org.yaml</groupId>
+          <artifactId>snakeyaml</artifactId>
         </exclusion>
       </exclusions>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>credentials</artifactId>
-      <version>2.1.16</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
@@ -130,6 +130,16 @@
       <groupId>io.alauda.jenkins.plugins</groupId>
       <artifactId>alauda-kubernetes-support</artifactId>
       <version>2.3.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.checkerframework</groupId>
+          <artifactId>checker-qual</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.google.errorprone</groupId>
+          <artifactId>error_prone_annotations</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.alauda</groupId>
@@ -160,14 +170,6 @@
           <artifactId>jackson2-api</artifactId>
           <groupId>org.jenkins-ci.plugins</groupId>
         </exclusion>
-        <exclusion>
-          <artifactId>workflow-job</artifactId>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>workflow-api</artifactId>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
@@ -184,100 +186,35 @@
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-multibranch</artifactId>
       <version>2.18</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>workflow-support</artifactId>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>workflow-cps</artifactId>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-support</artifactId>
-      <version>2.18</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>git</artifactId>
-      <version>3.6.0</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>httpclient</artifactId>
-          <groupId>org.apache.httpcomponents</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.pipeline-stage-view</groupId>
       <artifactId>pipeline-rest-api</artifactId>
       <version>2.10</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>pipeline-input-step</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>workflow-cps</artifactId>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>pipeline-input-step</artifactId>
-      <version>2.8</version>
-    </dependency>
-    <dependency>
-      <groupId>org.csanchez.jenkins.plugins</groupId>
-      <artifactId>kubernetes</artifactId>
-      <version>1.5</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>badge</artifactId>
       <version>1.5</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>workflow-step-api</artifactId>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>structs</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>structs</artifactId>
-      <version>1.14</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-step-api</artifactId>
-      <version>2.14</version>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>4.5.10</version>
     </dependency>
     <dependency>
       <groupId>org.jenkinsci.plugins</groupId>
       <artifactId>pipeline-model-definition</artifactId>
       <version>1.3.1</version>
       <exclusions>
-        <exclusion>
-          <artifactId>credentials</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>workflow-scm-step</artifactId>
-          <groupId>org.jenkins-ci.plugins.workflow</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>git-client</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
         <exclusion>
           <artifactId>pipeline-stage-step</artifactId>
           <groupId>org.jenkins-ci.plugins</groupId>
@@ -286,66 +223,16 @@
           <artifactId>workflow-basic-steps</artifactId>
           <groupId>org.jenkins-ci.plugins.workflow</groupId>
         </exclusion>
-        <exclusion>
-          <artifactId>ssh-credentials</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>script-security</artifactId>
-      <version>1.42</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>variant</artifactId>
-      <version>1.1</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>git-client</artifactId>
-      <version>2.7.0</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>httpclient</artifactId>
-          <groupId>org.apache.httpcomponents</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>ssh-credentials</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
       </exclusions>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>ssh-credentials</artifactId>
-      <version>1.13</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
-      <artifactId>workflow-scm-step</artifactId>
-      <version>2.6</version>
-    </dependency>
-    <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>pipeline-stage-step</artifactId>
-      <version>2.3</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.dataformat</groupId>
-      <artifactId>jackson-dataformat-yaml</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-databind</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.core</groupId>
-      <artifactId>jackson-core</artifactId>
-      <version>${jackson.version}</version>
+      <artifactId>workflow-support</artifactId>
+      <version>2.18</version>
     </dependency>
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
@@ -367,6 +254,33 @@
       <artifactId>workflow-basic-steps</artifactId>
       <version>2.6</version>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>cloudbees-bitbucket-branch-source</artifactId>
+      <version>2.6.0</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>jackson2-api</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>github-branch-source</artifactId>
+      <version>2.5.8</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>jackson2-api</artifactId>
+          <groupId>org.jenkins-ci.plugins</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>io.jenkins.plugins</groupId>
+      <artifactId>gitlab-branch-source</artifactId>
+      <version>1.4.3</version>
     </dependency>
   </dependencies>
   <repositories>
@@ -409,8 +323,47 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.0.0-M1</version>
+        <executions>
+          <execution>
+            <id>display-info</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <enforceBytecodeVersion>
+                  <maxJdkVersion>1.8</maxJdkVersion>
+                  <ignoreClasses>
+                    <ignoreClass>module-info</ignoreClass>
+                  </ignoreClasses>
+                </enforceBytecodeVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>animal-sniffer-maven-plugin</artifactId>
+        <version>1.17</version>
+      </plugin>
     </plugins>
   </build>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.jenkins.tools.bom</groupId>
+        <artifactId>bom-2.164.x</artifactId>
+        <version>4</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <profiles>
     <profile>
       <id>incrementals</id>

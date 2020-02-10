@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.logging.Logger;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 
 public class PipelineUtils {
   private static final Logger logger = Logger.getLogger(PipelineUtils.class.getName());
@@ -77,7 +77,7 @@ public class PipelineUtils {
     return Clients.get(V1alpha1Pipeline.class).delete(namespace, name);
   }
 
-  public static String runToPipelinePhase(@NotNull Run run) {
+  public static String runToPipelinePhase(@Nonnull Run run) {
     if (run.hasntStartedYet()) {
       return PipelinePhases.QUEUED;
     }

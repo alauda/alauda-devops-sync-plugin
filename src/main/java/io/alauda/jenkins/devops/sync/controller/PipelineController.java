@@ -41,7 +41,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.slf4j.Logger;
@@ -367,11 +367,11 @@ public class PipelineController
       return CONTROLLER_NAME;
     }
 
-    private boolean isNewPipeline(@NotNull V1alpha1Pipeline pipeline) {
+    private boolean isNewPipeline(@Nonnull V1alpha1Pipeline pipeline) {
       return pipeline.getStatus().getPhase().equals(PipelinePhases.PENDING);
     }
 
-    private boolean isCreateByJenkins(@NotNull V1alpha1Pipeline pipeline) {
+    private boolean isCreateByJenkins(@Nonnull V1alpha1Pipeline pipeline) {
       Map<String, String> labels = pipeline.getMetadata().getLabels();
       return (labels != null
           && Constants.ALAUDA_SYNC_PLUGIN.equals(labels.get(Constants.PIPELINE_CREATED_BY)));

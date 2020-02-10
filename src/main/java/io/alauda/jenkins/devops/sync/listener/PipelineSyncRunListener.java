@@ -70,7 +70,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
-import javax.validation.constraints.NotNull;
 import jenkins.model.Jenkins;
 import jenkins.util.Timer;
 import net.sf.json.JSONArray;
@@ -347,7 +346,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     return false;
   }
 
-  private String toBlueJson(@NotNull PipelineJson pipeJson) {
+  private String toBlueJson(@Nonnull PipelineJson pipeJson) {
     ObjectMapper blueJsonMapper = new ObjectMapper();
     blueJsonMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
     blueJsonMapper.disable(SerializationFeature.FAIL_ON_SELF_REFERENCES);
@@ -362,7 +361,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     return null;
   }
 
-  private Result upsertPipeline(@NotNull Run run, RunExt wfRunExt, BlueRun blueRun) {
+  private Result upsertPipeline(@Nonnull Run run, RunExt wfRunExt, BlueRun blueRun) {
     List<Cause> causes = run.getCauses();
     causes.forEach(
         causeItem -> {
@@ -645,7 +644,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     return new Result(false);
   }
 
-  private void badgeHandle(@NotNull Run run, Map<String, String> annotations) {
+  private void badgeHandle(@Nonnull Run run, Map<String, String> annotations) {
     if (annotations == null) {
       return;
     }

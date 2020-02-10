@@ -1,6 +1,5 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.mapper.converter;
 
-import io.alauda.jenkins.devops.sync.mapper.converter.GitProviderMultiBranch;
 import jenkins.scm.api.SCMSource;
 
 /**

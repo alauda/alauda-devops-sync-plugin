@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
 import jenkins.branch.Branch;
 import jenkins.branch.BranchIndexingCause;
 import jenkins.scm.api.SCMHead;
@@ -42,7 +42,7 @@ public abstract class PipelineGenerator {
 
   public static V1alpha1Pipeline buildPipeline(
       V1alpha1PipelineConfig config,
-      @NotNull WorkflowJob job,
+      @Nonnull WorkflowJob job,
       String triggerURL,
       List<Action> actions) {
     ItemGroup parent = job.getParent();
@@ -143,7 +143,8 @@ public abstract class PipelineGenerator {
     if (allCauses.size() > 1) {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
       annotations.put(
-          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(), JSONArray.fromObject(allCauses).toString());
+          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(),
+          JSONArray.fromObject(allCauses).toString());
     } else if (allCauses.size() == 1) {
       cause = causeConvert(allCauses.get(0));
     } else {

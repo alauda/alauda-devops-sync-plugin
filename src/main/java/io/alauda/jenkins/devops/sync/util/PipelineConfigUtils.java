@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
-import javax.validation.constraints.NotNull;
 import jenkins.model.Jenkins;
 import org.apache.commons.collections4.CollectionUtils;
 
@@ -108,7 +107,7 @@ public abstract class PipelineConfigUtils {
     return template != null && template.getSpec() != null;
   }
 
-  public static boolean isMultiBranch(@NotNull V1alpha1PipelineConfig pipelineConfig) {
+  public static boolean isMultiBranch(@Nonnull V1alpha1PipelineConfig pipelineConfig) {
     Map<String, String> labels = pipelineConfig.getMetadata().getLabels();
     return (labels != null
         && PIPELINECONFIG_KIND_MULTI_BRANCH.equals(labels.get(PIPELINECONFIG_KIND)));
