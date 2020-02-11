@@ -143,7 +143,8 @@ public abstract class PipelineGenerator {
     if (allCauses.size() > 1) {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
       annotations.put(
-          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(), JSONArray.fromObject(allCauses).toString());
+          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(),
+          JSONArray.fromObject(allCauses).toString());
     } else if (allCauses.size() == 1) {
       cause = causeConvert(allCauses.get(0));
     } else {
