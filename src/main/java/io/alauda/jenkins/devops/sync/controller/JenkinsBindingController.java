@@ -39,7 +39,7 @@ public class JenkinsBindingController
                       null,
                       null,
                       null,
-                      null,
+                      AlaudaSyncGlobalConfiguration.get().getJenkinsService(),
                       null,
                       null,
                       callGeneratorParams.resourceVersion,
