@@ -138,7 +138,7 @@ public abstract class JenkinsUtils {
    *
    * @param job Workflow Job need to add triggers
    * @param triggers trigger
-   * @return
+   * @return the exception list
    */
   @Nonnull
   public static List<ANTLRException> setJobTriggers(
@@ -455,8 +455,8 @@ public abstract class JenkinsUtils {
   /**
    * TODO consider gather with other methods
    *
-   * @param run
-   * @return
+   * @param run is a build of job
+   * @return if the job is a multi-branch pipeline
    */
   public static boolean fromMultiBranch(@Nonnull Run run) {
     Job wfJob = run.getParent();
