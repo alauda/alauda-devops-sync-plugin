@@ -176,7 +176,8 @@ public final class WorkflowJobUtils {
                 entry
                     .getKey()
                     .startsWith(
-                        ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins")
+                        ResourceControllerManager.getControllerManager()
+                            .getFormattedAnnotation("jenkins")
                             .get()));
   }
 
