@@ -27,7 +27,7 @@ import hudson.triggers.Trigger;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
-import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -49,13 +49,17 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** @author suren */
+/**
+ * @author suren
+ */
 public abstract class JenkinsUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(JenkinsUtils.class);
   private static final String PARAM_FROM_ENV_DESCRIPTION =
       "From Alauda DevOps PipelineConfig Parameter";
 
-  private JenkinsUtils() {}
+  private JenkinsUtils() {
+  }
 
   public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(
       WorkflowJob job, List<V1alpha1PipelineParameter> params, boolean replaceExisting)
@@ -83,9 +87,9 @@ public abstract class JenkinsUtils {
         for (ParameterDefinition param : existingParamList) {
           // if a user supplied param, add
           if (param.getDescription() == null
-              || !param.getDescription().equals(PARAM_FROM_ENV_DESCRIPTION))
+              || !param.getDescription().equals(PARAM_FROM_ENV_DESCRIPTION)) {
             paramMap.put(param.getName(), param);
-          else if (envKeys.contains(param.getName())) {
+          } else if (envKeys.contains(param.getName())) {
             // the env var still exists on the PipelineConfig side so
             // keep
             paramMap.put(param.getName(), param);
@@ -137,7 +141,7 @@ public abstract class JenkinsUtils {
   /**
    * Override job's triggers
    *
-   * @param job Workflow Job need to add triggers
+   * @param job      Workflow Job need to add triggers
    * @param triggers trigger
    * @return the exception list
    */
@@ -276,16 +280,16 @@ public abstract class JenkinsUtils {
     return envVarList;
   }
 
-  public static boolean triggerJob(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline)
-      throws IOException {
+  public static void triggerJob(@Nonnull WorkflowJob job, @Nonnull V1alpha1Pipeline pipeline)
+      throws IOException, PipelineException {
     final V1ObjectMeta pipMeta = pipeline.getMetadata();
     final String namespace = pipMeta.getNamespace();
     final String pipelineName = pipMeta.getName();
-    logger.info("will trigger pipeline: " + pipelineName);
+    logger.info("Starting trigger pipeline '{}/{}'", namespace, pipelineName);
 
     if (hasBuildRunningOrCompleted(job, pipeline)) {
       logger.info("pipeline is running or completed: {}", pipelineName);
-      return false;
+      return;
     }
 
     AlaudaJobProperty pcProp = job.getProperty(WorkflowJobProperty.class);
@@ -299,130 +303,104 @@ public abstract class JenkinsUtils {
     }
 
     if (pcProp == null) {
-      logger.warn(
-          "aborting trigger of Pipeline '{}/{}' because of missing pc project property",
-          namespace,
-          pipelineName);
-      return false;
+      throw new PipelineException(
+          "Unable to trigger build, reason: job missed AlaudaJobProperty, it may not create by our platform");
     }
 
-    final String pipelineConfigName = pipeline.getSpec().getPipelineConfig().getName();
-    V1alpha1PipelineConfig pipelineConfig =
-        Clients.get(V1alpha1PipelineConfig.class)
-            .lister()
-            .namespace(namespace)
-            .get(pipelineConfigName);
-    if (pipelineConfig == null) {
-      logger.info(
-          "PipelineConfig '{}/{}' cannot found, unable to trigger build",
-          namespace,
-          pipelineConfigName);
-      return false;
+    // We need to ensure that we do not remove
+    // existing Causes from a Run since other
+    // plugins may rely on them.
+    List<Cause> newCauses = new ArrayList<>();
+    newCauses.add(new JenkinsPipelineCause(pipeline, pcProp.getUid()));
+    CauseAction originalCauseAction = PipelineToActionMapper.removeCauseAction(pipelineName);
+    if (originalCauseAction != null) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Adding existing causes...");
+        for (Cause c : originalCauseAction.getCauses()) {
+          logger.debug("original cause {}", c);
+        }
+      }
+      newCauses.addAll(originalCauseAction.getCauses());
+      if (logger.isDebugEnabled()) {
+        for (Cause c : newCauses) {
+          logger.debug("new cause {}", c);
+        }
+      }
     }
 
-    // sync on intern of name should guarantee sync on same actual obj
-    synchronized (pipelineConfig.getMetadata().getUid().intern()) {
+    List<Action> pipelineActions = new ArrayList<>();
+    CauseAction bCauseAction = new CauseAction(newCauses);
+    pipelineActions.add(bCauseAction);
+    pipelineActions.add(new AlaudaQueueAction(namespace, pipelineName));
 
-      // We need to ensure that we do not remove
-      // existing Causes from a Run since other
-      // plugins may rely on them.
-      List<Cause> newCauses = new ArrayList<>();
-      newCauses.add(new JenkinsPipelineCause(pipeline, pcProp.getUid()));
-      CauseAction originalCauseAction = PipelineToActionMapper.removeCauseAction(pipelineName);
-      if (originalCauseAction != null) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("Adding existing causes...");
-          for (Cause c : originalCauseAction.getCauses()) {
-            logger.debug("original cause {}", c);
-          }
-        }
-        newCauses.addAll(originalCauseAction.getCauses());
-        if (logger.isDebugEnabled()) {
-          for (Cause c : newCauses) {
-            logger.debug("new cause {}", c);
-          }
-        }
+    V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
+    String commit = null;
+    if (pipMeta.getAnnotations() != null
+        && pipMeta
+        .getAnnotations()
+        .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
+      commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString());
+    }
+
+    if (sourceGit != null && commit != null) {
+      try {
+        URIish repoURL = new URIish(sourceGit.getUri());
+        pipelineActions.add(new RevisionParameterAction(commit, repoURL));
+      } catch (URISyntaxException e) {
+        throw new PipelineException(
+            String.format("Failed to parse git repo URL %s", sourceGit.getUri()), e);
       }
+    }
 
-      List<Action> pipelineActions = new ArrayList<>();
-      CauseAction bCauseAction = new CauseAction(newCauses);
-      pipelineActions.add(bCauseAction);
-      pipelineActions.add(new AlaudaQueueAction(namespace, pipelineName));
+    // params added by user in jenkins ui
+    PipelineToActionMapper.removeParameterAction(pipelineName);
+    addJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
 
-      V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
-      String commit = null;
-      if (pipMeta.getAnnotations() != null
-          && pipMeta
-              .getAnnotations()
-              .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
-        commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString());
-      }
+    Action[] actionArray;
+    if (pipelineActions.size() == 0) {
+      actionArray = new Action[]{};
+    } else {
+      actionArray = pipelineActions.toArray(new Action[0]);
+    }
 
-      if (sourceGit != null && commit != null) {
-        try {
-          URIish repoURL = new URIish(sourceGit.getUri());
-          pipelineActions.add(new RevisionParameterAction(commit, repoURL));
-        } catch (URISyntaxException e) {
-          logger.error("Failed to parse git repo URL {}, error: {}", sourceGit.getUri(), e);
-        }
-      }
+    QueueTaskFuture<WorkflowRun> queueTaskFuture = job.scheduleBuild2(0, actionArray);
+    if (queueTaskFuture == null) {
+      throw new PipelineException("Unable to schedule build, this job may not be buildable");
+    }
 
-      // params added by user in jenkins ui
-      PipelineToActionMapper.removeParameterAction(pipelineName);
-      addJobRunParamsFromEnvAndUIParams(pipeline.getSpec().getParameters(), pipelineActions);
+    // TODO should offer a better solution
+    // TODO should we add an extension point here?
+    if (job.getParent() instanceof MultiBranchProject) {
+      BranchProjectFactory factory = ((MultiBranchProject) job.getParent()).getProjectFactory();
 
-      Action[] actionArray;
-      if (pipelineActions.size() == 0) {
-        actionArray = new Action[] {};
-      } else {
-        actionArray = pipelineActions.toArray(new Action[0]);
-      }
-
-      QueueTaskFuture<WorkflowRun> queueTaskFuture = job.scheduleBuild2(0, actionArray);
-      if (queueTaskFuture != null) {
-        // TODO should offer a better solution
-        // TODO should we add an extension point here?
-        if (job.getParent() instanceof MultiBranchProject) {
-          BranchProjectFactory factory = ((MultiBranchProject) job.getParent()).getProjectFactory();
-
-          SCMRevisionAction revisionAction = null;
-          for (Action action : actionArray) {
-            if (action instanceof CauseAction) {
-              List<Cause> causes = ((CauseAction) action).getCauses();
-              if (causes != null) {
-                for (Cause cause : causes) {
-                  if (cause instanceof SCMRevisionAction) {
-                    revisionAction = (SCMRevisionAction) cause;
-                    break;
-                  }
-                }
+      SCMRevisionAction revisionAction = null;
+      for (Action action : actionArray) {
+        if (action instanceof CauseAction) {
+          List<Cause> causes = ((CauseAction) action).getCauses();
+          if (causes != null) {
+            for (Cause cause : causes) {
+              if (cause instanceof SCMRevisionAction) {
+                revisionAction = (SCMRevisionAction) cause;
+                break;
               }
             }
           }
-
-          if (revisionAction != null) {
-            factory.setRevisionHash(job, revisionAction.getRevision());
-          }
         }
-
-        // If builds are queued too quickly, Jenkins can add the cause
-        // to the previous queued pipeline so let's add a tiny
-        // sleep.
-        try {
-          TimeUnit.MILLISECONDS.sleep(50);
-        } catch (InterruptedException e) {
-          logger.error("updatePipelinePhase Interrupted: {}", e.getMessage());
-          Thread.currentThread().interrupt();
-        }
-        return true;
       }
 
-      logger.info(
-          "Cannot schedule build for this Pipeline '{}/{}', reason: queueTaskFuture is null",
-          namespace,
-          pipelineName);
+      if (revisionAction != null) {
+        factory.setRevisionHash(job, revisionAction.getRevision());
+      }
+    }
 
-      return false;
+    // If builds are queued too quickly, Jenkins can add the cause
+    // to the previous queued pipeline so let's add a tiny
+    // sleep.
+    try {
+      TimeUnit.MILLISECONDS.sleep(50);
+    } catch (InterruptedException e) {
+      logger.error("updatePipelinePhase Interrupted: {}", e.getMessage());
+      Thread.currentThread().interrupt();
     }
   }
 
