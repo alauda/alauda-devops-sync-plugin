@@ -41,16 +41,18 @@ public class ReplayUtils {
    * @param pipelineConfigUID is the uid of PipelineConfig
    * @param currentPipeline   the current pipeline
    * @param originalPipeline  the original pipeline
-   * @return true, if there's no any error
    */
   public static void replayJob(WorkflowJob job, String pipelineConfigUID,
       V1alpha1Pipeline currentPipeline, V1alpha1Pipeline originalPipeline)
       throws PipelineException {
+    String namespace = currentPipeline.getMetadata().getNamespace();
+    String currentPipelineName = currentPipeline.getMetadata().getName();
+
     WorkflowRun originalRun = JenkinsUtils.getRun(job, originalPipeline);
     if (originalRun == null) {
       V1ObjectMeta originalMeta = originalPipeline.getMetadata();
       throw new PipelineException(
-          String.format("cannot find the original run of pipeline %s/%s",
+          String.format("Cannot find the original run of pipeline %s/%s",
               originalMeta.getNamespace(), originalMeta.getName()));
     }
 
@@ -58,10 +60,8 @@ public class ReplayUtils {
     CpsFlowExecution execution = ReplayUtils.getExecution(originalRun);
     if (execution == null) {
       throw new PipelineException(
-          "cannot get CpsFlowExecution from the originalRun " + originalRun);
+          "Cannot get CpsFlowExecution from the originalRun " + originalRun);
     }
-
-    logger.debug("CpsFlowExecution " + execution);
 
     try {
       actions.add(getReplayFlowFactoryAction(execution));
@@ -69,29 +69,25 @@ public class ReplayUtils {
       throw new PipelineException("Cannot get ReplayFlowFactoryAction", e);
     }
 
-    logger.debug("actions with ReplayFlowFactoryAction " + actions);
-
     actions.add(
         new CauseAction(
             new Cause.UserIdCause(),
             getReplayCause(originalRun),
             new JenkinsPipelineCause(currentPipeline, pipelineConfigUID)));
 
-    logger.debug("actions with CauseAction " + actions);
-
     for (Class<? extends Action> c : COPIED_ACTIONS) {
       actions.addAll(originalRun.getActions(c));
-
-      logger.debug("actions with COPIED_ACTIONS " + actions);
     }
 
     try {
-      logger.debug("ready to replay " + originalRun.getParent());
+      logger.debug("Ready to replay {} for Pipeline {}/{}",
+          originalRun.getParent(),
+          namespace, currentPipelineName);
 
       Queue.Item item =
           ParameterizedJobMixIn.scheduleBuild2(
               originalRun.getParent(), 0, actions.toArray(new Action[0]));
-      logger.debug("replay action result " + item);
+      logger.debug("Replayed Pipeline '{}/{}' action result {}", namespace, currentPipeline, item);
 
       if (item == null) {
         throw new PipelineException("Unable to schedule a replay, build might be not replayable");

@@ -294,7 +294,8 @@ public class PipelineController
                   pipelineCopy.getMetadata().getLabels().get(PIPELINE_LABELS_REPLAYED_FROM);
               V1alpha1Pipeline originalPipeline = lister.namespace(namespace).get(originalName);
 
-              logger.info("replayed from " + originalName);
+              logger.info("[{}] Pipeline '{}/{}' Replayed from Pipeline '{}/{}'", getControllerName(),
+                      namespace, name, namespace, originalName);
 
               // 放到到 JenkinsUtils 里
               ReplayUtils.replayJob(
@@ -303,9 +304,9 @@ public class PipelineController
               JenkinsUtils.triggerJob(job, pipelineCopy);
             }
 
-            logger.info("[{}] Successfully triggered Pipeline '{}/{}'", getControllerName(), namespace, name);
+            logger.info("[{}] Successfully triggered Pipeline '{}/{}'", getControllerName(),
+                namespace, name);
             pipelineCopy.getStatus().setPhase(QUEUED);
-            pipelineClient.update(pipeline, pipelineCopy);
           } catch (Exception e) {
             logger.info(
                 "[{}] Unable to trigger Pipeline '{}/{}', reason: {}",
@@ -315,9 +316,9 @@ public class PipelineController
                 e.getMessage());
 
             pipelineCopy.getStatus().setPhase(FAILED);
-            pipelineClient.update(pipeline, pipelineCopy);
           }
 
+          pipelineClient.update(pipeline, pipelineCopy);
           return new Result(false);
         }
 

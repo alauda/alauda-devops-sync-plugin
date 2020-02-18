@@ -288,7 +288,7 @@ public abstract class JenkinsUtils {
     logger.info("Starting trigger pipeline '{}/{}'", namespace, pipelineName);
 
     if (hasBuildRunningOrCompleted(job, pipeline)) {
-      logger.info("pipeline is running or completed: {}", pipelineName);
+      logger.info("Pipeline '{}/{}' is running or completed", namespace, pipelineName);
       return;
     }
 
