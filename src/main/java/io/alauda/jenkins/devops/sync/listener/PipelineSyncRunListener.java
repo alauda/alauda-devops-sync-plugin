@@ -631,7 +631,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
           String.format(
               "Failed updated pipeline: '%s/%s",
               newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
-      return new Result(true);
+      return new Result(false);
     } else {
       logger.fine(
           String.format(
