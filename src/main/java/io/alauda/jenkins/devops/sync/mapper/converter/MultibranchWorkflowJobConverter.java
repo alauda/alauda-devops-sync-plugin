@@ -10,7 +10,6 @@ import hudson.model.Item;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
-import io.alauda.jenkins.devops.sync.PrivateGitProviderMultiBranch;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
@@ -18,12 +17,12 @@ import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
-import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import javax.validation.constraints.NotNull;
+import javax.annotation.Nonnull;
+import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.BranchSource;
 import jenkins.model.Jenkins;
 import jenkins.plugins.git.GitSCMSource;
@@ -31,7 +30,8 @@ import jenkins.plugins.git.traits.BranchDiscoveryTrait;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMSourceTrait;
 import jenkins.scm.impl.trait.RegexSCMHeadFilterTrait;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowBranchProjectFactory;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.slf4j.Logger;
@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 @Extension
 public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMultiBranchProject> {
+
   private static final Logger logger =
       LoggerFactory.getLogger(MultibranchWorkflowJobConverter.class);
 
@@ -60,146 +61,229 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     return (PIPELINECONFIG_KIND_MULTI_BRANCH.equals(labels.get(PIPELINECONFIG_KIND)));
   }
 
-  @Override
   public WorkflowMultiBranchProject convert(V1alpha1PipelineConfig pipelineConfig)
-      throws PipelineConfigConvertException, IOException {
+      throws IOException, PipelineConfigConvertException {
+    WorkflowMultiBranchProject job = getOrCreateWorkflowMultiBranchProject(pipelineConfig);
+
+    MultiBranchProperty mbProperty = job.getProperties().get(MultiBranchProperty.class);
+    mbProperty.setContextAnnotation(mbProperty.generateAnnotationAsJSON(pipelineConfig));
+    mbProperty.setResourceVersion(pipelineConfig.getMetadata().getResourceVersion());
+
+    V1alpha1PipelineStrategyJenkins jenkinsStrategy =
+        pipelineConfig.getSpec().getStrategy().getJenkins();
+    if (jenkinsStrategy == null || StringUtils.isEmpty(jenkinsStrategy.getJenkinsfilePath())) {
+      throw new PipelineConfigConvertException(
+          String.format(
+              "Unable to update Jenkins Job %s, Jenkinsfile path is null", job.getFullName()));
+    }
+
+    BranchProjectFactory factory = job.getProjectFactory();
+    if (!(factory instanceof WorkflowBranchProjectFactory)) {
+      throw new PipelineConfigConvertException(
+          String.format(
+              "Unable to update Jenkins Job %s, except a WorkflowBranchProjectFactory, but found a %s",
+              job.getFullName(), factory.getClass().getName()));
+    }
+    ((WorkflowBranchProjectFactory) factory).setScriptPath(jenkinsStrategy.getJenkinsfilePath());
+
+    setupOrphanedStrategy(job, pipelineConfig);
+    setupSCMSource(job, pipelineConfig);
+    setUpTriggers(job, pipelineConfig);
+
     String namespace = pipelineConfig.getMetadata().getNamespace();
     String name = pipelineConfig.getMetadata().getName();
-    NamespaceName namespaceName = new NamespaceName(namespace, name);
-
-    Item item = jenkinsClient.getItem(namespaceName);
-    WorkflowMultiBranchProject job;
-    if (item == null) {
-      logger.debug("Unable to found a Jenkins job for PipelineConfig '{}/{}'", namespace, name);
-      Folder parentFolder = jenkinsClient.upsertFolder(namespace);
-      job = new WorkflowMultiBranchProject(parentFolder, mapper.jenkinsJobName(namespace, name));
-
-      V1ObjectMeta meta = pipelineConfig.getMetadata();
-      MultiBranchProperty property =
-          new MultiBranchProperty(namespace, name, meta.getUid(), meta.getResourceVersion());
-      property.setContextAnnotation(property.generateAnnotationAsJSON(pipelineConfig));
-
-      job.addProperty(property);
-    } else {
-      if (!(item instanceof WorkflowMultiBranchProject)) {
-        throw new PipelineConfigConvertException(
+    Map<String, String> logURLs =
+        Collections.singletonMap(
+            ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG.get().toString(),
             String.format(
-                "Unable to update Jenkins job, except a WorkflowMultiBranchProject but found a %s",
-                item.getClass()));
-      }
-      job = ((WorkflowMultiBranchProject) item);
+                "/job/%s/job/%s/indexing/logText/progressiveText",
+                namespace, mapper.jenkinsJobName(namespace, name)));
+    addAnnotations(pipelineConfig, logURLs);
 
-      MultiBranchProperty mbProperty = job.getProperties().get(MultiBranchProperty.class);
-      mbProperty.setContextAnnotation(mbProperty.generateAnnotationAsJSON(pipelineConfig));
-      mbProperty.setResourceVersion(pipelineConfig.getMetadata().getResourceVersion());
-    }
+    return job;
+  }
 
-    job.getSourcesList().clear();
-
-    V1alpha1PipelineStrategyJenkins strategy = pipelineConfig.getSpec().getStrategy().getJenkins();
-
-    WorkflowBranchProjectFactory wfFactory = new WorkflowBranchProjectFactory();
-    wfFactory.setScriptPath(strategy.getJenkinsfilePath());
-    job.setProjectFactory(wfFactory);
-
-    V1alpha1MultiBranchBehaviours behaviours = null;
-    // orphaned setting
-    V1alpha1MultiBranchPipeline multiBranch = strategy.getMultiBranch();
-    if (multiBranch != null) {
-      V1alpha1MultiBranchOrphan orphaned = multiBranch.getOrphaned();
-      DefaultOrphanedItemStrategy orphanedStrategy;
-      if (orphaned != null) {
-        orphanedStrategy =
-            new DefaultOrphanedItemStrategy(
-                true, String.valueOf(orphaned.getDays()), String.valueOf(orphaned.getMax()));
-      } else {
-        orphanedStrategy = new DefaultOrphanedItemStrategy(false, "", "");
-      }
-      job.setOrphanedItemStrategy(orphanedStrategy);
-
-      behaviours = multiBranch.getBehaviours();
-    }
+  private void setupSCMSource(WorkflowMultiBranchProject job, V1alpha1PipelineConfig pipelineConfig)
+      throws PipelineConfigConvertException, IOException {
+    logger.debug("Starting setup SCMSource for Workflow job {}", job.getFullName());
 
     V1alpha1PipelineSource source = pipelineConfig.getSpec().getSource();
-    SCMSource scmSource = null;
-    V1alpha1CodeRepositoryRef codeRepoRef = source.getCodeRepository();
-    V1alpha1PipelineSourceGit gitSource = source.getGit();
-    GitProviderMultiBranch gitProvider = null;
-    // TODO maybe put some redundancy into annotation
-    if (codeRepoRef != null) {
-      // cases for git provider
-      String codeRepoName = codeRepoRef.getName();
+    if (source.getCodeRepository() == null && source.getGit() == null) {
+      throw new PipelineConfigConvertException("No Git Repository found");
+    }
 
-      V1alpha1CodeRepository codeRep =
+    GitProviderMultiBranch gitProvider = null;
+    SCMSource scmSource = getCurrentSCMSource(job);
+
+    if (source.getCodeRepository() == null && source.getGit() != null) {
+      logger.debug("No CodeRepository configured in PipelineConfig, fallback to use plain git url");
+      if (!(scmSource instanceof GitSCMSource)
+          || ((GitSCMSource) scmSource).getRemote().equals(source.getGit().getUri())) {
+        scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+      }
+    } else {
+      V1alpha1CodeRepository codeRepository =
           Clients.get(V1alpha1CodeRepository.class)
               .lister()
-              .namespace(namespace)
-              .get(codeRepoRef.getName());
-      if (codeRep != null) {
-        V1alpha1CodeRepositorySpec codeRepoSpec = codeRep.getSpec();
-        V1alpha1OriginCodeRepository codeRepo = codeRepoSpec.getRepository();
-        String[] repoFullName = codeRepo.getFullName().split("/");
-        String repository = repoFullName[repoFullName.length - 1];
-        String repoOwner =
-            String.join("/", Arrays.copyOfRange(repoFullName, 0, repoFullName.length - 1));
-        String codeRepoType = codeRepo.getCodeRepoServiceType();
+              .namespace(pipelineConfig.getMetadata().getNamespace())
+              .get(source.getCodeRepository().getName());
 
-        Optional<GitProviderMultiBranch> gitProviderOpt =
-            Jenkins.getInstance()
-                .getExtensionList(GitProviderMultiBranch.class)
-                .stream()
-                .filter(git -> git.accept(codeRepo.getCodeRepoServiceType()))
-                .findFirst();
-        boolean supported = gitProviderOpt.isPresent();
-        if (supported) {
-          // TODO need to deal with the private git providers
-          gitProvider = gitProviderOpt.get();
+      V1alpha1OriginCodeRepository originCodeRepository = codeRepository.getSpec().getRepository();
+      String[] repoFullName = originCodeRepository.getFullName().split("/");
+      String repository = repoFullName[repoFullName.length - 1];
+      String repoOwner =
+          String.join("/", Arrays.copyOfRange(repoFullName, 0, repoFullName.length - 1));
+      String codeRepoType = originCodeRepository.getCodeRepoServiceType();
+
+      gitProvider =
+          Jenkins.get()
+              .getExtensionList(GitProviderMultiBranch.class)
+              .stream()
+              .filter(git -> git.accept(codeRepoType))
+              .findFirst()
+              .orElse(null);
+      if (gitProvider != null) {
+        logger.debug(
+            "GitProvider {} found, will set or update SCMSource", gitProvider.getClass().getName());
+        if (scmSource == null) {
           if (gitProvider instanceof PrivateGitProviderMultiBranch) {
-            PrivateGitProviderMultiBranch privateGitProvider =
-                (PrivateGitProviderMultiBranch) gitProvider;
             // The server name should be the same as the codeRepoService name
-            String serverName = codeRep.getMetadata().getLabels().get("codeRepoService");
-            scmSource = privateGitProvider.getSCMSource(serverName, repoOwner, repository);
+            String serverName = codeRepository.getMetadata().getLabels().get("codeRepoService");
+            scmSource =
+                ((PrivateGitProviderMultiBranch) gitProvider)
+                    .getSCMSource(serverName, repoOwner, repository);
+            if (scmSource == null) {}
           } else {
             scmSource = gitProvider.getSCMSource(repoOwner, repository);
           }
+
+          // if we cannot create SCMSource, we will fallback to use GitSCMSource
           if (scmSource == null) {
-            logger.warn(
-                "Can't create instance for AbstractGitSCMSource. Type is {}.", codeRepoType);
-            // TODO add a downgrade strategy
-            gitProvider = null;
+            scmSource = new GitSCMSource(source.getGit().getUri());
+          }
+
+          setNewSCMSource(job, scmSource);
+        } else {
+          SCMSource expectedSCMSource;
+          if (gitProvider instanceof PrivateGitProviderMultiBranch) {
+            String serverName = codeRepository.getMetadata().getLabels().get("codeRepoService");
+            expectedSCMSource =
+                ((PrivateGitProviderMultiBranch) gitProvider)
+                    .getSCMSource(serverName, repoOwner, repository);
+          } else {
+            expectedSCMSource = gitProvider.getSCMSource(repoOwner, repository);
+          }
+
+          // if we cannot create SCMSource, we will fallback to use GitSCMSource
+          if (expectedSCMSource == null) {
+            scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+          } else if (!gitProvider.isSourceSame(scmSource, expectedSCMSource)) {
+            // if the current SCMSource is not the same repo with PipelineConfig's, we will
+            // overwrite it.
+            logger.debug("SCMSource is not same, will update it");
+            scmSource = setNewSCMSource(job, expectedSCMSource);
           }
         }
-        if (scmSource == null) {
-          // TODO should take care of clean up job
-          logger.warn(
-              "Not support for {}, codeRepo name is {}. Fall back to general git.",
-              codeRepoType,
-              codeRepoName);
 
-          scmSource = new GitSCMSource(codeRepo.getCloneURL());
-        }
       } else {
-        logger.warn("Can't found codeRepository {}, namespace {}.", codeRepoName, namespace);
+        // if the current SCM source is null or is not a GitSCMSource or its remote uri changed, we
+        // will overwrite it
+        if (!(scmSource instanceof GitSCMSource)
+            || ((GitSCMSource) scmSource).getRemote().equals(source.getGit().getUri())) {
+          scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+        }
       }
-    } else if (gitSource != null) {
-      // general git
-      scmSource = new GitSCMSource(gitSource.getUri());
+    }
+
+    V1alpha1MultiBranchPipeline multiBranchStrategy =
+        pipelineConfig.getSpec().getStrategy().getJenkins().getMultiBranch();
+
+    handleSCMTraits(scmSource, multiBranchStrategy.getBehaviours(), gitProvider);
+    handleCredentials(scmSource, pipelineConfig);
+    scmSource.setOwner(job);
+    scmSource.afterSave();
+  }
+
+  private SCMSource setNewSCMSource(WorkflowMultiBranchProject job, SCMSource newSCMSource) {
+    job.getSourcesList().clear();
+    job.getSourcesList().add(new BranchSource(newSCMSource));
+    return newSCMSource;
+  }
+
+  private SCMSource getCurrentSCMSource(WorkflowMultiBranchProject job) {
+    List<SCMSource> scmSources = job.getSCMSources();
+    if (CollectionUtils.isEmpty(scmSources)) {
+      return null;
+    }
+
+    // if there are multiple SCM sources, we only handle the first one
+    return scmSources.get(0);
+  }
+
+  private void setupOrphanedStrategy(
+      WorkflowMultiBranchProject job, V1alpha1PipelineConfig pipelineConfig) {
+    V1alpha1MultiBranchPipeline multiBranchStrategy =
+        pipelineConfig.getSpec().getStrategy().getJenkins().getMultiBranch();
+
+    if (multiBranchStrategy == null) {
+      logger.debug(
+          "No MultiBranch strategy configured in PipelineConfig, Job {} will not setup orphan items strategy",
+          job.getFullName());
+      return;
+    }
+
+    V1alpha1MultiBranchOrphan orphanStrategyConfiguration = multiBranchStrategy.getOrphaned();
+    DefaultOrphanedItemStrategy orphanedItemStrategy;
+    if (orphanStrategyConfiguration == null) {
+      orphanedItemStrategy = new DefaultOrphanedItemStrategy(false, "", "");
     } else {
-      logger.warn("Not found git repository.");
+      orphanedItemStrategy =
+          new DefaultOrphanedItemStrategy(
+              true,
+              String.valueOf(orphanStrategyConfiguration.getDays()),
+              String.valueOf(orphanStrategyConfiguration.getMax()));
     }
 
-    // handle common settings
-    if (scmSource != null) {
-      handleSCMTraits(scmSource, behaviours, gitProvider);
+    job.setOrphanedItemStrategy(orphanedItemStrategy);
+  }
 
-      handleCredentials(scmSource, pipelineConfig);
+  private WorkflowMultiBranchProject getOrCreateWorkflowMultiBranchProject(
+      V1alpha1PipelineConfig pipelineConfig) throws IOException, PipelineConfigConvertException {
 
-      job.setSourcesList(Collections.singletonList(new BranchSource(scmSource)));
-      scmSource.setOwner(job);
-      scmSource.afterSave();
+    String namespace = pipelineConfig.getMetadata().getNamespace();
+    String name = pipelineConfig.getMetadata().getName();
+    WorkflowMultiBranchProject job;
+    Item item = jenkinsClient.getItem(new NamespaceName(namespace, name));
+    if (item == null) {
+      logger.debug(
+          "Unable to found a Jenkins job for PipelineConfig '{}/{}', will create a new one",
+          namespace,
+          name);
+
+      Folder parentFolder = jenkinsClient.upsertFolder(namespace);
+      job = new WorkflowMultiBranchProject(parentFolder, mapper.jenkinsJobName(namespace, name));
+
+      MultiBranchProperty property =
+          new MultiBranchProperty(
+              namespace,
+              name,
+              pipelineConfig.getMetadata().getUid(),
+              pipelineConfig.getMetadata().getResourceVersion());
+
+      job.addProperty(property);
+    } else if (!(item instanceof WorkflowMultiBranchProject)) {
+      throw new PipelineConfigConvertException(
+          String.format(
+              "Unable to update Jenkins job, except a WorkflowMultiBranchProject but found a %s",
+              item.getClass()));
+    } else {
+      job = (WorkflowMultiBranchProject) item;
     }
+    return job;
+  }
 
+  private void setUpTriggers(WorkflowMultiBranchProject job, V1alpha1PipelineConfig pipelineConfig)
+      throws PipelineConfigConvertException {
     List<V1alpha1PipelineTrigger> triggers = pipelineConfig.getSpec().getTriggers();
     if (triggers != null) {
       Optional<V1alpha1PipelineTrigger> triggerOpt =
@@ -214,25 +298,16 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
         try {
           job.addTrigger(new CronFolderTrigger(cron.getRule(), cron.isEnabled()));
         } catch (ANTLRException e) {
-          e.printStackTrace();
+          throw new PipelineConfigConvertException(
+              String.format("Cron trigger is not legal, reason %s", e.getMessage()));
         }
       }
     }
-
-    Map<String, String> logURLs =
-        Collections.singletonMap(
-            ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG.get().toString(),
-            String.format(
-                "/job/%s/job/%s/indexing/logText/progressiveText",
-                namespace, mapper.jenkinsJobName(namespace, name)));
-    addAnnotations(pipelineConfig, logURLs);
-
-    return job;
   }
 
   // TODO should create a PR to unit the interface
   private void handleSCMTraits(
-      @NotNull SCMSource source,
+      @Nonnull SCMSource source,
       V1alpha1MultiBranchBehaviours behaviours,
       GitProviderMultiBranch gitProvider) {
     List<SCMSourceTrait> traits = new ArrayList<>();
@@ -260,7 +335,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
   // TODO should create a PR to unit the interface
   private void handleCredentials(
-      @NotNull SCMSource source, @NotNull V1alpha1PipelineConfig pipelineConfig)
+      @Nonnull SCMSource source, @Nonnull V1alpha1PipelineConfig pipelineConfig)
       throws IOException {
     String credentialId;
     try {
@@ -276,7 +351,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
   }
 
   private void addAnnotations(
-      @NotNull V1alpha1PipelineConfig pc, @NotNull Map<String, String> annotations) {
+      @Nonnull V1alpha1PipelineConfig pc, @Nonnull Map<String, String> annotations) {
     V1alpha1PipelineConfig oldPc = DeepCopyUtils.deepCopy(pc);
 
     annotations.forEach((key, value) -> pc.getMetadata().putAnnotationsItem(key, value));

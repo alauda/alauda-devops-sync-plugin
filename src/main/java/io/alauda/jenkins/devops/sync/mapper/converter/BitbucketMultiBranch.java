@@ -1,12 +1,13 @@
 package io.alauda.jenkins.devops.sync.mapper.converter;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-
+import com.cloudbees.jenkins.plugins.bitbucket.BitbucketSCMSource;
+import com.cloudbees.jenkins.plugins.bitbucket.BranchDiscoveryTrait;
+import com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait;
+import com.cloudbees.jenkins.plugins.bitbucket.ForkPullRequestDiscoveryTrait.TrustTeamForks;
+import com.cloudbees.jenkins.plugins.bitbucket.OriginPullRequestDiscoveryTrait;
 import hudson.Extension;
 import io.alauda.jenkins.devops.sync.constants.CodeRepoServices;
-import java.lang.reflect.InvocationTargetException;
 import jenkins.scm.api.SCMSource;
-import jenkins.scm.api.trait.SCMHeadAuthority;
 import jenkins.scm.api.trait.SCMSourceTrait;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -16,6 +17,7 @@ import org.slf4j.LoggerFactory;
 @Extension
 @Restricted(NoExternalUse.class)
 public class BitbucketMultiBranch implements GitProviderMultiBranch {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(BitbucketMultiBranch.class);
 
   @Override
@@ -25,68 +27,38 @@ public class BitbucketMultiBranch implements GitProviderMultiBranch {
 
   @Override
   public SCMSource getSCMSource(String repoOwner, String repository) {
-    try {
-      Class<?> scmSource = loadClass(BITBUCKET_SCM_SOURCE);
-
-      return (SCMSource)
-          scmSource.getConstructor(String.class, String.class).newInstance(repoOwner, repository);
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.warn("Exception happened while getSCMSource", e);
-    }
-
-    return null;
+    return new BitbucketSCMSource(repoOwner, repository);
   }
 
   @Override
   public SCMSourceTrait getBranchDiscoverTrait(int code) {
-    try {
-      Class<?> discoverBranchClz = loadClass(BITBUCKET_BRANCH_DISCOVERY_TRAIT);
-      return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(code);
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.warn("Exception happened while getBranchDiscoverTrait", e);
-    }
-    return null;
+    return new BranchDiscoveryTrait(code);
   }
 
   @Override
   public SCMSourceTrait getOriginPRTrait(int code) {
-    try {
-      Class<?> discoverBranchClz = loadClass(BITBUCKET_ORIGIN_PR_TRAIT);
-      return (SCMSourceTrait) discoverBranchClz.getConstructor(int.class).newInstance(code);
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.warn("Exception happened while getOriginPRTrait", e);
-    }
-    return null;
+    return new OriginPullRequestDiscoveryTrait(code);
   }
 
   @Override
   public SCMSourceTrait getForkPRTrait(int code) {
-    try {
-      Class<?> discoverBranchClz = loadClass(BITBUCKET_FORK_PR_TRAIT);
-      Class<?> trustClz = loadClass(BITBUCKET_FORK_PR_TRUST_TRAIT);
-      return (SCMSourceTrait)
-          discoverBranchClz
-              .getConstructor(int.class, SCMHeadAuthority.class)
-              .newInstance(code, trustClz.newInstance());
-    } catch (ClassNotFoundException
-        | NoSuchMethodException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException e) {
-      LOGGER.warn("Exception happened while getForkPRTrait", e);
+    return new ForkPullRequestDiscoveryTrait(code, new TrustTeamForks());
+  }
+
+  @Override
+  public boolean isSourceSame(SCMSource current, SCMSource expected) {
+    if (current == null || expected == null) {
+      return false;
     }
-    return null;
+
+    if (!current.getClass().equals(expected.getClass())) {
+      return false;
+    }
+
+    BitbucketSCMSource currentSCMSource = ((BitbucketSCMSource) current);
+    BitbucketSCMSource expectedSCMSource = ((BitbucketSCMSource) expected);
+
+    return currentSCMSource.getRepoOwner().equals(expectedSCMSource.getRepoOwner())
+        && currentSCMSource.getRepository().equals(expectedSCMSource.getRepository());
   }
 }

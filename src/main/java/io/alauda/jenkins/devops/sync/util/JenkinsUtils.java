@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
-import javax.validation.constraints.NotNull;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.MultiBranchProject;
 import org.apache.commons.collections4.CollectionUtils;
@@ -145,7 +144,7 @@ public abstract class JenkinsUtils {
    * @param triggers trigger
    * @return the exception list
    */
-  @NotNull
+  @Nonnull
   public static List<ANTLRException> setJobTriggers(
       @Nonnull WorkflowJob job, List<V1alpha1PipelineTrigger> triggers) throws IOException {
     List<ANTLRException> exceptions = new ArrayList<>();
@@ -437,7 +436,7 @@ public abstract class JenkinsUtils {
    * @param run is a build of job
    * @return if the job is a multi-branch pipeline
    */
-  public static boolean fromMultiBranch(@NotNull Run run) {
+  public static boolean fromMultiBranch(@Nonnull Run run) {
     Job wfJob = run.getParent();
     if (!(wfJob instanceof WorkflowJob)) {
       return false;

@@ -17,6 +17,9 @@ public final class PipelinePhases {
   // about to start running.
   public static final String QUEUED = "Queued";
 
+  // CANCELLING indicates that we are cancelling this execution
+  public static final String CANCELLING = "Cancelling";
+
   // RUNNING indicates that a pod has been created and a build is running.
   public static final String RUNNING = "Running";
 
