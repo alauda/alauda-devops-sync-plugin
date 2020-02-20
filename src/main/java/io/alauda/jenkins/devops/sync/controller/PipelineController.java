@@ -36,7 +36,6 @@ import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -288,45 +287,39 @@ public class PipelineController
                 pipelineConfig.getMetadata().getName());
             return new Result(true);
           }
-          boolean succeed;
+
           try {
             if (isRelayed(pipelineCopy)) {
-              String orginalName =
+              String originalName =
                   pipelineCopy.getMetadata().getLabels().get(PIPELINE_LABELS_REPLAYED_FROM);
-              V1alpha1Pipeline originalPipeline = lister.namespace(namespace).get(orginalName);
+              V1alpha1Pipeline originalPipeline = lister.namespace(namespace).get(originalName);
 
-              logger.info("replayed from " + orginalName);
+              logger.info("[{}] Pipeline '{}/{}' Replayed from Pipeline '{}/{}'", getControllerName(),
+                      namespace, name, namespace, originalName);
 
               // 放到到 JenkinsUtils 里
-              succeed =
-                  ReplayUtils.replayJob(
-                      job, pipelineConfig.getMetadata().getUid(), pipelineCopy, originalPipeline);
+              ReplayUtils.replayJob(
+                  job, pipelineConfig.getMetadata().getUid(), pipelineCopy, originalPipeline);
             } else {
-              succeed = JenkinsUtils.triggerJob(job, pipelineCopy);
+              JenkinsUtils.triggerJob(job, pipelineCopy);
             }
-          } catch (IOException e) {
+
+            logger.info("[{}] Successfully triggered Pipeline '{}/{}'", getControllerName(),
+                namespace, name);
+            pipelineCopy.getStatus().setPhase(QUEUED);
+          } catch (Exception e) {
             logger.info(
                 "[{}] Unable to trigger Pipeline '{}/{}', reason: {}",
                 getControllerName(),
                 namespace,
                 name,
                 e.getMessage());
-            return new Result(true);
-          } catch (Exception e) {
-            logger.error("unknown errors occurred when trigger job", e);
-            return new Result(true);
+
+            pipelineCopy.getStatus().setPhase(FAILED);
           }
 
-          logger.debug("[{}] Will update Pipeline '{}/{}'", getControllerName(), namespace, name);
-          if (succeed) {
-            pipelineCopy.getStatus().setPhase(QUEUED);
-            succeed = pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(!succeed);
-          } else {
-            pipelineCopy.getStatus().setPhase(FAILED);
-            pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(true);
-          }
+          pipelineClient.update(pipeline, pipelineCopy);
+          return new Result(false);
         }
 
         if (AlaudaUtils.isCancellable(pipelineCopy.getStatus())

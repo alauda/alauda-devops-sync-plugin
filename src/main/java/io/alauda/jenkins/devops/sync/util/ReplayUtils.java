@@ -10,6 +10,7 @@ import hudson.model.Queue;
 import hudson.model.Run;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
+import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -21,7 +22,6 @@ import jenkins.model.ParameterizedJobMixIn;
 import jenkins.scm.api.SCMRevisionAction;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowExecution;
 import org.jenkinsci.plugins.workflow.cps.replay.OriginalLoadedScripts;
-import org.jenkinsci.plugins.workflow.cps.replay.ReplayAction;
 import org.jenkinsci.plugins.workflow.cps.replay.ReplayCause;
 import org.jenkinsci.plugins.workflow.flow.FlowExecution;
 import org.jenkinsci.plugins.workflow.flow.FlowExecutionOwner;
@@ -31,90 +31,72 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ReplayUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(ReplayUtils.class);
 
   /**
    * Replay a pipeline job base on another one which store in the metadata labels
    *
-   * @param job is a pipeline job of Jenkins
+   * @param job               is a pipeline job of Jenkins
    * @param pipelineConfigUID is the uid of PipelineConfig
-   * @param currentPipeline the current pipeline
-   * @param originalPipeline the original pipeline
-   * @return true, if there's no any error
+   * @param currentPipeline   the current pipeline
+   * @param originalPipeline  the original pipeline
    */
-  public static boolean replayJob(
-      WorkflowJob job,
-      String pipelineConfigUID,
-      V1alpha1Pipeline currentPipeline,
-      V1alpha1Pipeline originalPipeline) {
+  public static void replayJob(WorkflowJob job, String pipelineConfigUID,
+      V1alpha1Pipeline currentPipeline, V1alpha1Pipeline originalPipeline)
+      throws PipelineException {
+    String namespace = currentPipeline.getMetadata().getNamespace();
+    String currentPipelineName = currentPipeline.getMetadata().getName();
+
     WorkflowRun originalRun = JenkinsUtils.getRun(job, originalPipeline);
     if (originalRun == null) {
       V1ObjectMeta originalMeta = originalPipeline.getMetadata();
-      logger.error(
-          "cannot find the original run of pipeline %s/%s",
-          originalMeta.getNamespace(), originalMeta.getName());
-      return false;
+      throw new PipelineException(
+          String.format("Cannot find the original run of pipeline %s/%s",
+              originalMeta.getNamespace(), originalMeta.getName()));
     }
 
-    Class<ReplayAction> replayActionCls = ReplayAction.class;
-    ReplayAction replayAction = null;
+    List<Action> actions = new ArrayList<>();
+    CpsFlowExecution execution = ReplayUtils.getExecution(originalRun);
+    if (execution == null) {
+      throw new PipelineException(
+          "Cannot get CpsFlowExecution from the originalRun " + originalRun);
+    }
+
     try {
-      Constructor<ReplayAction> construactor = replayActionCls.getDeclaredConstructor(Run.class);
-      construactor.setAccessible(true);
-      replayAction = construactor.newInstance(originalRun);
+      actions.add(getReplayFlowFactoryAction(execution));
+    } catch (Throwable e) {
+      throw new PipelineException("Cannot get ReplayFlowFactoryAction", e);
+    }
+
+    actions.add(
+        new CauseAction(
+            new Cause.UserIdCause(),
+            getReplayCause(originalRun),
+            new JenkinsPipelineCause(currentPipeline, pipelineConfigUID)));
+
+    for (Class<? extends Action> c : COPIED_ACTIONS) {
+      actions.addAll(originalRun.getActions(c));
+    }
+
+    try {
+      logger.debug("Ready to replay {} for Pipeline {}/{}",
+          originalRun.getParent(),
+          namespace, currentPipelineName);
+
+      Queue.Item item =
+          ParameterizedJobMixIn.scheduleBuild2(
+              originalRun.getParent(), 0, actions.toArray(new Action[0]));
+      logger.debug("Replayed Pipeline '{}/{}' action result {}", namespace, currentPipeline, item);
+
+      if (item == null) {
+        throw new PipelineException("Unable to schedule a replay, build might be not replayable");
+      }
+
     } catch (Exception e) {
-      logger.error("cannot get constructor of ReplayAction", e);
+      throw new PipelineException("Trigger the replay build failure", e);
     }
 
-    if (replayAction != null) {
-      List<Action> actions = new ArrayList<Action>();
-      CpsFlowExecution execution = ReplayUtils.getExecution(originalRun);
-      if (execution == null) {
-        logger.error("cannot get CpsFlowExecution from the originalRun " + originalRun);
-        return false;
-      }
-
-      logger.debug("CpsFlowExecution " + execution);
-
-      try {
-        actions.add(getReplayFlowFactoryAction(execution));
-      } catch (Throwable e) {
-        logger.error("cannot get ReplayFlowFactoryAction", e);
-      }
-
-      logger.debug("actions with ReplayFlowFactoryAction " + actions);
-
-      actions.add(
-          new CauseAction(
-              new Cause.UserIdCause(),
-              getReplayCause(originalRun),
-              new JenkinsPipelineCause(currentPipeline, pipelineConfigUID)));
-
-      logger.debug("actions with CauseAction " + actions);
-
-      for (Class<? extends Action> c : COPIED_ACTIONS) {
-        actions.addAll(originalRun.getActions(c));
-
-        logger.debug("actions with COPIED_ACTIONS " + actions);
-      }
-
-      try {
-        logger.debug("ready to replay " + originalRun.getParent());
-
-        Queue.Item item =
-            ParameterizedJobMixIn.scheduleBuild2(
-                originalRun.getParent(), 0, actions.toArray(new Action[actions.size()]));
-        logger.debug("replay action result " + item);
-
-        return item != null;
-      } catch (Exception e) {
-        logger.error("trigger the replay build failure", e);
-      }
-    } else {
-      logger.error("cannot get the instance of ReplayAction");
-    }
-
-    return false;
   }
 
   private static Action getReplayFlowFactoryAction(CpsFlowExecution execution) {
@@ -150,7 +132,7 @@ public class ReplayUtils {
 
   private static Map<String, String> getOriginalLoadedScripts(CpsFlowExecution execution) {
     if (execution == null) { // ?
-      return Collections.<String, String>emptyMap();
+      return Collections.emptyMap();
     }
     Map<String, String> scripts = new TreeMap<>();
     for (OriginalLoadedScripts replayer : ExtensionList.lookup(OriginalLoadedScripts.class)) {
