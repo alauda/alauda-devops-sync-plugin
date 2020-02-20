@@ -33,17 +33,14 @@ import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.model.listeners.RunListener;
 import hudson.triggers.SafeTimerTask;
-import io.alauda.devops.java.client.models.V1alpha1Pipeline;
-import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
-import io.alauda.devops.java.client.models.V1alpha1PipelineStatus;
-import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkins;
-import io.alauda.devops.java.client.models.V1alpha1PipelineStatusJenkinsBuilder;
+import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
+import io.alauda.jenkins.devops.sync.action.PipelineAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
@@ -618,6 +615,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     newPipeline.getMetadata().setAnnotations(annotations);
 
     badgeHandle(run, annotations);
+    mountActionsPipeline(run.getAllActions(), newPipeline);
 
     V1alpha1PipelineStatus status =
         createPipelineStatus(
@@ -630,7 +628,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
           String.format(
               "Failed updated pipeline: '%s/%s",
               newPipeline.getMetadata().getNamespace(), newPipeline.getMetadata().getName()));
-      return new Result(true);
+      return new Result(false);
     } else {
       logger.fine(
           String.format(
@@ -642,6 +640,39 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     cause.setNumStages(newNumStages);
     cause.setLastUpdateToAlaudaDevOps(TimeUnit.NANOSECONDS.toMillis(System.nanoTime()));
     return new Result(false);
+  }
+
+  /** Used to hang action data in the pipeline and provide it to DSL for real-time acquisition. */
+  public static void mountActionsPipeline(
+      List<? extends Action> actions, V1alpha1Pipeline pipeline) {
+    if (actions == null || pipeline == null) {
+      return;
+    }
+    List<V1alpha1PipelineStatusInfoItem> items = new ArrayList<>();
+    actions
+        .stream()
+        .filter(
+            action -> {
+              return action.getClass().equals(PipelineAction.class);
+            })
+        .forEach(
+            action -> {
+              PipelineAction pa = (PipelineAction) action;
+              pa.getItems()
+                  .forEach(
+                      item -> {
+                        V1alpha1PipelineStatusInfoItem data = new V1alpha1PipelineStatusInfoItem();
+                        data.setValue(item.getValue());
+                        data.setType(item.getType());
+                        data.setDescription(item.getDesc());
+                        data.setName(item.getName());
+                        items.add(data);
+                      });
+            });
+    if (pipeline.getStatus().getInformation() == null) {
+      pipeline.getStatus().setInformation(new V1alpha1PipelineStatusInfo());
+    }
+    pipeline.getStatus().getInformation().setItems(items);
   }
 
   private void badgeHandle(@Nonnull Run run, Map<String, String> annotations) {

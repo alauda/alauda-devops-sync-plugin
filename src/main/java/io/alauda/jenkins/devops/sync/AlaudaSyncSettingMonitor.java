@@ -14,9 +14,9 @@ import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.interceptor.RequirePOST;
 
 @Extension
-@Symbol("alaudaSyncSetting")
+@Symbol("alaudaSyncStatus")
 public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
-  public static final String ID = "AlaudaSyncSetting";
+  public static final String ID = "alaudaSyncStatus";
   private String message;
 
   static AlaudaSyncSettingMonitor get(Jenkins j) {
@@ -29,14 +29,14 @@ public class AlaudaSyncSettingMonitor extends AdministrativeMonitor {
 
   @Override
   public String getDisplayName() {
-    return ID;
+    return "Alauda DevOps Sync plugin status";
   }
 
   @Override
   public boolean isActivated() {
     boolean isStarted = ResourceControllerManager.getControllerManager().isStarted();
 
-    message = ResourceControllerManager.getControllerManager().getPluginStatus();
+    message = ResourceControllerManager.getControllerManager().getManagerStatus();
     if (!isStarted && StringUtils.isEmpty(message)) {
       message = "Resource Sync Manger has not started yet";
     }

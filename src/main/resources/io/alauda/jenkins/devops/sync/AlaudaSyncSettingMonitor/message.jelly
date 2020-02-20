@@ -29,7 +29,8 @@ THE SOFTWARE.
       <f:submit name="yes" value="${%Go to Configure}"/>
       <f:submit name="no" value="${%Dismiss}"/>
     </form>
-    <div>Alauda DevOps Sync plugin is not working, cannot sync resource to Jenkins now. </div>
+    <div>Alauda DevOps Sync plugin is not working, cannot sync resource to Jenkins now.</div>
+    <br/>
     <div>reason: ${it.message}</div>
   </div>
 </j:jelly>
