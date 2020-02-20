@@ -106,7 +106,6 @@ public class NamespaceController
                         .build())
             .withReconciler(new NamespaceReconciler(new Lister<>(informer.getIndexer())))
             .withName(CONTROLLER_NAME)
-            .withReadyFunc(informer::hasSynced)
             .withWorkerCount(1)
             .build();
 

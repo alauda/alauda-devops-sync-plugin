@@ -79,7 +79,6 @@ public class JenkinsBindingController
                         .build())
             .withReconciler(request -> new Result(false))
             .withName("JenkinsBindingController")
-            .withReadyFunc(informer::hasSynced)
             .withWorkerCount(1)
             .build();
 

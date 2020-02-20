@@ -148,7 +148,6 @@ public class PipelineController
                         .build())
             .withReconciler(new PipelineReconciler(new Lister<>(informer.getIndexer())))
             .withName(CONTROLLER_NAME)
-            .withReadyFunc(Clients::allRegisteredResourcesSynced)
             .withWorkerCount(4)
             .build();
 
@@ -295,7 +294,7 @@ public class PipelineController
               V1alpha1Pipeline originalPipeline = lister.namespace(namespace).get(originalName);
 
               logger.info("[{}] Pipeline '{}/{}' Replayed from Pipeline '{}/{}'", getControllerName(),
-                      namespace, name, namespace, originalName);
+                  namespace, name, namespace, originalName);
 
               // 放到到 JenkinsUtils 里
               ReplayUtils.replayJob(

@@ -37,13 +37,16 @@ public class ReplayUtils {
   /**
    * Replay a pipeline job base on another one which store in the metadata labels
    *
-   * @param job               is a pipeline job of Jenkins
+   * @param job is a pipeline job of Jenkins
    * @param pipelineConfigUID is the uid of PipelineConfig
-   * @param currentPipeline   the current pipeline
-   * @param originalPipeline  the original pipeline
+   * @param currentPipeline the current pipeline
+   * @param originalPipeline the original pipeline
    */
-  public static void replayJob(WorkflowJob job, String pipelineConfigUID,
-      V1alpha1Pipeline currentPipeline, V1alpha1Pipeline originalPipeline)
+  public static void replayJob(
+      WorkflowJob job,
+      String pipelineConfigUID,
+      V1alpha1Pipeline currentPipeline,
+      V1alpha1Pipeline originalPipeline)
       throws PipelineException {
     String namespace = currentPipeline.getMetadata().getNamespace();
     String currentPipelineName = currentPipeline.getMetadata().getName();
@@ -52,7 +55,8 @@ public class ReplayUtils {
     if (originalRun == null) {
       V1ObjectMeta originalMeta = originalPipeline.getMetadata();
       throw new PipelineException(
-          String.format("Cannot find the original run of pipeline %s/%s",
+          String.format(
+              "Cannot find the original run of pipeline %s/%s",
               originalMeta.getNamespace(), originalMeta.getName()));
     }
 
@@ -80,9 +84,11 @@ public class ReplayUtils {
     }
 
     try {
-      logger.debug("Ready to replay {} for Pipeline {}/{}",
+      logger.debug(
+          "Ready to replay {} for Pipeline {}/{}",
           originalRun.getParent(),
-          namespace, currentPipelineName);
+          namespace,
+          currentPipelineName);
 
       Queue.Item item =
           ParameterizedJobMixIn.scheduleBuild2(
@@ -96,7 +102,6 @@ public class ReplayUtils {
     } catch (Exception e) {
       throw new PipelineException("Trigger the replay build failure", e);
     }
-
   }
 
   private static Action getReplayFlowFactoryAction(CpsFlowExecution execution) {

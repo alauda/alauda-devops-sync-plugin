@@ -2,8 +2,7 @@ package io.alauda.jenkins.devops.sync.exception;
 
 public class PipelineException extends Exception {
 
-  public PipelineException() {
-  }
+  public PipelineException() {}
 
   public PipelineException(String message) {
     super(message);
@@ -17,8 +16,8 @@ public class PipelineException extends Exception {
     super(cause);
   }
 
-  public PipelineException(String message, Throwable cause, boolean enableSuppression,
-      boolean writableStackTrace) {
+  public PipelineException(
+      String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
     super(message, cause, enableSuppression, writableStackTrace);
   }
 }
