@@ -13,6 +13,7 @@ import io.alauda.jenkins.devops.support.KubernetesCluster;
 import io.alauda.jenkins.devops.support.KubernetesClusterConfiguration;
 import io.alauda.jenkins.devops.support.KubernetesClusterConfigurationListener;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
+import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.kubernetes.client.ApiClient;
@@ -55,34 +56,18 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
 
   public synchronized void start() {
     // shutdown the controllerManager started before
-    if (isStarted()) {
-      shutdown(null);
-    }
+    shutdown(null);
 
     controllerManagerThread = Executors.newSingleThreadExecutor();
     controllerManagerThread.submit(
         () -> {
-          pollWithNoInitialDelay(
-              Duration.ofMinutes(1),
-              Duration.ofDays(1),
-              () -> {
-                boolean isEnabled = AlaudaSyncGlobalConfiguration.get().isEnabled();
-                if (!isEnabled) {
-                  managerStatus =
-                      "Alauda DevOps Sync plugin has been disabled, will not start to sync with devops-apiserver";
-                  logger.warn(
-                      "[ResourceControllerManager] Alauda DevOps Sync plugin has been disabled, will not start to sync with devops-apiserver");
-                  return false;
-                }
+          waitForJenkinsSetup();
 
-                return checkAndSetupJenkins();
-              });
-
-          logger.warn("[ResourceControllerManager] Starting initialize controller manager");
+          logger.info("[ResourceControllerManager] Starting initialize controller manager");
           SharedInformerFactory informerFactory = new SharedInformerFactory();
 
           ExtensionList<ResourceController> resourceControllers = ResourceController.all();
-          logger.warn(
+          logger.info(
               "[ResourceControllerManager] Found {} resource controllers",
               resourceControllers.size());
 
@@ -96,12 +81,53 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
 
           controllerManager = controllerManagerBuilder.build();
 
+          logger.info(
+              "[ResourceControllerManager] ControllerManager initialized, waiting for informers sync");
+          informerFactory.startAllRegisteredInformers();
+
+          if (!waitForInformersSync()) {
+            logger.warn(
+                "[ResourceControllerManager] Timeout to wait for informers sync, will restart controllerManager");
+            this.restart();
+            return;
+          }
+
           managerStatus = "";
           started.set(true);
           Metrics.syncManagerUpGauge.set(1);
 
+          logger.info("[ResourceControllerManager] Start controllerManager");
           controllerManager.run();
         });
+  }
+
+  private void waitForJenkinsSetup() {
+    pollWithNoInitialDelay(
+        Duration.ofMinutes(1),
+        // we cannot set a infinite duration here, so we set it to one year, this should be long
+        // enough
+        Duration.ofDays(365),
+        () -> {
+          boolean isEnabled = AlaudaSyncGlobalConfiguration.get().isEnabled();
+          if (!isEnabled) {
+            managerStatus =
+                "Alauda DevOps Sync plugin has been disabled, will not start to sync with devops-apiserver";
+            logger.warn(
+                "[ResourceControllerManager] Alauda DevOps Sync plugin has been disabled, will not start to sync with devops-apiserver");
+            return false;
+          }
+
+          return checkAndSetupJenkins();
+        });
+  }
+
+  private boolean waitForInformersSync() {
+    return pollWithNoInitialDelay(
+        Duration.ofSeconds(5),
+        // if informers didn't sync after 30 minutes, we should stop to recheck it as there must
+        // some network or configuration problems.
+        Duration.ofMinutes(30),
+        Clients::allRegisteredResourcesSynced);
   }
 
   private boolean checkAndSetupJenkins() {

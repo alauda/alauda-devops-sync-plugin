@@ -48,17 +48,14 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * @author suren
- */
+/** @author suren */
 public abstract class JenkinsUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(JenkinsUtils.class);
   private static final String PARAM_FROM_ENV_DESCRIPTION =
       "From Alauda DevOps PipelineConfig Parameter";
 
-  private JenkinsUtils() {
-  }
+  private JenkinsUtils() {}
 
   public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(
       WorkflowJob job, List<V1alpha1PipelineParameter> params, boolean replaceExisting)
@@ -140,7 +137,7 @@ public abstract class JenkinsUtils {
   /**
    * Override job's triggers
    *
-   * @param job      Workflow Job need to add triggers
+   * @param job Workflow Job need to add triggers
    * @param triggers trigger
    * @return the exception list
    */
@@ -336,8 +333,8 @@ public abstract class JenkinsUtils {
     String commit = null;
     if (pipMeta.getAnnotations() != null
         && pipMeta
-        .getAnnotations()
-        .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
+            .getAnnotations()
+            .containsKey(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString())) {
       commit = pipMeta.getAnnotations().get(ALAUDA_DEVOPS_ANNOTATIONS_COMMIT.get().toString());
     }
 
@@ -357,7 +354,7 @@ public abstract class JenkinsUtils {
 
     Action[] actionArray;
     if (pipelineActions.size() == 0) {
-      actionArray = new Action[]{};
+      actionArray = new Action[] {};
     } else {
       actionArray = pipelineActions.toArray(new Action[0]);
     }
