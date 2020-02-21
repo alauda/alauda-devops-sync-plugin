@@ -7,11 +7,11 @@ import io.jenkins.plugins.gitlabbranchsource.BranchDiscoveryTrait;
 import io.jenkins.plugins.gitlabbranchsource.ForkMergeRequestDiscoveryTrait;
 import io.jenkins.plugins.gitlabbranchsource.ForkMergeRequestDiscoveryTrait.TrustPermission;
 import io.jenkins.plugins.gitlabbranchsource.GitLabSCMSource;
+import io.jenkins.plugins.gitlabbranchsource.OriginMergeRequestDiscoveryTrait;
 import io.jenkins.plugins.gitlabserverconfig.servers.GitLabServers;
 import jenkins.plugins.git.traits.CloneOptionTrait;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMSourceTrait;
-import org.jenkinsci.plugins.github_branch_source.OriginPullRequestDiscoveryTrait;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.slf4j.Logger;
@@ -45,7 +45,7 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
 
   @Override
   public SCMSourceTrait getOriginPRTrait(int code) {
-    return new OriginPullRequestDiscoveryTrait(code);
+    return new OriginMergeRequestDiscoveryTrait(code);
   }
 
   @Override
