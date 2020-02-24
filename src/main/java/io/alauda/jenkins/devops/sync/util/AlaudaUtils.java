@@ -353,7 +353,7 @@ public abstract class AlaudaUtils {
 
   public static boolean isCancellable(V1alpha1PipelineStatus pipelineStatus) {
     String phase = pipelineStatus.getPhase();
-    return phase.equals(CANCELLING);
+    return phase.equals(QUEUED) || phase.equals(PENDING) || phase.equals(RUNNING);
   }
 
   public static boolean isNew(V1alpha1PipelineStatus pipelineStatus) {
