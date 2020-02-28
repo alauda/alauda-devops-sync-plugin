@@ -150,7 +150,6 @@ public class PipelineController
                         .build())
             .withReconciler(new PipelineReconciler(new Lister<>(informer.getIndexer())))
             .withName(CONTROLLER_NAME)
-            .withReadyFunc(Clients::allRegisteredResourcesSynced)
             .withWorkerCount(4)
             .build();
 
