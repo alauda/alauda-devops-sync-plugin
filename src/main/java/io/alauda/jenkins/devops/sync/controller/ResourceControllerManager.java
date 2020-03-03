@@ -22,12 +22,14 @@ import io.kubernetes.client.Configuration;
 import io.kubernetes.client.extended.controller.ControllerManager;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
-import io.kubernetes.client.extended.wait.Wait;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import jenkins.model.identity.IdentityRootAction;
@@ -37,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 @Extension
 public class ResourceControllerManager implements KubernetesClusterConfigurationListener {
+
   private static final Logger logger = LoggerFactory.getLogger(ResourceControllerManager.class);
 
   private ControllerManager controllerManager;
@@ -52,29 +55,9 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
     controllerManagerThread = Executors.newSingleThreadExecutor();
     controllerManagerThread.submit(
         () -> {
-          Wait.poll(
-              Duration.ofMinutes(1),
-              Duration.ofDays(1),
-              () -> {
-                boolean isEnabled = AlaudaSyncGlobalConfiguration.get().isEnabled();
-                if (!isEnabled) {
-                  logger.warn(
-                      "[ResourceControllerManager] Alauda DevOps Sync plugin is disabled, won't start controllers");
-                  return false;
-                }
+          waitForJenkinsSetup();
+          logger.info("[ResourceControllerManager] Starting initialize controller manager");
 
-                String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
-                if (!checkJenkinsService(jenkinsService)) {
-                  logger.warn(
-                      "[ResourceControllerManager] The target Jenkins service {} is invalid, reason {}",
-                      jenkinsService,
-                      pluginStatus);
-                  return false;
-                }
-                return true;
-              });
-
-          logger.warn("[ResourceControllerManager] Starting initialize controller manager");
           SharedInformerFactory informerFactory = new SharedInformerFactory();
 
           ExtensionList<ResourceController> resourceControllers = ResourceController.all();
@@ -91,6 +74,16 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
               });
 
           controllerManager = controllerManagerBuilder.build();
+
+          logger.info(
+              "[ResourceControllerManager] ControllerManager initialized, waiting for informers sync");
+          informerFactory.startAllRegisteredInformers();
+          if (!waitForInformersSync()) {
+            logger.warn(
+                "[ResourceControllerManager] Timeout to wait for informers sync, will restart controllerManager");
+            this.restart();
+            return;
+          }
 
           pluginStatus = "";
           started.set(true);
@@ -128,7 +121,38 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
     }
   }
 
-  private boolean checkJenkinsService(String jenkinsService) {
+  private boolean waitForInformersSync() {
+    return pollWithNoInitialDelay(
+        Duration.ofSeconds(5),
+        // if informers didn't sync after 30 minutes, we should stop to recheck it as there must
+        // some network or configuration problems.
+        Duration.ofMinutes(30),
+        Clients::allRegisteredResourcesSynced);
+  }
+
+  private void waitForJenkinsSetup() {
+    pollWithNoInitialDelay(
+        Duration.ofMinutes(1),
+        // we cannot set a infinite duration here, so we set it to one year, this should be long
+        // enough
+        Duration.ofDays(365),
+        () -> {
+          boolean isEnabled = AlaudaSyncGlobalConfiguration.get().isEnabled();
+          if (!isEnabled) {
+            pluginStatus =
+                "Alauda DevOps Sync plugin has been disabled, will not start to sync with devops-apiserver";
+            logger.warn(
+                "[ResourceControllerManager] Alauda DevOps Sync plugin has been disabled, will not start to sync with devops-apiserver");
+            return false;
+          }
+
+          return checkJenkinsService();
+        });
+  }
+
+  private boolean checkJenkinsService() {
+    String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
+
     if (StringUtils.isEmpty(jenkinsService)) {
       pluginStatus =
           "[ResourceControllerManager] Plugin cannot get mapped Jenkins Service, jenkins service name in configuration is empty";
@@ -189,7 +213,7 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
                 jenkinsService, "Patch failed");
         return false;
       }
-    } else if (!org.apache.commons.lang.StringUtils.equals(currentFingerprint, fingerprint)) {
+    } else if (!StringUtils.equals(currentFingerprint, fingerprint)) {
       pluginStatus =
           String.format(
               "[ResourceControllerManager] Fingerprint from target Jenkins service %s does not match with current Jenkins %s.",
@@ -208,6 +232,7 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
   public String getPluginStatus() {
     return pluginStatus;
   }
+
   // TODO: should throw Expection or something can warn us when baseDomain is wrong
   public Supplier<String> getFormattedAnnotation(String annotation) {
     return new Supplier<String>() {
@@ -229,5 +254,44 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
 
   public static ResourceControllerManager getControllerManager() {
     return ExtensionList.lookup(ResourceControllerManager.class).get(0);
+  }
+
+  /**
+   * Will check condition immediately, if failed then start polling in interval
+   *
+   * @param interval the interval period
+   * @param timeout the timeout period
+   * @param condition condition func which polling will check
+   * @return
+   */
+  private boolean pollWithNoInitialDelay(
+      Duration interval, Duration timeout, Supplier<Boolean> condition) {
+    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    AtomicBoolean result = new AtomicBoolean(false);
+    long dueDate = System.currentTimeMillis() + timeout.toMillis();
+    ScheduledFuture<?> future =
+        executorService.scheduleAtFixedRate(
+            () -> {
+              try {
+                result.set(condition.get());
+              } catch (Exception e) {
+                result.set(false);
+              }
+            },
+            Duration.ZERO.toMillis(),
+            interval.toMillis(),
+            TimeUnit.MILLISECONDS);
+    try {
+      while (System.currentTimeMillis() < dueDate) {
+        if (result.get()) {
+          future.cancel(true);
+          return true;
+        }
+      }
+    } catch (Exception e) {
+      return result.get();
+    }
+    future.cancel(true);
+    return result.get();
   }
 }

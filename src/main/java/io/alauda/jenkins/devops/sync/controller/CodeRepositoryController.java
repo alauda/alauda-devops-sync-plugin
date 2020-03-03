@@ -83,7 +83,6 @@ public class CodeRepositoryController
             .withReconciler(request -> new Result(false))
             .withName("CodeRepositoryController")
             .withWorkerCount(1)
-            .withReadyFunc(informer::hasSynced)
             .build();
 
     managerBuilder.addController(controller);

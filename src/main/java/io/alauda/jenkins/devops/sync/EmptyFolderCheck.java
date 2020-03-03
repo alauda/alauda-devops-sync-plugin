@@ -92,9 +92,9 @@ public class EmptyFolderCheck extends AsyncPeriodicWork {
                 try {
                   folder.delete();
                 } catch (IOException e) {
-                  e.printStackTrace();
+                  logger.warn("Error when deleting folder {}", folder.getName());
                 } catch (InterruptedException e) {
-                  e.printStackTrace();
+                  logger.warn("Error when deleting folder {}", folder.getName());
                   Thread.currentThread().interrupt();
                 }
               });
