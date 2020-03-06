@@ -293,8 +293,13 @@ public class PipelineController
                   pipelineCopy.getMetadata().getLabels().get(PIPELINE_LABELS_REPLAYED_FROM);
               V1alpha1Pipeline originalPipeline = lister.namespace(namespace).get(originalName);
 
-              logger.info("[{}] Pipeline '{}/{}' Replayed from Pipeline '{}/{}'", getControllerName(),
-                  namespace, name, namespace, originalName);
+              logger.info(
+                  "[{}] Pipeline '{}/{}' Replayed from Pipeline '{}/{}'",
+                  getControllerName(),
+                  namespace,
+                  name,
+                  namespace,
+                  originalName);
 
               // 放到到 JenkinsUtils 里
               ReplayUtils.replayJob(
@@ -303,8 +308,11 @@ public class PipelineController
               JenkinsUtils.triggerJob(job, pipelineCopy);
             }
 
-            logger.info("[{}] Successfully triggered Pipeline '{}/{}'", getControllerName(),
-                namespace, name);
+            logger.info(
+                "[{}] Successfully triggered Pipeline '{}/{}'",
+                getControllerName(),
+                namespace,
+                name);
             pipelineCopy.getStatus().setPhase(QUEUED);
           } catch (Exception e) {
             logger.info(

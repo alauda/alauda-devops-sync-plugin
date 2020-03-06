@@ -1,6 +1,7 @@
 package io.alauda.jenkins.devops.sync.controller;
 
 import hudson.Extension;
+import hudson.model.Item;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
@@ -37,6 +38,8 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang.StringUtils;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -304,7 +307,14 @@ public class PipelineConfigController
             e.getMessage());
         conditions.add(ConditionsUtils.convertToCondition(e));
       }
-      if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
+
+      Item item = JenkinsClient.getInstance().getItem(new NamespaceName(namespace, name));
+      if ((item instanceof WorkflowMultiBranchProject
+              && ((WorkflowMultiBranchProject) item).isDisabled())
+          || (item instanceof WorkflowJob && ((WorkflowJob) item).isDisabled())) {
+        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.DISABLED);
+        logger.debug("Item is disabled, " + item);
+      } else if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
         pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
         DateTime now = DateTime.now();
         pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
