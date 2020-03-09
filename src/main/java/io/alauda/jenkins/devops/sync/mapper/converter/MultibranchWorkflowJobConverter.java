@@ -152,7 +152,6 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
             scmSource =
                 ((PrivateGitProviderMultiBranch) gitProvider)
                     .getSCMSource(serverName, repoOwner, repository);
-            if (scmSource == null) {}
           } else {
             scmSource = gitProvider.getSCMSource(repoOwner, repository);
           }
@@ -160,6 +159,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           // if we cannot create SCMSource, we will fallback to use GitSCMSource
           if (scmSource == null) {
             scmSource = new GitSCMSource(source.getGit().getUri());
+            gitProvider = null;
           }
 
           setNewSCMSource(job, scmSource);
@@ -177,6 +177,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           // if we cannot create SCMSource, we will fallback to use GitSCMSource
           if (expectedSCMSource == null) {
             scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+            gitProvider = null;
           } else if (!gitProvider.isSourceSame(scmSource, expectedSCMSource)) {
             // if the current SCMSource is not the same repo with PipelineConfig's, we will
             // overwrite it.
