@@ -159,6 +159,7 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
 
       // add condition here
       PipelineConfigUtils.updateDisabledStatus(pipelineConfig, job.isDisabled(), "ACP");
+    }
 
     return job;
   }
