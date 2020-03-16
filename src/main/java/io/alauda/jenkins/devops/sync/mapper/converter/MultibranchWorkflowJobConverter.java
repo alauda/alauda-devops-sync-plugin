@@ -289,7 +289,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
         methodSetDisabled.setAccessible(true);
         methodSetDisabled.invoke(job, pipelineConfig.getSpec().isDisabled());
       } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-        e.printStackTrace();
+        logger.error("set job disable failed", e);
       }
 
       // add condition here

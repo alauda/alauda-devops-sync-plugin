@@ -154,7 +154,7 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
         methodSetDisabled.setAccessible(true);
         methodSetDisabled.invoke(job, pipelineConfig.getSpec().isDisabled());
       } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-        e.printStackTrace();
+        logger.error("set job disable failed", e);
       }
 
       // add condition here
