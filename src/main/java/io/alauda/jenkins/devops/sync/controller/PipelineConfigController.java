@@ -309,12 +309,13 @@ public class PipelineConfigController
       }
 
       Item item = JenkinsClient.getInstance().getItem(new NamespaceName(namespace, name));
-      if ((item instanceof WorkflowMultiBranchProject
+
+      boolean disabled = (item instanceof WorkflowMultiBranchProject
               && ((WorkflowMultiBranchProject) item).isDisabled())
-          || (item instanceof WorkflowJob && ((WorkflowJob) item).isDisabled())) {
-        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.DISABLED);
-        logger.debug("Item is disabled, " + item);
-      } else if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
+              || (item instanceof WorkflowJob && ((WorkflowJob) item).isDisabled());
+      PipelineConfigUtils.updateDisabledStatus(pipelineConfigCopy, disabled);
+
+      if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
         pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
         DateTime now = DateTime.now();
         pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));

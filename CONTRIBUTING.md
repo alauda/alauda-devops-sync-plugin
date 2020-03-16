@@ -9,11 +9,11 @@
 In order to get the status of PipelineConfig (or Pipeline) easily. There're some significant phases need to add the conditions. 
 We maintain all conditions below:
 
-| Condition | Resource | When |
-|---|---|---|
-| `invalid scm source` | `PipelineConfig` | None |
-| `lack of plugin dependencies` | `PipelineConfig` | None |
-| `disabled or enabled PipelineConfig` | `PipelineConfig` | None |
+| Type | Status | Reason | Message | Resource |
+|---|---|---|---|---|
+| | | | `invalid scm source` | `PipelineConfig` |
+| | | | `lack of plugin dependencies` | `PipelineConfig` |
+| `Specific Modified` | `OK` | `Disabled or Enabled` | `PipelineConfig disabled (or enabled) by ACP (or Jenkins)` | `PipelineConfig` |
 
 ### Unit Test
 

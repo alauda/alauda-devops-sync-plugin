@@ -43,6 +43,8 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
+
+import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import jenkins.branch.Branch;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.transport.RemoteConfig;
@@ -238,11 +240,7 @@ public abstract class PipelineConfigToJobMapper {
     // take care of job's params
     updateParameters(job, pipelineConfig);
 
-    if (job.isDisabled()) {
-      pipelineConfig.getStatus().setPhase(PipelineConfigPhase.DISABLED);
-    } else {
-      pipelineConfig.getStatus().setPhase(PipelineConfigPhase.READY);
-    }
+    PipelineConfigUtils.updateDisabledStatus(pipelineConfig, job.isDisabled());
 
     FlowDefinition definition = job.getDefinition();
     if (definition instanceof CpsScmFlowDefinition) {

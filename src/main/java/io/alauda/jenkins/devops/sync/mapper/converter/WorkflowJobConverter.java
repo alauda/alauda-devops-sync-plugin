@@ -17,8 +17,11 @@ import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
+import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -143,6 +146,13 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
               .map(Throwable::getMessage)
               .collect(Collectors.toList())
               .toArray(new String[] {}));
+    }
+
+    if (!pipelineConfig.getSpec().isDisabled().equals(job.isDisabled())) {
+      job.setDisabled(pipelineConfig.getSpec().isDisabled());
+
+      // add condition here
+      PipelineConfigUtils.updateDisabledStatus(pipelineConfig, job.isDisabled(), "ACP");
     }
 
     return job;

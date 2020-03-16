@@ -8,9 +8,11 @@
     <version>2.36</version>
     <relativePath></relativePath>
   </parent>
+
   <groupId>io.alauda.jenkins.plugins</groupId>
   <artifactId>alauda-devops-sync</artifactId>
   <version>${revision}${sha1}${changelist}</version>
+
   <packaging>hpi</packaging>
   <name>Alauda DevOps Sync</name>
   <description>Syncs DevOps PipelineConfigs with Jenkins jobs</description>
@@ -71,6 +73,7 @@
     <jackson.version>2.9.8</jackson.version>
     <jenkins.version>2.164.3</jenkins.version>
     <jackson2.version>2.7.5</jackson2.version>
+    <devops.client.java>1.0.6-PR-21-SNAPSHOT</devops.client.java>
   </properties>
   <dependencies>
     <dependency>
@@ -144,7 +147,7 @@
     <dependency>
       <groupId>io.alauda</groupId>
       <artifactId>devops-client-java</artifactId>
-      <version>1.0.6</version>
+      <version>${devops.client.java}</version>
       <exclusions>
         <exclusion>
           <artifactId>swagger-annotations</artifactId>

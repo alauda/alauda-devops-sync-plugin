@@ -22,6 +22,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import javax.annotation.Nonnull;
+
+import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.BranchSource;
 import jenkins.model.Jenkins;
@@ -280,6 +282,20 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     } else {
       job = (WorkflowMultiBranchProject) item;
     }
+
+    if (!pipelineConfig.getSpec().isDisabled().equals(job.isDisabled())) {
+      try {
+        Method methodSetDisabled = job.getClass().getDeclaredMethod("setDisabled", boolean.class);
+        methodSetDisabled.setAccessible(true);
+        methodSetDisabled.invoke(job, pipelineConfig.getSpec().isDisabled());
+      } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        e.printStackTrace();
+      }
+
+      // add condition here
+      PipelineConfigUtils.updateDisabledStatus(pipelineConfig, job.isDisabled(), "ACP");
+    }
+
     return job;
   }
 
