@@ -149,11 +149,16 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
     }
 
     if (!pipelineConfig.getSpec().isDisabled().equals(job.isDisabled())) {
-      job.setDisabled(pipelineConfig.getSpec().isDisabled());
+      try {
+        Method methodSetDisabled = job.getClass().getDeclaredMethod("setDisabled", boolean.class);
+        methodSetDisabled.setAccessible(true);
+        methodSetDisabled.invoke(job, pipelineConfig.getSpec().isDisabled());
+      } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        e.printStackTrace();
+      }
 
       // add condition here
       PipelineConfigUtils.updateDisabledStatus(pipelineConfig, job.isDisabled(), "ACP");
-    }
 
     return job;
   }
