@@ -1,5 +1,5 @@
 // https://jenkins.io/doc/book/pipeline/syntax/
-@Library('alauda-cicd') _
+@Library('alauda-cicd-jenkins-plugin-pr') _
 
 // global variables for pipeline
 def GIT_BRANCH
@@ -38,7 +38,7 @@ pipeline {
 		// for building an scanning
 		JENKINS_IMAGE = "jenkins/jenkins:lts"
 		REPOSITORY = "alauda-devops-sync-plugin"
-    PLUGIN_NAME = "alauda-devops-sync"
+        PLUGIN_NAME = "alauda-devops-sync"
 		OWNER = "alauda"
 		IMAGE_TAG = "dev"
 		// sonar feedback user
@@ -80,12 +80,10 @@ pipeline {
 			steps {
 				script {
 					container('java'){
-							sh """
-						mvn clean install -U -Dmaven.test.skip=true
-							"""
+                        sh "mvn clean install -U -Dmaven.test.skip=true"
 					}
 
-							archiveArtifacts 'target/*.hpi'
+                    archiveArtifacts 'target/*.hpi'
 				}
 			}
 		}
@@ -111,6 +109,7 @@ pipeline {
 				}
 			}
 		}
+
 		// after build it should start deploying
 		stage('Tag Git') {
 			// limit this stage to master or release only
@@ -140,7 +139,7 @@ pipeline {
 				expression { hpiRelease.deliveryJenkins }
 			}
 			steps {
-			script {
+			    script {
 					hpiRelease.triggerJenkins(PLUGIN_NAME, "io.alauda.jenkins.plugins;${RELEASE_VERSION}")
 				}
 			}
