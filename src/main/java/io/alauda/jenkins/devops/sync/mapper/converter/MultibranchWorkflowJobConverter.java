@@ -22,8 +22,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import javax.annotation.Nonnull;
-
-import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.BranchSource;
 import jenkins.model.Jenkins;
@@ -283,7 +281,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       job = (WorkflowMultiBranchProject) item;
     }
 
-    if (!pipelineConfig.getSpec().isDisabled().equals(job.isDisabled())) {
+    boolean jobIsDisabled = job.isDisabled();
+    if (!pipelineConfig.getSpec().isDisabled().equals(jobIsDisabled)) {
       try {
         Method methodSetDisabled = job.getClass().getDeclaredMethod("setDisabled", boolean.class);
         methodSetDisabled.setAccessible(true);
@@ -291,9 +290,6 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
         logger.error("set job disable failed", e);
       }
-
-      // add condition here
-      PipelineConfigUtils.updateDisabledStatus(pipelineConfig, job.isDisabled(), "ACP");
     }
 
     return job;

@@ -34,7 +34,6 @@ import hudson.triggers.TriggerDescriptor;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
-import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -43,8 +42,6 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
-
-import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import jenkins.branch.Branch;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.jgit.transport.RemoteConfig;
@@ -240,7 +237,7 @@ public abstract class PipelineConfigToJobMapper {
     // take care of job's params
     updateParameters(job, pipelineConfig);
 
-    PipelineConfigUtils.updateDisabledStatus(pipelineConfig, job.isDisabled());
+    pipelineConfig.getSpec().setDisabled(job.isDisabled());
 
     FlowDefinition definition = job.getDefinition();
     if (definition instanceof CpsScmFlowDefinition) {

@@ -8,7 +8,6 @@ import hudson.util.VersionNumber;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +15,7 @@ import java.util.logging.Logger;
 import javax.annotation.Nonnull;
 import jenkins.model.Jenkins;
 import org.apache.commons.collections4.CollectionUtils;
+import org.joda.time.DateTime;
 
 public abstract class PipelineConfigUtils {
   private static final Logger logger = Logger.getLogger(PipelineConfigUtils.class.getName());
@@ -112,33 +112,33 @@ public abstract class PipelineConfigUtils {
         && PIPELINECONFIG_KIND_MULTI_BRANCH.equals(labels.get(PIPELINECONFIG_KIND)));
   }
 
-  public static void updateDisabledStatus(@Nonnull V1alpha1PipelineConfig pipelineConfig, boolean disabled) {
-      PipelineConfigUtils.updateDisabledStatus(pipelineConfig, disabled, "Jenkins");
+  public static void updateDisabledStatus(
+      @Nonnull V1alpha1PipelineConfig pipelineConfig, boolean disabled, String trigger) {
+    if (!pipelineConfig.getSpec().isDisabled().equals(disabled)) {
+      pipelineConfig.getSpec().setDisabled(disabled);
+    }
   }
 
-  public static void updateDisabledStatus(@Nonnull V1alpha1PipelineConfig pipelineConfig, boolean disabled, String trigger) {
-      if (!pipelineConfig.getSpec().isDisabled().equals(disabled)) {
-          pipelineConfig.getSpec().setDisabled(disabled);
-          String reason = disabled ? "Disabled" : "Enabled";
-          PipelineConfigUtils.addCondition(pipelineConfig, "Specific Modified", "OK",
-                  reason, String.format("PipelineConfig %s by %s", reason, trigger));
-      }
-  }
+  public static void addCondition(
+      @Nonnull V1alpha1PipelineConfig pipelineConfig,
+      String type,
+      String status,
+      String reason,
+      String message) {
+    if (pipelineConfig.getStatus() == null) {
+      pipelineConfig.setStatus(new V1alpha1PipelineConfigStatus());
+    }
 
-  public static void addCondition(@Nonnull V1alpha1PipelineConfig pipelineConfig, String type, String status, String reason, String message) {
-      if (pipelineConfig.getStatus() == null) {
-          pipelineConfig.setStatus(new V1alpha1PipelineConfigStatus());
-      }
+    if (pipelineConfig.getStatus().getConditions() == null) {
+      pipelineConfig.getStatus().setConditions(new ArrayList<>());
+    }
 
-      if (pipelineConfig.getStatus().getConditions() == null) {
-          pipelineConfig.getStatus().setConditions(new ArrayList<>());
-      }
-
-      V1alpha1Condition condition = new V1alpha1Condition();
-      condition.setReason(reason);
-      condition.setMessage(message);
-      condition.setType(type);
-      condition.setStatus(status);
-      pipelineConfig.getStatus().getConditions().add(condition);
+    V1alpha1Condition condition = new V1alpha1Condition();
+    condition.setReason(reason);
+    condition.setMessage(message);
+    condition.setType(type);
+    condition.setStatus(status);
+    condition.setLastAttempt(new DateTime());
+    pipelineConfig.getStatus().getConditions().add(condition);
   }
 }

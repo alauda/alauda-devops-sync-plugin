@@ -310,10 +310,11 @@ public class PipelineConfigController
 
       Item item = JenkinsClient.getInstance().getItem(new NamespaceName(namespace, name));
 
-      boolean disabled = (item instanceof WorkflowMultiBranchProject
-              && ((WorkflowMultiBranchProject) item).isDisabled())
+      boolean disabled =
+          (item instanceof WorkflowMultiBranchProject
+                  && ((WorkflowMultiBranchProject) item).isDisabled())
               || (item instanceof WorkflowJob && ((WorkflowJob) item).isDisabled());
-      PipelineConfigUtils.updateDisabledStatus(pipelineConfigCopy, disabled);
+      pipelineConfigCopy.getSpec().setDisabled(disabled);
 
       if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
         pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
@@ -322,6 +323,14 @@ public class PipelineConfigController
       } else {
         pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
       }
+
+      String reason = pipelineConfigCopy.getSpec().isDisabled() ? "Disabled" : "Enabled";
+      PipelineConfigUtils.addCondition(
+          pipelineConfigCopy,
+          "Specific Modified",
+          "OK",
+          reason,
+          String.format("PipelineConfig %s", reason));
 
       logger.debug("[{}] Will update PipelineConfig '{}/{}'", getControllerName(), namespace, name);
       PipelineConfigClient pipelineConfigClient =

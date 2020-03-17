@@ -11,9 +11,7 @@ import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
-import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.kubernetes.client.models.V1Status;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -117,7 +115,7 @@ public class MultiBranchProjectEventHandler
         multiBranchPipeline.setOrphaned(null);
       }
 
-      PipelineConfigUtils.updateDisabledStatus(newPc, item.isDisabled());
+      newPc.getSpec().setDisabled(item.isDisabled());
 
       Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
       pc.setSpec(newPc.getSpec());

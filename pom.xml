@@ -73,7 +73,7 @@
     <jackson.version>2.9.8</jackson.version>
     <jenkins.version>2.164.3</jenkins.version>
     <jackson2.version>2.7.5</jackson2.version>
-    <devops.client.java>1.0.6-PR-21-SNAPSHOT</devops.client.java>
+    <devops.client.java>1.0.6.1</devops.client.java>
   </properties>
   <dependencies>
     <dependency>
