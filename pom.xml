@@ -282,6 +282,17 @@
       <artifactId>gitlab-branch-source</artifactId>
       <version>1.4.3</version>
     </dependency>
+    <dependency>
+      <groupId>org.csanchez.jenkins.plugins</groupId>
+      <artifactId>kubernetes</artifactId>
+      <version>1.12.1</version>
+      <exclusions>
+        <exclusion>
+          <groupId>com.fasterxml.jackson.module</groupId>
+          <artifactId>jackson-module-jaxb-annotations</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
   <repositories>
     <repository>
