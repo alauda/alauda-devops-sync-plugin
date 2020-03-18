@@ -5,6 +5,7 @@ import static io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener.mou
 import com.cloudbees.groovy.cps.NonCPS;
 import com.google.gson.GsonBuilder;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.action.PipelineAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
@@ -14,25 +15,27 @@ import java.util.List;
 import java.util.Map;
 import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.Whitelisted;
-import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PipelineContext {
+  private static final Logger logger = LoggerFactory.getLogger(PipelineContext.class);
   private WorkflowRun run;
 
   // pipeline namespace/name
   private String namespace;
   private String name;
 
-  public PipelineContext(WorkflowJob job) {
-    this.run = job.getLastBuild();
+  public PipelineContext(WorkflowRun run) {
+    this.run = run;
     JenkinsPipelineCause cause = PipelineUtils.findAlaudaCause(run);
     this.namespace = cause.getNamespace();
     this.name = cause.getName();
   }
 
   @Whitelisted
-  public void appendInfo(String name, Object value, String type, String desc) {
+  public synchronized void appendInfo(String name, Object value, String type, String desc) {
     PipelineAction action = run.getAction(PipelineAction.class);
     if (action == null) {
       action = new PipelineAction();
@@ -67,7 +70,7 @@ public class PipelineContext {
     this.createOrUpdateInfo(name, value, type, "");
   }
 
-  public void deleteInfo(String name, String type) {
+  public synchronized void deleteInfo(String name, String type) {
     PipelineAction action = run.getAction(PipelineAction.class);
     if (action == null) {
       return;
@@ -84,13 +87,14 @@ public class PipelineContext {
 
   @NonCPS
   @Whitelisted
-  public Map<String, Object> getData() {
+  public synchronized Map<String, Object> getData() {
     Map<String, Object> data = new HashMap<>();
     V1alpha1Pipeline pipeline =
         Clients.get(V1alpha1Pipeline.class).lister().namespace(namespace).get(name);
     if (pipeline != null) {
-      mountActionsPipeline(run.getAllActions(), pipeline);
-      data.put("pipeline", JSONObject.fromObject(new GsonBuilder().create().toJson(pipeline)));
+      V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
+      mountActionsPipeline(run.getAllActions(), newPipeline);
+      data.put("pipeline", JSONObject.fromObject(new GsonBuilder().create().toJson(newPipeline)));
     }
     return data;
   }

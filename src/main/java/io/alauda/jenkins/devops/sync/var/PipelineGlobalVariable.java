@@ -1,12 +1,11 @@
 package io.alauda.jenkins.devops.sync.var;
 
 import hudson.Extension;
-import hudson.model.Job;
 import hudson.model.Run;
 import javax.annotation.Nonnull;
 import org.jenkinsci.plugins.workflow.cps.CpsScript;
 import org.jenkinsci.plugins.workflow.cps.GlobalVariable;
-import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
 @Extension
 public class PipelineGlobalVariable extends GlobalVariable {
@@ -25,10 +24,9 @@ public class PipelineGlobalVariable extends GlobalVariable {
       throw new IllegalStateException("cannot find owning build");
     }
 
-    Job<?, ?> parent = build.getParent();
-    if (parent instanceof WorkflowJob) {
-      return new PipelineContext((WorkflowJob) parent);
+    if (build instanceof WorkflowRun) {
+      return new PipelineContext((WorkflowRun) build);
     }
-    throw new IllegalStateException("not instance of WorkflowJob");
+    throw new IllegalStateException("not instance of WorkflowRun");
   }
 }
