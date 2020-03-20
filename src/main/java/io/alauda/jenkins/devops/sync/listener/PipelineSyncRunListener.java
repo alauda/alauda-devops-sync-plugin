@@ -626,13 +626,13 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     newPipeline.getMetadata().setAnnotations(annotations);
 
     badgeHandle(run, annotations);
-    mountActionsPipeline(run.getAllActions(), newPipeline);
 
     V1alpha1PipelineStatus status =
         createPipelineStatus(
             newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
     newPipeline.setStatus(status);
 
+    mountActionsPipeline(run.getAllActions(), newPipeline);
     boolean succeed = Clients.get(V1alpha1Pipeline.class).update(pipeline, newPipeline);
     if (!succeed) {
       logger.fine(
@@ -654,7 +654,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   /** Used to hang action data in the pipeline and provide it to DSL for real-time acquisition. */
-  public static void mountActionsPipeline(
+  public static synchronized void mountActionsPipeline(
       List<? extends Action> actions, V1alpha1Pipeline pipeline) {
     if (actions == null || pipeline == null) {
       return;
