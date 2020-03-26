@@ -99,3 +99,5 @@ work/
 
 # script env.sh
 scripts/env.sh
+
+.java-version
