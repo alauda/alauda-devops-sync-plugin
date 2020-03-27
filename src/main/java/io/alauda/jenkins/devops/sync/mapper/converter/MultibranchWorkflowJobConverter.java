@@ -120,6 +120,11 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       if (!(scmSource instanceof GitSCMSource)
           || ((GitSCMSource) scmSource).getRemote().equals(source.getGit().getUri())) {
         scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+      } else {
+        GitSCMSource expectedSCMSource = new GitSCMSource(source.getGit().getUri());
+        if (!expectedSCMSource.getRemote().equals(((GitSCMSource) scmSource).getRemote())) {
+          scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+        }
       }
     } else {
       V1alpha1CodeRepository codeRepository =
