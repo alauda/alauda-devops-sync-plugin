@@ -128,6 +128,13 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
               .namespace(pipelineConfig.getMetadata().getNamespace())
               .get(source.getCodeRepository().getName());
 
+      if (codeRepository == null) {
+        throw new PipelineConfigConvertException(
+            String.format(
+                "Unable to sync PipelineConfig, No CodeRepository '%s/%s' found in platform",
+                pipelineConfig.getMetadata().getNamespace(), source.getCodeRepository().getName()));
+      }
+
       V1alpha1OriginCodeRepository originCodeRepository = codeRepository.getSpec().getRepository();
       String[] repoFullName = originCodeRepository.getFullName().split("/");
       String repository = repoFullName[repoFullName.length - 1];
