@@ -1,6 +1,15 @@
 package io.alauda.jenkins.devops.sync.mapper.converter;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG;
+import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_FALSE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_TRUE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND_MULTI_BRANCH;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_TYPE_SUPPORT_PR_DISCOVERY;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONFIG_CONDITION_REASON_INCORRECT;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONFIG_CONDITION_REASON_SUPPORTED;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONFIG_CONDITION_REASON_UNSUPPORTED;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
 
 import antlr.ANTLRException;
 import com.cloudbees.hudson.plugins.folder.Folder;
@@ -8,7 +17,17 @@ import com.cloudbees.hudson.plugins.folder.computed.ComputedFolder;
 import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
 import hudson.Extension;
 import hudson.model.Item;
-import io.alauda.devops.java.client.models.*;
+import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
+import io.alauda.devops.java.client.models.V1alpha1Condition;
+import io.alauda.devops.java.client.models.V1alpha1MultiBranchBehaviours;
+import io.alauda.devops.java.client.models.V1alpha1MultiBranchOrphan;
+import io.alauda.devops.java.client.models.V1alpha1MultiBranchPipeline;
+import io.alauda.devops.java.client.models.V1alpha1OriginCodeRepository;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSource;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStrategyJenkins;
+import io.alauda.devops.java.client.models.V1alpha1PipelineTrigger;
+import io.alauda.devops.java.client.models.V1alpha1PipelineTriggerCron;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
@@ -16,12 +35,18 @@ import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
+import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import javax.annotation.Nonnull;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.BranchSource;
@@ -108,6 +133,14 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       throws PipelineConfigConvertException, IOException {
     logger.debug("Starting setup SCMSource for Workflow job {}", job.getFullName());
 
+    V1alpha1Condition prSupportCondition =
+        ConditionUtils.getCondition(
+            pipelineConfig.getStatus().getConditions(),
+            PIPELINE_CONDITION_TYPE_SUPPORT_PR_DISCOVERY);
+    if (prSupportCondition == null) {
+      throw new PipelineConfigConvertException("No PR support condition found");
+    }
+
     V1alpha1PipelineSource source = pipelineConfig.getSpec().getSource();
     if (source.getCodeRepository() == null && source.getGit() == null) {
       throw new PipelineConfigConvertException("No Git Repository found");
@@ -119,14 +152,13 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     if (source.getCodeRepository() == null && source.getGit() != null) {
       logger.debug("No CodeRepository configured in PipelineConfig, fallback to use plain git url");
       if (!(scmSource instanceof GitSCMSource)
-          || ((GitSCMSource) scmSource).getRemote().equals(source.getGit().getUri())) {
+          || !((GitSCMSource) scmSource).getRemote().equals(source.getGit().getUri())) {
         scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
-      } else {
-        GitSCMSource expectedSCMSource = new GitSCMSource(source.getGit().getUri());
-        if (!expectedSCMSource.getRemote().equals(((GitSCMSource) scmSource).getRemote())) {
-          scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
-        }
       }
+      prSupportCondition
+          .status(CONDITION_STATUS_FALSE)
+          .reason(PIPELINE_CONFIG_CONDITION_REASON_UNSUPPORTED)
+          .message("PR Discovery not support: this pipeline is using plain git url");
     } else {
       V1alpha1CodeRepository codeRepository =
           Clients.get(V1alpha1CodeRepository.class)
@@ -173,6 +205,14 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           if (scmSource == null) {
             scmSource = new GitSCMSource(source.getGit().getUri());
             gitProvider = null;
+            prSupportCondition
+                .status(CONDITION_STATUS_FALSE)
+                .reason(PIPELINE_CONFIG_CONDITION_REASON_INCORRECT)
+                .message("PR Discovery not support: configuration in Jenkins might be wrong");
+          } else {
+            prSupportCondition
+                .status(CONDITION_STATUS_TRUE)
+                .reason(PIPELINE_CONFIG_CONDITION_REASON_SUPPORTED);
           }
 
           setNewSCMSource(job, scmSource);
@@ -189,13 +229,30 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
           // if we cannot create SCMSource, we will fallback to use GitSCMSource
           if (expectedSCMSource == null) {
-            scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+            expectedSCMSource = new GitSCMSource(source.getGit().getUri());
+            // if current SCMSource is not the same with the expectedSCMSource, we will overwrite it
+            if (!scmSource.getClass().equals(GitSCMSource.class)
+                || !((GitSCMSource) expectedSCMSource)
+                    .getRemote()
+                    .equals(((GitSCMSource) scmSource).getRemote())) {
+              scmSource = setNewSCMSource(job, expectedSCMSource);
+            }
+
             gitProvider = null;
-          } else if (!gitProvider.isSourceSame(scmSource, expectedSCMSource)) {
-            // if the current SCMSource is not the same repo with PipelineConfig's, we will
-            // overwrite it.
-            logger.debug("SCMSource is not same, will update it");
-            scmSource = setNewSCMSource(job, expectedSCMSource);
+            prSupportCondition
+                .status(CONDITION_STATUS_FALSE)
+                .reason(PIPELINE_CONFIG_CONDITION_REASON_INCORRECT)
+                .message("PR Discovery not support: configuration in Jenkins might be wrong");
+          } else {
+            prSupportCondition
+                .status(CONDITION_STATUS_TRUE)
+                .reason(PIPELINE_CONFIG_CONDITION_REASON_SUPPORTED);
+            if (!gitProvider.isSourceSame(scmSource, expectedSCMSource)) {
+              // if the current SCMSource is not the same repo with PipelineConfig's, we will
+              // overwrite it.
+              logger.debug("SCMSource is not same, will update it");
+              scmSource = setNewSCMSource(job, expectedSCMSource);
+            }
           }
         }
 
@@ -206,6 +263,10 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
             || ((GitSCMSource) scmSource).getRemote().equals(source.getGit().getUri())) {
           scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
         }
+        prSupportCondition
+            .status(CONDITION_STATUS_FALSE)
+            .reason(PIPELINE_CONFIG_CONDITION_REASON_UNSUPPORTED)
+            .message("PR Discovery not support: Jenkins doesn't support this repository type");
       }
     }
 

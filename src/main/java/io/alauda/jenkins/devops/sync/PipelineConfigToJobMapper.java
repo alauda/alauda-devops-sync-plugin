@@ -33,7 +33,7 @@ import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
+import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -53,6 +53,7 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 
 public abstract class PipelineConfigToJobMapper {
+
   private static final Logger LOGGER = Logger.getLogger(PipelineConfigToJobMapper.class.getName());
 
   private PipelineConfigToJobMapper() {}
@@ -65,7 +66,7 @@ public abstract class PipelineConfigToJobMapper {
    * @throws IOException in case of io exception
    */
   public static FlowDefinition mapPipelineConfigToFlow(V1alpha1PipelineConfig pc)
-      throws IOException {
+      throws IOException, PipelineConfigConvertException {
     // TODO move to converter
     if (!AlaudaUtils.isPipelineStrategyPipelineConfig(pc)) {
       return null;
@@ -97,15 +98,10 @@ public abstract class PipelineConfigToJobMapper {
         SCM scm = createSCM(pc);
         return new CpsScmFlowDefinition(scm, jenkinsfilePath);
       } else {
-        V1alpha1Condition condition = new V1alpha1Condition();
-        condition.setReason(ErrorMessages.INVALID_SOURCE);
-        condition.setMessage("please check git uri");
-        pc.getStatus().getConditions().add(condition);
 
-        LOGGER.warning(
+        throw new PipelineConfigConvertException(
             "PipelineConfig does not contain source repository information - "
                 + "cannot map PipelineConfig to Jenkins job");
-        return null;
       }
     } else {
       return new CpsFlowDefinition(jenkinsfile, true);

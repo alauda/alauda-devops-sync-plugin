@@ -15,6 +15,9 @@
  */
 package io.alauda.jenkins.devops.sync.listener;
 
+import static com.cloudbees.workflow.rest.external.StatusExt.ABORTED;
+import static com.cloudbees.workflow.rest.external.StatusExt.FAILED;
+import static com.cloudbees.workflow.rest.external.StatusExt.NOT_EXECUTED;
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 import static java.util.logging.Level.*;
 
@@ -43,6 +46,7 @@ import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.action.PipelineAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
@@ -86,6 +90,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  */
 @Extension
 public class PipelineSyncRunListener extends RunListener<Run> {
+
   private static final Logger logger = Logger.getLogger(PipelineSyncRunListener.class.getName());
 
   private long pollPeriodMs = 1000L * 5; // 5 seconds
@@ -476,7 +481,9 @@ public class PipelineSyncRunListener extends RunListener<Run> {
         }
       }
     } catch (Throwable t) {
-      if (logger.isLoggable(Level.FINE)) logger.log(Level.FINE, "upsertPipeline", t);
+      if (logger.isLoggable(Level.FINE)) {
+        logger.log(Level.FINE, "upsertPipeline", t);
+      }
     }
 
     Map<String, BlueRunResult> blueRunResults = new HashMap<>();
@@ -574,7 +581,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
       return new Result(true);
     }
 
-    String phase = PipelineUtils.runToPipelinePhase(run);
     long started = getStartTime(run);
     DateTime startTime = null;
     DateTime completionTime = null;
@@ -587,10 +593,6 @@ public class PipelineSyncRunListener extends RunListener<Run> {
       }
     }
 
-    logger.log(
-        INFO,
-        "Patching pipeline {0}/{1}: setting phase to {2}",
-        new Object[] {cause.getNamespace(), cause.getName(), phase});
     V1alpha1Pipeline pipeline =
         Clients.get(V1alpha1Pipeline.class)
             .lister()
@@ -629,7 +631,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
     V1alpha1PipelineStatus status =
         createPipelineStatus(
-            newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
+            newPipeline, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
     newPipeline.setStatus(status);
 
     mountActionsPipeline(run.getAllActions(), newPipeline);
@@ -717,18 +719,17 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
   private V1alpha1PipelineStatus createPipelineStatus(
       V1alpha1Pipeline pipeline,
-      String phase,
       DateTime startTime,
       DateTime completionTime,
       DateTime updatedTime,
       String blueJson,
       Run run,
       RunExt wfRunExt) {
+
     V1alpha1PipelineStatus status = pipeline.getStatus();
     if (status == null) {
       status = new V1alpha1PipelineStatus();
     }
-    status.setPhase(phase);
     status.setStartedAt(startTime);
     status.setFinishedAt(completionTime);
     status.setUpdatedAt(updatedTime);
@@ -746,6 +747,50 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
     statusJenkins.setResult(getRunResult(run));
     statusJenkins.setStatus(wfRunExt.getStatus().name());
+
+    V1alpha1Condition condition =
+        ConditionUtils.getCondition(
+            pipeline.getStatus().getConditions(), PIPELINE_CONDITION_TYPE_COMPLETED);
+    Objects.requireNonNull(condition);
+
+    StatusExt wfRunStatus = wfRunExt.getStatus();
+    if (wfRunStatus.equals(NOT_EXECUTED)) {
+      if (run.getResult() == hudson.model.Result.FAILURE
+          || run.getResult() == hudson.model.Result.UNSTABLE) {
+        wfRunStatus = FAILED;
+      } else if (run.getResult() == hudson.model.Result.ABORTED) {
+        wfRunStatus = ABORTED;
+      }
+    }
+
+    switch (wfRunStatus) {
+      case NOT_EXECUTED:
+        if (run.hasntStartedYet()) {
+          condition.setStatus(CONDITION_STATUS_UNKNOWN);
+        }
+        break;
+      case ABORTED:
+        condition.setStatus(CONDITION_STATUS_TRUE);
+        condition.setReason(PIPELINE_CONDITION_REASON_CANCELLED);
+        break;
+      case SUCCESS:
+        condition.setStatus(CONDITION_STATUS_TRUE);
+        condition.setReason(PIPELINE_CONDITION_REASON_COMPLETE);
+        break;
+      case IN_PROGRESS:
+        condition.setStatus(CONDITION_STATUS_FALSE);
+        condition.setReason(PIPELINE_CONDITION_REASON_RUNNING);
+        break;
+      case PAUSED_PENDING_INPUT:
+        condition.setStatus(CONDITION_STATUS_FALSE);
+        condition.setReason(PIPELINE_CONDITION_REASON_PENDING_INPUT);
+        break;
+      case FAILED:
+      case UNSTABLE:
+        condition.setStatus(CONDITION_STATUS_TRUE);
+        condition.setReason(PIPELINE_CONDITION_REASON_FAILED);
+        break;
+    }
 
     return status;
   }
@@ -868,6 +913,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class BlueJsonStage {
+
     public StageNodeExt stage;
     public BlueRunResult result;
     public List<BluePipelineNode.Edge> edges;
@@ -884,6 +930,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class PipelineJson {
+
     public String start_stage_id;
     public List<PipelineStage> stages;
 
@@ -901,6 +948,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   private static class PipelineStage {
+
     public String id;
     public String name;
     public String status;

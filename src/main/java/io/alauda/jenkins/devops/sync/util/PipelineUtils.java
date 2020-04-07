@@ -4,13 +4,11 @@ import hudson.model.*;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
 import io.kubernetes.client.models.V1Status;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.logging.Logger;
-import javax.annotation.Nonnull;
 
 public class PipelineUtils {
   private static final Logger logger = Logger.getLogger(PipelineUtils.class.getName());
@@ -75,26 +73,5 @@ public class PipelineUtils {
 
   public static V1Status delete(String namespace, String name) {
     return Clients.get(V1alpha1Pipeline.class).delete(namespace, name);
-  }
-
-  public static String runToPipelinePhase(@Nonnull Run run) {
-    if (run.hasntStartedYet()) {
-      return PipelinePhases.QUEUED;
-    }
-
-    Result result = run.getResult();
-    if (result == null || run.isBuilding()) {
-      return PipelinePhases.RUNNING;
-    } else if (result.equals(Result.SUCCESS)) {
-      return PipelinePhases.COMPLETE;
-    } else if (result.equals(Result.ABORTED)) {
-      return PipelinePhases.CANCELLED;
-    } else if (result.equals(Result.FAILURE)) {
-      return PipelinePhases.FAILED;
-    } else if (result.equals(Result.UNSTABLE)) {
-      return PipelinePhases.FAILED;
-    } else {
-      return PipelinePhases.QUEUED;
-    }
   }
 }

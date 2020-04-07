@@ -16,28 +16,36 @@
 package io.alauda.jenkins.devops.sync.util;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.*;
-import static java.util.logging.Level.FINE;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import hudson.BulkChange;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
 import hudson.util.XStream2;
-import io.alauda.devops.java.client.models.*;
-import io.alauda.devops.java.client.utils.DeepCopyUtils;
+import io.alauda.devops.java.client.models.V1alpha1JenkinsBinding;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfigSpec;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSource;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSourceGit;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSourceSvn;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStrategy;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStrategyJenkins;
 import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
 import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
-import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.filters.StringInputStream;
-import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
@@ -290,78 +298,6 @@ public abstract class AlaudaUtils {
 
   public static boolean isValidSvnSource(V1alpha1PipelineSource source) {
     return source != null && source.getSvn() != null && source.getSvn().getUri() != null;
-  }
-
-  public static void updatePipelinePhase(V1alpha1Pipeline pipeline, String phase) {
-    logger.log(
-        FINE,
-        "setting pipeline to {0} in namespace {1}/{2}",
-        new Object[] {
-          phase, pipeline.getMetadata().getNamespace(), pipeline.getMetadata().getName()
-        });
-
-    V1alpha1Pipeline oldPipeline = DeepCopyUtils.deepCopy(pipeline);
-
-    V1alpha1PipelineStatus stats = pipeline.getStatus();
-    if (stats == null) {
-      stats = new V1alpha1PipelineStatusBuilder().build();
-    }
-    stats.setPhase(phase);
-    pipeline.setStatus(stats);
-
-    Clients.get(V1alpha1Pipeline.class).update(oldPipeline, pipeline);
-    pipeline.setStatus(stats);
-  }
-
-  /**
-   * Maps a Jenkins Job name to an ObjectShift BuildConfig name
-   *
-   * @return the namespaced name for the BuildConfig
-   * @param jobName the job to associate to a BuildConfig name
-   * @param namespace the default namespace that Jenkins is running inside
-   */
-  public static NamespaceName buildConfigNameFromJenkinsJobName(String jobName, String namespace) {
-    // TODO lets detect the namespace separator in the jobName for cases
-    // where a jenkins is used for
-    // BuildConfigs in multiple namespaces?
-    return new NamespaceName(namespace, jobName);
-  }
-
-  /**
-   * Maps a Jenkins Job name to an PipelineConfig name
-   *
-   * @param jobName the job to associate to a PipelineConfig name
-   * @param namespace the default namespace that Jenkins is running inside
-   * @return the namespaced name for the PipelineConfig
-   */
-  public static NamespaceName pipelineConfigNameFromJenkinsJobName(
-      String jobName, String namespace) {
-    return new NamespaceName(namespace, jobName);
-  }
-
-  public static String formatTimestamp(long timestamp) {
-    return dateFormatter.print(new DateTime(timestamp));
-  }
-
-  public static String getCurrentTimestamp() {
-    return dateFormatter.print(new DateTime());
-  }
-
-  public static long parseTimestamp(String timestamp) {
-    return dateFormatter.parseMillis(timestamp);
-  }
-
-  public static boolean isCancellable(V1alpha1PipelineStatus pipelineStatus) {
-    String phase = pipelineStatus.getPhase();
-    return phase.equals(QUEUED) || phase.equals(PENDING) || phase.equals(RUNNING);
-  }
-
-  public static boolean isNew(V1alpha1PipelineStatus pipelineStatus) {
-    return pipelineStatus.getPhase().equals(PENDING);
-  }
-
-  public static boolean isCancelled(V1alpha1PipelineStatus status) {
-    return status != null && status.isAborted();
   }
 
   /** Lets convert the string to btw a valid kubernetes resource name */

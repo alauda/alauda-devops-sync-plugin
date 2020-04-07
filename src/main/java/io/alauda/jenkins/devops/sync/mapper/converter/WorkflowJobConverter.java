@@ -148,7 +148,8 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
     }
 
     boolean jobIsDisabled = job.isDisabled();
-    if (!pipelineConfig.getSpec().isDisabled().equals(jobIsDisabled)) {
+    Boolean configDisabled = pipelineConfig.getSpec().isDisabled();
+    if (configDisabled != null && configDisabled != jobIsDisabled) {
       try {
         Method methodSetDisabled = job.getClass().getDeclaredMethod("setDisabled", boolean.class);
         methodSetDisabled.setAccessible(true);

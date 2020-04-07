@@ -71,7 +71,7 @@ public class MultiBranchProjectEventHandler
       BranchProjectFactory<WorkflowJob, WorkflowRun> factory = item.getProjectFactory();
       if (factory instanceof WorkflowBranchProjectFactory) {
         String scriptPath = ((WorkflowBranchProjectFactory) factory).getScriptPath();
-        newPc.getSpec().getStrategy().getJenkins().jenkinsfile(scriptPath);
+        newPc.getSpec().getStrategy().getJenkins().jenkinsfilePath(scriptPath);
       }
 
       V1alpha1MultiBranchPipeline multiBranchPipeline =

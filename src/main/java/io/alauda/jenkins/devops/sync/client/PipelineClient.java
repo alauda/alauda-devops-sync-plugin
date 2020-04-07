@@ -56,6 +56,8 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
       return false;
     }
 
+    logger.debug("Pipeline patch {}", patch);
+
     // When use remove op on omitempty empty field, will cause 422 Exception
     List<JsonObject> bodyWithoutRemove = new LinkedList<>();
     List<JsonObject> bodyOnlyRemove = new LinkedList<>();

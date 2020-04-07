@@ -72,7 +72,7 @@
     <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
     <jackson.version>2.9.8</jackson.version>
     <jackson2.version>2.7.5</jackson2.version>
-    <devops.client.java>1.0.6.1</devops.client.java>
+    <devops.client.java>1.0.7.1</devops.client.java>
     <jenkins.version>2.164.3</jenkins.version>
   </properties>
   <dependencyManagement>
