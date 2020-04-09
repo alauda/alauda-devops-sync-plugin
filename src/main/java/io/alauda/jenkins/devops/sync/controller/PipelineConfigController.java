@@ -89,7 +89,7 @@ public class PipelineConfigController
             .watch(
                 (workQueue) ->
                     ControllerBuilder.controllerWatchBuilder(
-                            V1alpha1PipelineConfig.class, workQueue)
+                        V1alpha1PipelineConfig.class, workQueue)
                         .withWorkQueueKeyFunc(
                             pipelineConfig ->
                                 new Request(
@@ -135,21 +135,6 @@ public class PipelineConfigController
                                     CONTROLLER_NAME,
                                     namespace,
                                     name);
-                                return false;
-                              }
-
-                              lastEventComingTime = LocalDateTime.now();
-
-                              if (newPipelineConfig
-                                  .getStatus()
-                                  .getPhase()
-                                  .equals(PipelineConfigPhase.CREATING)) {
-                                logger.debug(
-                                    "[{}] phase of PipelineConfig '{}/{}' is {}, will skip it",
-                                    CONTROLLER_NAME,
-                                    namespace,
-                                    name,
-                                    PipelineConfigPhase.CREATING);
                                 return false;
                               }
 
@@ -219,6 +204,7 @@ public class PipelineConfigController
 
     @Override
     public Result reconcile(Request request) {
+      lastEventComingTime = LocalDateTime.now();
       Metrics.completedRequestCounter.labels("pipeline_config").inc();
       Metrics.remainedRequestsGauge.labels("pipeline_config").set(queue.length());
 
@@ -261,6 +247,18 @@ public class PipelineConfigController
             getControllerName(),
             namespace,
             name);
+        return new Result(false);
+      }
+
+      if (pc.getStatus()
+          .getPhase()
+          .equals(PipelineConfigPhase.CREATING)) {
+        logger.debug(
+            "[{}] phase of PipelineConfig '{}/{}' is {}, will skip it",
+            CONTROLLER_NAME,
+            namespace,
+            name,
+            PipelineConfigPhase.CREATING);
         return new Result(false);
       }
 
