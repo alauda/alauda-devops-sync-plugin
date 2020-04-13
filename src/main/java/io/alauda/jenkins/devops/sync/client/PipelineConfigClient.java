@@ -64,6 +64,15 @@ public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConf
     List<JsonObject> bodyOnlyRemove = new LinkedList<>();
 
     JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
+    if (arr.size() == 0) {
+      logger.debug(
+          "Skip to patch PipelineConfig '{}/{}' as the patch content {} is empty",
+          namespace,
+          name,
+          patch);
+      return true;
+    }
+
     arr.forEach(
         jsonElement -> {
           JsonElement op = jsonElement.getAsJsonObject().get("op");

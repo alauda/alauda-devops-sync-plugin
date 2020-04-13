@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
+
   private static final Logger logger = LoggerFactory.getLogger(PipelineClient.class);
 
   private SharedIndexInformer<V1alpha1Pipeline> informer;
@@ -63,6 +64,15 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
     List<JsonObject> bodyOnlyRemove = new LinkedList<>();
 
     JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
+    if (arr.size() == 0) {
+      logger.debug(
+          "Skip to patch Pipeline '{}/{}' as the patch content {} is empty",
+          namespace,
+          name,
+          patch);
+      return true;
+    }
+
     arr.forEach(
         jsonElement -> {
           JsonElement op = jsonElement.getAsJsonObject().get("op");

@@ -1,6 +1,6 @@
 package io.alauda.jenkins.devops.sync.var;
 
-import static io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener.mountActionsPipeline;
+import static io.alauda.jenkins.devops.sync.listener.PipelineSyncExecutor.mountActionsPipeline;
 
 import com.cloudbees.groovy.cps.NonCPS;
 import com.google.gson.GsonBuilder;
