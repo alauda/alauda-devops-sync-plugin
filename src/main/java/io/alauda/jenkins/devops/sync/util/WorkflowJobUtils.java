@@ -115,7 +115,7 @@ public final class WorkflowJobUtils {
       }
 
       String scmURL = "";
-      ObjectMetadataAction metadataAction = item.getAction(ObjectMetadataAction.class);
+      ObjectMetadataAction metadataAction = wfJob.getAction(ObjectMetadataAction.class);
       if (metadataAction != null) {
         scmURL = metadataAction.getObjectUrl();
       }

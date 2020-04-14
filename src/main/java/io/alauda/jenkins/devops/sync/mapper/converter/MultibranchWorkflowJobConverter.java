@@ -121,6 +121,11 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       if (!(scmSource instanceof GitSCMSource)
           || ((GitSCMSource) scmSource).getRemote().equals(source.getGit().getUri())) {
         scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+      } else {
+        GitSCMSource expectedSCMSource = new GitSCMSource(source.getGit().getUri());
+        if (!expectedSCMSource.getRemote().equals(((GitSCMSource) scmSource).getRemote())) {
+          scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+        }
       }
     } else {
       V1alpha1CodeRepository codeRepository =
@@ -128,6 +133,13 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
               .lister()
               .namespace(pipelineConfig.getMetadata().getNamespace())
               .get(source.getCodeRepository().getName());
+
+      if (codeRepository == null) {
+        throw new PipelineConfigConvertException(
+            String.format(
+                "Unable to sync PipelineConfig, No CodeRepository '%s/%s' found in platform",
+                pipelineConfig.getMetadata().getNamespace(), source.getCodeRepository().getName()));
+      }
 
       V1alpha1OriginCodeRepository originCodeRepository = codeRepository.getSpec().getRepository();
       String[] repoFullName = originCodeRepository.getFullName().split("/");

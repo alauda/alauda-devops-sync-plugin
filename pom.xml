@@ -61,7 +61,7 @@
     <findbugs.failOnError>false</findbugs.failOnError>
     <exec-maven-plugin.version>1.5.0</exec-maven-plugin.version>
     <okhttp.version>3.12.0</okhttp.version>
-    <revision>2.8</revision>
+    <revision>2.10</revision>
     <validation-api.version>1.1.0.Final</validation-api.version>
     <sundrio.version>0.4.2</sundrio.version>
     <java.level>8</java.level>
@@ -71,10 +71,21 @@
     <org.json.version>20180130</org.json.version>
     <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
     <jackson.version>2.9.8</jackson.version>
-    <jenkins.version>2.164.3</jenkins.version>
     <jackson2.version>2.7.5</jackson2.version>
     <devops.client.java>1.0.6.1</devops.client.java>
+    <jenkins.version>2.164.3</jenkins.version>
   </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.jenkins.tools.bom</groupId>
+        <artifactId>bom-2.164.x</artifactId>
+        <version>4</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>io.jenkins.blueocean</groupId>
@@ -110,8 +121,8 @@
           <groupId>com.fasterxml.jackson.core</groupId>
         </exclusion>
         <exclusion>
-          <groupId>org.yaml</groupId>
           <artifactId>snakeyaml</artifactId>
+          <groupId>org.yaml</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -135,12 +146,12 @@
       <version>2.3.0</version>
       <exclusions>
         <exclusion>
-          <groupId>org.checkerframework</groupId>
           <artifactId>checker-qual</artifactId>
+          <groupId>org.checkerframework</groupId>
         </exclusion>
         <exclusion>
-          <groupId>com.google.errorprone</groupId>
           <artifactId>error_prone_annotations</artifactId>
+          <groupId>com.google.errorprone</groupId>
         </exclusion>
       </exclusions>
     </dependency>
@@ -285,6 +296,17 @@
       <artifactId>gitlab-branch-source</artifactId>
       <version>1.4.3</version>
     </dependency>
+    <dependency>
+      <groupId>org.csanchez.jenkins.plugins</groupId>
+      <artifactId>kubernetes</artifactId>
+      <version>1.12.1</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>jackson-module-jaxb-annotations</artifactId>
+          <groupId>com.fasterxml.jackson.module</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
   </dependencies>
   <repositories>
     <repository>
@@ -327,7 +349,6 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
         <version>3.0.0-M1</version>
         <executions>
@@ -356,15 +377,4 @@
       </plugin>
     </plugins>
   </build>
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>io.jenkins.tools.bom</groupId>
-        <artifactId>bom-2.164.x</artifactId>
-        <version>4</version>
-        <scope>import</scope>
-        <type>pom</type>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 </project>

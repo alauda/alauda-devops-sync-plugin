@@ -1,29 +1,10 @@
 package io.alauda.jenkins.devops.sync.listener;
 
-import static io.alauda.jenkins.devops.sync.constants.Annotations.*;
-
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
-import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
-import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
-import io.alauda.devops.java.client.utils.DeepCopyUtils;
-import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
-import io.alauda.jenkins.devops.sync.MultiBranchProperty;
-import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
-import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
-import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
-import io.kubernetes.client.models.V1ObjectMeta;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.logging.Logger;
-import net.sf.json.JSONArray;
-import net.sf.json.JSONException;
-import net.sf.json.JSONObject;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.kohsuke.accmod.Restricted;

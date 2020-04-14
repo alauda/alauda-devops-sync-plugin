@@ -109,33 +109,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
 
       checkTimerStarted();
 
-      if (run instanceof WorkflowRun) {
-        WorkflowJob job = ((WorkflowRun) run).getParent();
-        if (job.getParent() instanceof WorkflowMultiBranchProject
-            && WorkflowJobUtils.parametersHasChange(job)) {
-          WorkflowJobUtils.updateBranchAndPRAnnotations(job);
-        } else {
-          String namespace = property.getNamespace();
-          String name = property.getName();
-          V1alpha1PipelineConfig pc =
-              Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
-          if (pc == null) {
-            logger.info(
-                "can not found pipelineconfig by namespace: "
-                    + namespace
-                    + ", name: "
-                    + name
-                    + "; skip update parameters");
-            return;
-          }
-
-          V1alpha1PipelineConfig newPC = DeepCopyUtils.deepCopy(pc);
-          PipelineConfigToJobMapper.updateParameters(job, newPC);
-          Clients.get(V1alpha1PipelineConfig.class).update(pc, newPC);
-
-          logger.info("update parameter done, namespace: " + namespace + ", name: " + name);
-        }
-      }
+      updateParams(run);
     } else {
       logger.fine("not polling polling pipeline " + run.getUrl() + " as its not a WorkflowJob");
     }
@@ -163,6 +137,8 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   public void onCompleted(Run run, @Nonnull TaskListener listener) {
     if (shouldPollRun(run)) {
       runs.add(run);
+
+      updateParams(run);
 
       logger.fine("onCompleted " + run.getUrl());
       //            JenkinsUtils.maybeScheduleNext(((WorkflowRun) run).getParent());
@@ -203,6 +179,41 @@ public class PipelineSyncRunListener extends RunListener<Run> {
       runs.add(run);
 
       logger.fine("onFinalized " + run.getUrl());
+    }
+  }
+
+  private void updateParams(Run run) {
+    AlaudaJobProperty property = getAlaudaJobProperty(run);
+    if (property == null) {
+      return;
+    }
+
+    if (run instanceof WorkflowRun) {
+      WorkflowJob job = ((WorkflowRun) run).getParent();
+      if (job.getParent() instanceof WorkflowMultiBranchProject
+          && WorkflowJobUtils.parametersHasChange(job)) {
+        WorkflowJobUtils.updateBranchAndPRAnnotations(job);
+      } else {
+        String namespace = property.getNamespace();
+        String name = property.getName();
+        V1alpha1PipelineConfig pc =
+            Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+        if (pc == null) {
+          logger.info(
+              "can not found pipelineconfig by namespace: "
+                  + namespace
+                  + ", name: "
+                  + name
+                  + "; skip update parameters");
+          return;
+        }
+
+        V1alpha1PipelineConfig newPC = DeepCopyUtils.deepCopy(pc);
+        PipelineConfigToJobMapper.updateParameters(job, newPC);
+        Clients.get(V1alpha1PipelineConfig.class).update(pc, newPC);
+
+        logger.info("update parameter done, namespace: " + namespace + ", name: " + name);
+      }
     }
   }
 
@@ -615,13 +626,13 @@ public class PipelineSyncRunListener extends RunListener<Run> {
     newPipeline.getMetadata().setAnnotations(annotations);
 
     badgeHandle(run, annotations);
-    mountActionsPipeline(run.getAllActions(), newPipeline);
 
     V1alpha1PipelineStatus status =
         createPipelineStatus(
             newPipeline, phase, startTime, completionTime, updatedTime, blueJson, run, wfRunExt);
     newPipeline.setStatus(status);
 
+    mountActionsPipeline(run.getAllActions(), newPipeline);
     boolean succeed = Clients.get(V1alpha1Pipeline.class).update(pipeline, newPipeline);
     if (!succeed) {
       logger.fine(
@@ -643,7 +654,7 @@ public class PipelineSyncRunListener extends RunListener<Run> {
   }
 
   /** Used to hang action data in the pipeline and provide it to DSL for real-time acquisition. */
-  public static void mountActionsPipeline(
+  public static synchronized void mountActionsPipeline(
       List<? extends Action> actions, V1alpha1Pipeline pipeline) {
     if (actions == null || pipeline == null) {
       return;
