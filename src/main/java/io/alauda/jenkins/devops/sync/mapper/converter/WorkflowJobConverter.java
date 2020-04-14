@@ -19,6 +19,8 @@ import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -143,6 +145,17 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
               .map(Throwable::getMessage)
               .collect(Collectors.toList())
               .toArray(new String[] {}));
+    }
+
+    boolean jobIsDisabled = job.isDisabled();
+    if (!pipelineConfig.getSpec().isDisabled().equals(jobIsDisabled)) {
+      try {
+        Method methodSetDisabled = job.getClass().getDeclaredMethod("setDisabled", boolean.class);
+        methodSetDisabled.setAccessible(true);
+        methodSetDisabled.invoke(job, pipelineConfig.getSpec().isDisabled());
+      } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        logger.error("set job disable failed", e);
+      }
     }
 
     return job;

@@ -115,6 +115,8 @@ public class MultiBranchProjectEventHandler
         multiBranchPipeline.setOrphaned(null);
       }
 
+      newPc.getSpec().setDisabled(item.isDisabled());
+
       Clients.get(V1alpha1PipelineConfig.class).update(pc, newPc);
       pc.setSpec(newPc.getSpec());
 

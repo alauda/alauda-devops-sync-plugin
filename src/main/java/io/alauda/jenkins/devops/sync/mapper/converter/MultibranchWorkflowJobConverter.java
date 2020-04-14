@@ -4,6 +4,7 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 import antlr.ANTLRException;
 import com.cloudbees.hudson.plugins.folder.Folder;
+import com.cloudbees.hudson.plugins.folder.computed.ComputedFolder;
 import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
 import hudson.Extension;
 import hudson.model.Item;
@@ -292,6 +293,19 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     } else {
       job = (WorkflowMultiBranchProject) item;
     }
+
+    boolean jobIsDisabled = job.isDisabled();
+    if (!pipelineConfig.getSpec().isDisabled().equals(jobIsDisabled)) {
+      try {
+        Method methodSetDisabled =
+            ComputedFolder.class.getDeclaredMethod("setDisabled", boolean.class);
+        methodSetDisabled.setAccessible(true);
+        methodSetDisabled.invoke(job, pipelineConfig.getSpec().isDisabled());
+      } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        logger.error("set job disable failed", e);
+      }
+    }
+
     return job;
   }
 

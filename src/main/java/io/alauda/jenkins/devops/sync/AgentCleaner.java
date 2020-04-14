@@ -66,14 +66,18 @@ public class AgentCleaner extends AsyncPeriodicWork {
                     pod -> pod.getMetadata().getNamespace() + "/" + pod.getMetadata().getName(),
                     pod -> ""));
 
-    nodes.stream()
+    nodes
+        .stream()
         // only process KubernetesSlave
         .filter(node -> node instanceof KubernetesSlave)
         .map(node -> ((KubernetesSlave) node))
         // proceed if we can find correspond pod in failed pods
         .filter(
-            slave -> failedPods.containsKey(
-                slave.getNamespace() + "/" + PodTemplateUtils.substituteEnv(slave.getNodeName())))
+            slave ->
+                failedPods.containsKey(
+                    slave.getNamespace()
+                        + "/"
+                        + PodTemplateUtils.substituteEnv(slave.getNodeName())))
         .forEach(
             slave -> {
               try {
@@ -86,9 +90,12 @@ public class AgentCleaner extends AsyncPeriodicWork {
               try {
                 String podName = PodTemplateUtils.substituteEnv(slave.getNodeName());
                 logger.info("Will delete the pod {}", podName);
-                cloud.connect().pods().inNamespace(slave.getNamespace())
-                    .withName(podName).delete();
-              } catch (IOException | CertificateEncodingException | NoSuchAlgorithmException | KeyStoreException | UnrecoverableKeyException e) {
+                cloud.connect().pods().inNamespace(slave.getNamespace()).withName(podName).delete();
+              } catch (IOException
+                  | CertificateEncodingException
+                  | NoSuchAlgorithmException
+                  | KeyStoreException
+                  | UnrecoverableKeyException e) {
                 logger.warn("Failed to delete pod {}", slave.getNodeName());
               }
             });

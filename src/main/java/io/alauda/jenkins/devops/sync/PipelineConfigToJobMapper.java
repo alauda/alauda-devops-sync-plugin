@@ -237,6 +237,8 @@ public abstract class PipelineConfigToJobMapper {
     // take care of job's params
     updateParameters(job, pipelineConfig);
 
+    pipelineConfig.getSpec().setDisabled(job.isDisabled());
+
     FlowDefinition definition = job.getDefinition();
     if (definition instanceof CpsScmFlowDefinition) {
       CpsScmFlowDefinition cpsScmFlowDefinition = (CpsScmFlowDefinition) definition;
