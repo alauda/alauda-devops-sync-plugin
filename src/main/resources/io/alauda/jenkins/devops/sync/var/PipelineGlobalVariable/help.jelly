@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core">
+  <p>
+    Get the pipeline namespace, name and other data
+  </p>
+
+  <p>
+    get the namespace of this Pipeline
+  </p>
+  <pre><code>pipelineContext.getNamespace()</code></pre>
+
+  <p>
+    get the name of this Pipeline
+  </p>
+  <pre><code>pipelineContext.getName()</code></pre>
+
+</j:jelly>

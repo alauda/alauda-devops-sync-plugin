@@ -98,4 +98,14 @@ public class PipelineContext {
     }
     return data;
   }
+
+  @Whitelisted
+  public String getNamespace() {
+    return namespace;
+  }
+
+  @Whitelisted
+  public String getName() {
+    return name;
+  }
 }
