@@ -17,6 +17,7 @@ import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import java.util.function.Supplier;
 
 public final class Constants {
+
   private Constants() {}
 
   public static final String ALAUDA_SYNC_PLUGIN = "sync.plugin.alauda.io";
@@ -183,4 +184,30 @@ public final class Constants {
   public static final String JENKINS_PLUGIN_STATUS_INACTIVE = "inactive";
 
   public static final String PIPELINE_LABELS_REPLAYED_FROM = "replayed-from";
+
+  public static final String PIPELINE_CONFIG_CONDITION_TYPE_INITIALIZED = "Initialized";
+  public static final String PIPELINE_CONFIG_CONDITION_TYPE_SYNCED = "Synced";
+
+  public static final String PIPELINE_CONFIG_CONDITION_REASON_CREATE_JENKINS_JOB_FAILED =
+      "CreateJenkinsJobFailed";
+  public static final String PIPELINE_CONFIG_CONDITION_REASON_SUPPORTED = "Supported";
+  public static final String PIPELINE_CONFIG_CONDITION_REASON_UNSUPPORTED = "Unsupported";
+  public static final String PIPELINE_CONFIG_CONDITION_REASON_INCORRECT = "Incorrect";
+
+  public static final String CONDITION_STATUS_FALSE = "False";
+  public static final String CONDITION_STATUS_TRUE = "True";
+  public static final String CONDITION_STATUS_UNKNOWN = "Unknown";
+
+  public static final String PIPELINE_CONDITION_TYPE_SYNCED = "Synced";
+  public static final String PIPELINE_CONDITION_TYPE_COMPLETED = "Completed";
+  public static final String PIPELINE_CONDITION_TYPE_CANCELLED = "Cancelled";
+  public static final String PIPELINE_CONDITION_TYPE_SUPPORT_PR_DISCOVERY = "SupportPRDiscovery";
+
+  public static final String PIPELINE_CONDITION_REASON_TRIGGER_FAILED = "TriggerFailed";
+  public static final String PIPELINE_CONDITION_REASON_RUNNING = "Running";
+  public static final String PIPELINE_CONDITION_REASON_PENDING_INPUT = "PendingInput";
+  public static final String PIPELINE_CONDITION_REASON_CANCELLED = "Cancelled";
+  public static final String PIPELINE_CONDITION_REASON_FAILED = "Failed";
+  public static final String PIPELINE_CONDITION_REASON_COMPLETE = "Complete";
+  public static final String PIPELINE_CONDITION_REASON_CANCELLING_FAILED = "CancellingFailed";
 }

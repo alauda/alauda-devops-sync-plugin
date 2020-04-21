@@ -1,12 +1,20 @@
 package io.alauda.jenkins.devops.sync.controller;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_SYNC_PLUGIN;
+import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_FALSE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_TRUE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_UNKNOWN;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_CANCELLING_FAILED;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_TRIGGER_FAILED;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_TYPE_CANCELLED;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_TYPE_COMPLETED;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_TYPE_SYNCED;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CREATED_BY;
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_LABELS_REPLAYED_FROM;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.CANCELLED;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.FAILED;
-import static io.alauda.jenkins.devops.sync.constants.PipelinePhases.QUEUED;
 
 import hudson.Extension;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
+import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineList;
@@ -16,11 +24,9 @@ import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineClient;
-import io.alauda.jenkins.devops.sync.constants.Constants;
-import io.alauda.jenkins.devops.sync.constants.PipelinePhases;
-import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
+import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
-import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
+import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.ReplayUtils;
@@ -43,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -170,13 +177,9 @@ public class PipelineController
     V1alpha1PipelineList pipelineList =
         api.listPipelineForAllNamespaces(null, null, null, null, 1, null, "0", null, null);
 
-    if (pipelineList == null
-        || pipelineList.getItems() == null
-        || pipelineList.getItems().size() == 0) {
-      return false;
-    }
-
-    return true;
+    return pipelineList != null
+        && pipelineList.getItems() != null
+        && pipelineList.getItems().size() != 0;
   }
 
   class PipelineReconciler implements Reconciler {
@@ -226,16 +229,6 @@ public class PipelineController
         return new Result(false);
       }
 
-      if (!BindResourcePredicate.isBindedResource(
-          namespace, pipeline.getSpec().getJenkinsBinding().getName())) {
-        logger.debug(
-            "[{}] Pipeline '{}/{}' is not bind to correct jenkinsbinding, will skip it",
-            getControllerName(),
-            namespace,
-            name);
-        return new Result(false);
-      }
-
       V1alpha1PipelineConfig pipelineConfig =
           Clients.get(V1alpha1PipelineConfig.class)
               .lister()
@@ -253,26 +246,53 @@ public class PipelineController
       synchronized (pipeline.getMetadata().getUid().intern()) {
         PipelineClient pipelineClient = (PipelineClient) Clients.get(V1alpha1Pipeline.class);
         V1alpha1Pipeline pipelineCopy = DeepCopyUtils.deepCopy(pipeline);
-        if (isNewPipeline(pipelineCopy)) {
+
+        V1alpha1Condition syncedCondition =
+            ConditionUtils.getCondition(
+                pipelineCopy.getStatus().getConditions(), PIPELINE_CONDITION_TYPE_SYNCED);
+        V1alpha1Condition completedCondition =
+            ConditionUtils.getCondition(
+                pipelineCopy.getStatus().getConditions(), PIPELINE_CONDITION_TYPE_COMPLETED);
+        V1alpha1Condition cancelledCondition =
+            ConditionUtils.getCondition(
+                pipelineCopy.getStatus().getConditions(), PIPELINE_CONDITION_TYPE_CANCELLED);
+        if (syncedCondition == null || cancelledCondition == null || completedCondition == null) {
           logger.debug(
-              "[{}] Pipeline '{}/{} phase is {}, will trigger a new build",
+              "[{}] Pipeline '{}/{}' doesn't have synced or cancelled condition, will skip this reconcile",
               getControllerName(),
               namespace,
-              name,
-              pipeline.getStatus().getPhase());
+              name);
+          return new Result(false);
+        }
 
+        if (completedCondition.getStatus().equals(CONDITION_STATUS_TRUE)) {
+          logger.debug(
+              "[{}] Pipeline '{}/{}' is completed, will skip this reconcile",
+              getControllerName(),
+              namespace,
+              name);
+          return new Result(false);
+        }
+
+        if (syncedCondition.getStatus().equals(CONDITION_STATUS_UNKNOWN)) {
+          syncedCondition.status(CONDITION_STATUS_TRUE).lastAttempt(DateTime.now());
+          logger.debug(
+              "[{}] Pipeline '{}/{} synced condition is Unknown, will trigger a new build",
+              getControllerName(),
+              namespace,
+              name);
           if (isCreateByJenkins(pipelineCopy)) {
             logger.debug(
                 "[{}] Pipeline created by Jenkins. It should be triggered, skip create event.",
                 getControllerName());
-            pipelineCopy.getStatus().setPhase(QUEUED);
+            syncedCondition.setStatus(CONDITION_STATUS_TRUE);
             boolean succeed = pipelineClient.update(pipeline, pipelineCopy);
             return new Result(!succeed);
           }
 
-          if (AlaudaUtils.isCancellable(pipelineCopy.getStatus())
-              && AlaudaUtils.isCancelled(pipelineCopy.getStatus())) {
-            pipelineCopy.getStatus().setPhase(CANCELLED);
+          if (isCancelling(pipeline)) {
+            cancelledCondition.setLastAttempt(DateTime.now());
+            cancelledCondition.setStatus(CONDITION_STATUS_TRUE);
             boolean succeed = pipelineClient.update(pipeline, pipelineCopy);
             return new Result(!succeed);
           }
@@ -313,7 +333,7 @@ public class PipelineController
                 getControllerName(),
                 namespace,
                 name);
-            pipelineCopy.getStatus().setPhase(QUEUED);
+            syncedCondition.setStatus(CONDITION_STATUS_TRUE);
           } catch (Exception e) {
             logger.info(
                 "[{}] Unable to trigger Pipeline '{}/{}', reason: {}",
@@ -322,26 +342,36 @@ public class PipelineController
                 name,
                 e.getMessage());
 
-            pipelineCopy.getStatus().setPhase(FAILED);
+            syncedCondition.setStatus(CONDITION_STATUS_FALSE);
+            syncedCondition.setReason(PIPELINE_CONDITION_REASON_TRIGGER_FAILED);
+            syncedCondition.setMessage(e.getMessage());
           }
 
           pipelineClient.update(pipeline, pipelineCopy);
           return new Result(false);
         }
 
-        if (AlaudaUtils.isCancellable(pipelineCopy.getStatus())
-            && AlaudaUtils.isCancelled(pipeline.getStatus())) {
+        if (isCancelling(pipeline)) {
+          cancelledCondition.setLastAttempt(DateTime.now());
           logger.debug(
               "[{}] Starting cancel Pipeline '{}/{}'", getControllerName(), namespace, name);
-          boolean succeed = jenkinsClient.cancelPipeline(new NamespaceName(namespace, name));
-          if (succeed) {
-            pipelineCopy.getStatus().setPhase(CANCELLED);
-            succeed = pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(!succeed);
-          } else {
-            pipelineClient.update(pipeline, pipelineCopy);
-            return new Result(true);
+          try {
+            jenkinsClient.cancelPipeline(new NamespaceName(namespace, name));
+            cancelledCondition.setStatus(CONDITION_STATUS_TRUE);
+            logger.debug(
+                "[{}] Succeed to cancel Pipeline '{}/{}'", getControllerName(), namespace, name);
+          } catch (PipelineException e) {
+            logger.error(
+                "[{}] Failed to cancel Pipeline '{}/{}, reason {}",
+                getControllerName(),
+                namespace,
+                name,
+                e);
+            cancelledCondition.setStatus(CONDITION_STATUS_FALSE);
+            cancelledCondition.setReason(PIPELINE_CONDITION_REASON_CANCELLING_FAILED);
+            cancelledCondition.setMessage(e.getMessage());
           }
+          pipelineClient.update(pipeline, pipelineCopy);
         }
 
         return new Result(false);
@@ -363,18 +393,24 @@ public class PipelineController
       return false;
     }
 
+    private boolean isCancelling(V1alpha1Pipeline pipeline) {
+      if (!pipeline.getSpec().isCancel()) {
+        return false;
+      }
+
+      V1alpha1Condition cancelledCond =
+          ConditionUtils.getCondition(
+              pipeline.getStatus().getConditions(), PIPELINE_CONDITION_TYPE_CANCELLED);
+      return cancelledCond != null && cancelledCond.getStatus().equals(CONDITION_STATUS_UNKNOWN);
+    }
+
     private String getControllerName() {
       return CONTROLLER_NAME;
     }
 
-    private boolean isNewPipeline(@Nonnull V1alpha1Pipeline pipeline) {
-      return pipeline.getStatus().getPhase().equals(PipelinePhases.PENDING);
-    }
-
     private boolean isCreateByJenkins(@Nonnull V1alpha1Pipeline pipeline) {
       Map<String, String> labels = pipeline.getMetadata().getLabels();
-      return (labels != null
-          && Constants.ALAUDA_SYNC_PLUGIN.equals(labels.get(Constants.PIPELINE_CREATED_BY)));
+      return (labels != null && ALAUDA_SYNC_PLUGIN.equals(labels.get(PIPELINE_CREATED_BY)));
     }
   }
 }

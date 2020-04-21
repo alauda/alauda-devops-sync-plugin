@@ -8,14 +8,12 @@ import hudson.util.VersionNumber;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.constants.ErrorMessages;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
 import jenkins.model.Jenkins;
-import org.apache.commons.collections4.CollectionUtils;
-import org.joda.time.DateTime;
+import org.apache.commons.collections.CollectionUtils;
 
 public abstract class PipelineConfigUtils {
   private static final Logger logger = Logger.getLogger(PipelineConfigUtils.class.getName());
@@ -117,28 +115,5 @@ public abstract class PipelineConfigUtils {
     if (!pipelineConfig.getSpec().isDisabled().equals(disabled)) {
       pipelineConfig.getSpec().setDisabled(disabled);
     }
-  }
-
-  public static void addCondition(
-      @Nonnull V1alpha1PipelineConfig pipelineConfig,
-      String type,
-      String status,
-      String reason,
-      String message) {
-    if (pipelineConfig.getStatus() == null) {
-      pipelineConfig.setStatus(new V1alpha1PipelineConfigStatus());
-    }
-
-    if (pipelineConfig.getStatus().getConditions() == null) {
-      pipelineConfig.getStatus().setConditions(new ArrayList<>());
-    }
-
-    V1alpha1Condition condition = new V1alpha1Condition();
-    condition.setReason(reason);
-    condition.setMessage(message);
-    condition.setType(type);
-    condition.setStatus(status);
-    condition.setLastAttempt(new DateTime());
-    pipelineConfig.getStatus().getConditions().add(condition);
   }
 }

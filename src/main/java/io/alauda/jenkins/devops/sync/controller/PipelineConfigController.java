@@ -12,11 +12,9 @@ import io.alauda.jenkins.devops.sync.ConnectionAliveDetectTask;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineConfigClient;
-import io.alauda.jenkins.devops.sync.constants.PipelineConfigPhase;
-import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
-import io.alauda.jenkins.devops.sync.exception.ConditionsUtils;
-import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
+import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
+import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.kubernetes.client.ApiException;
@@ -33,11 +31,8 @@ import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.joda.time.DateTime;
@@ -101,18 +96,6 @@ public class PipelineConfigController
                         .withOnAddFilter(
                             pipelineConfig -> {
                               Metrics.incomingRequestCounter.labels("pipeline_config", "add").inc();
-                              if (pipelineConfig
-                                  .getStatus()
-                                  .getPhase()
-                                  .equals(PipelineConfigPhase.CREATING)) {
-                                logger.debug(
-                                    "[{}] phase of PipelineConfig '{}/{}' is {}, will skip it",
-                                    CONTROLLER_NAME,
-                                    pipelineConfig.getMetadata().getNamespace(),
-                                    pipelineConfig.getMetadata().getName(),
-                                    PipelineConfigPhase.CREATING);
-                                return false;
-                              }
 
                               logger.debug(
                                   "[{}] receives event: Add; PipelineConfig '{}/{}'",
@@ -142,19 +125,6 @@ public class PipelineConfigController
                               }
 
                               lastEventComingTime = LocalDateTime.now();
-
-                              if (newPipelineConfig
-                                  .getStatus()
-                                  .getPhase()
-                                  .equals(PipelineConfigPhase.CREATING)) {
-                                logger.debug(
-                                    "[{}] phase of PipelineConfig '{}/{}' is {}, will skip it",
-                                    CONTROLLER_NAME,
-                                    namespace,
-                                    name,
-                                    PipelineConfigPhase.CREATING);
-                                return false;
-                              }
 
                               logger.debug(
                                   "[{}] receives event: Update; PipelineConfig '{}/{}'",
@@ -201,13 +171,9 @@ public class PipelineConfigController
     V1alpha1PipelineConfigList pipelineConfigList =
         api.listPipelineConfigForAllNamespaces(null, null, null, null, 1, null, "0", null, null);
 
-    if (pipelineConfigList == null
-        || pipelineConfigList.getItems() == null
-        || pipelineConfigList.getItems().size() == 0) {
-      return false;
-    }
-
-    return true;
+    return pipelineConfigList != null
+        && pipelineConfigList.getItems() != null
+        && pipelineConfigList.getItems().size() != 0;
   }
 
   class PipelineConfigReconciler implements Reconciler {
@@ -215,7 +181,7 @@ public class PipelineConfigController
     private Lister<V1alpha1PipelineConfig> lister;
     private JenkinsClient jenkinsClient;
 
-    public PipelineConfigReconciler(Lister<V1alpha1PipelineConfig> lister) {
+    PipelineConfigReconciler(Lister<V1alpha1PipelineConfig> lister) {
       this.lister = lister;
       this.jenkinsClient = JenkinsClient.getInstance();
     }
@@ -257,10 +223,38 @@ public class PipelineConfigController
         return new Result(false);
       }
 
-      if (!BindResourcePredicate.isBindedResource(
-          namespace, pc.getSpec().getJenkinsBinding().getName())) {
+      V1alpha1Condition initializedCondition =
+          ConditionUtils.getCondition(
+              pc.getStatus().getConditions(), Constants.PIPELINE_CONFIG_CONDITION_TYPE_INITIALIZED);
+      if (initializedCondition == null
+          || !initializedCondition.getStatus().equals(Constants.CONDITION_STATUS_TRUE)) {
         logger.debug(
-            "[{}] PipelineConfigController: {}/{}' is not bind to correct jenkinsbinding, will skip it",
+            "[{}] PipelineConfig '{}/{}' not initialized, skip this reconcile",
+            getControllerName(),
+            namespace,
+            name);
+        return new Result(false);
+      }
+
+      // clone PipelineConfig so that we won't modify it in two places
+      pc = DeepCopyUtils.deepCopy(pc);
+      V1alpha1PipelineConfig pipelineConfigCopy = DeepCopyUtils.deepCopy(pc);
+
+      V1alpha1Condition syncedCondition =
+          ConditionUtils.getCondition(
+              pipelineConfigCopy.getStatus().getConditions(),
+              Constants.PIPELINE_CONFIG_CONDITION_TYPE_SYNCED);
+      if (syncedCondition == null) {
+        logger.debug(
+            "[{}] PipelineConfig '{}/{}' doesn't have Synced condition, skip this reconcile",
+            getControllerName(),
+            namespace,
+            name);
+        return new Result(false);
+      }
+      if (syncedCondition.getStatus().equals(Constants.CONDITION_STATUS_TRUE)) {
+        logger.debug(
+            "[{}] PipelineConfig '{}/{}' already synced, skip this reconcile",
             getControllerName(),
             namespace,
             name);
@@ -272,13 +266,8 @@ public class PipelineConfigController
           getControllerName(),
           namespace,
           name);
-      // clone PipelineConfig so that we won't modify it in two places
-      pc = DeepCopyUtils.deepCopy(pc);
-      V1alpha1PipelineConfig pipelineConfigCopy = DeepCopyUtils.deepCopy(pc);
 
-      // clean conditions first, any error info will be put it into conditions
-      List<V1alpha1Condition> conditions = new ArrayList<>();
-      pipelineConfigCopy.getStatus().setConditions(conditions);
+      syncedCondition.status(Constants.CONDITION_STATUS_TRUE).lastAttempt(DateTime.now());
 
       PipelineConfigUtils.dependencyCheck(
           pipelineConfigCopy, pipelineConfigCopy.getStatus().getConditions());
@@ -290,22 +279,20 @@ public class PipelineConfigController
         if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
           return new Result(false);
         }
-      } catch (PipelineConfigConvertException e) {
-        logger.warn(
-            "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
-            getControllerName(),
-            namespace,
-            name,
-            StringUtils.join(e.getCauses(), " or "));
-        conditions.addAll(ConditionsUtils.convertToConditions(e.getCauses()));
-      } catch (IOException e) {
+      } catch (Throwable e) {
+        logger.error("error", e);
+        logger.error("error {}", ((Object) e));
+
         logger.warn(
             "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
             getControllerName(),
             namespace,
             name,
             e.getMessage());
-        conditions.add(ConditionsUtils.convertToCondition(e));
+        syncedCondition
+            .status(Constants.CONDITION_STATUS_FALSE)
+            .reason(Constants.PIPELINE_CONFIG_CONDITION_REASON_CREATE_JENKINS_JOB_FAILED)
+            .message(e.getMessage());
       }
 
       Item item = JenkinsClient.getInstance().getItem(new NamespaceName(namespace, name));
@@ -315,22 +302,6 @@ public class PipelineConfigController
                   && ((WorkflowMultiBranchProject) item).isDisabled())
               || (item instanceof WorkflowJob && ((WorkflowJob) item).isDisabled());
       pipelineConfigCopy.getSpec().setDisabled(disabled);
-
-      if (pipelineConfigCopy.getStatus().getConditions().size() > 0) {
-        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.ERROR);
-        DateTime now = DateTime.now();
-        pipelineConfigCopy.getStatus().getConditions().forEach(c -> c.setLastAttempt(now));
-      } else {
-        pipelineConfigCopy.getStatus().setPhase(PipelineConfigPhase.READY);
-      }
-
-      String reason = pipelineConfigCopy.getSpec().isDisabled() ? "Disabled" : "Enabled";
-      PipelineConfigUtils.addCondition(
-          pipelineConfigCopy,
-          "Specific Modified",
-          "OK",
-          reason,
-          String.format("PipelineConfig %s", reason));
 
       logger.debug("[{}] Will update PipelineConfig '{}/{}'", getControllerName(), namespace, name);
       PipelineConfigClient pipelineConfigClient =
