@@ -124,8 +124,6 @@ public class PipelineConfigController
                                 return false;
                               }
 
-                              lastEventComingTime = LocalDateTime.now();
-
                               logger.debug(
                                   "[{}] receives event: Update; PipelineConfig '{}/{}'",
                                   CONTROLLER_NAME,
@@ -188,6 +186,8 @@ public class PipelineConfigController
 
     @Override
     public Result reconcile(Request request) {
+      lastEventComingTime = LocalDateTime.now();
+
       Metrics.completedRequestCounter.labels("pipeline_config").inc();
       Metrics.remainedRequestsGauge.labels("pipeline_config").set(queue.length());
 
