@@ -16,10 +16,13 @@
 package io.alauda.jenkins.devops.sync;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.DEFAULT_JENKINS_FILEPATH;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
-import hudson.model.*;
+import hudson.model.BooleanParameterDefinition;
+import hudson.model.ParameterDefinition;
+import hudson.model.ParameterValue;
+import hudson.model.ParametersDefinitionProperty;
+import hudson.model.StringParameterDefinition;
 import hudson.plugins.git.BranchSpec;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.SubmoduleConfig;
@@ -27,18 +30,25 @@ import hudson.plugins.git.UserRemoteConfig;
 import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.scm.SCM;
 import hudson.scm.SubversionSCM;
-import hudson.triggers.SCMTrigger;
-import hudson.triggers.TimerTrigger;
-import hudson.triggers.Trigger;
-import hudson.triggers.TriggerDescriptor;
-import io.alauda.devops.java.client.models.*;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfigSpec;
+import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
+import io.alauda.devops.java.client.models.V1alpha1PipelineParameterBuilder;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSource;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSourceGit;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSourceSvn;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStrategy;
+import io.alauda.devops.java.client.models.V1alpha1PipelineStrategyJenkins;
+import io.alauda.devops.java.client.models.V1alpha1PipelineTrigger;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
@@ -132,74 +142,6 @@ public abstract class PipelineConfigToJobMapper {
   }
 
   /**
-   * Update triggers to k8s resources. We support scm and cron for now.
-   *
-   * @param job WorkflowJob
-   * @param pipelineConfig PipelineConfig
-   */
-  private static void updateTrigger(WorkflowJob job, V1alpha1PipelineConfig pipelineConfig) {
-    Map<TriggerDescriptor, Trigger<?>> triggers = job.getTriggers();
-    if (triggers == null) {
-      return;
-    }
-
-    // checking if there are triggers to be updated
-    List<V1alpha1PipelineTrigger> pipelineConfigTriggers = pipelineConfig.getSpec().getTriggers();
-    final V1alpha1PipelineTrigger cronTrigger;
-    if (pipelineConfigTriggers == null) {
-      pipelineConfig.getSpec().setTriggers(new ArrayList<>());
-      cronTrigger = null;
-    } else {
-      pipelineConfigTriggers.clear();
-      Optional<V1alpha1PipelineTrigger> triggerOptional =
-          pipelineConfigTriggers
-              .stream()
-              .filter(trigger -> PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType()))
-              .findFirst();
-
-      cronTrigger = triggerOptional.orElse(null);
-    }
-
-    triggers.forEach(
-        (desc, trigger) -> {
-          V1alpha1PipelineTrigger pipelineTrigger = null;
-          if (trigger instanceof SCMTrigger) {
-            pipelineTrigger =
-                new V1alpha1PipelineTriggerBuilder()
-                    .withType(Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE)
-                    .withNewCodeChange()
-                    .withEnabled(true)
-                    .withPeriodicCheck(trigger.getSpec())
-                    .endCodeChange()
-                    .build();
-          } else if (trigger instanceof TimerTrigger) {
-            if (cronTrigger == null) {
-              pipelineTrigger =
-                  new V1alpha1PipelineTriggerBuilder()
-                      .withType(Constants.PIPELINE_TRIGGER_TYPE_CRON)
-                      .withNewCron()
-                      .withEnabled(true)
-                      .withRule(trigger.getSpec())
-                      .endCron()
-                      .build();
-            } else {
-              V1alpha1PipelineTriggerCron cron = new V1alpha1PipelineTriggerCron();
-              cron.setEnabled(true);
-              cron.setRule(trigger.getSpec());
-              cronTrigger.setCron(cron);
-              pipelineTrigger = cronTrigger;
-            }
-          }
-
-          if (pipelineTrigger != null) {
-            pipelineConfig.getSpec().getTriggers().add(pipelineTrigger);
-          } else {
-            LOGGER.warning(() -> "Not support trigger type : " + trigger.getClass());
-          }
-        });
-  }
-
-  /**
    * Updates the {@link V1alpha1PipelineConfig} if the Jenkins {@link WorkflowJob} changes
    *
    * @param job the job thats been updated via Jenkins
@@ -213,22 +155,14 @@ public abstract class PipelineConfigToJobMapper {
             pipelineConfig.getMetadata().getNamespace(), pipelineConfig.getMetadata().getName());
     V1alpha1PipelineStrategyJenkins pipelineStrategyJenkins = null;
     V1alpha1PipelineConfigSpec spec = pipelineConfig.getSpec();
-    if (spec != null) {
-      V1alpha1PipelineStrategy strategy = spec.getStrategy();
-      if (strategy != null) {
-        pipelineStrategyJenkins = strategy.getJenkins();
-      } else {
-        LOGGER.warning(
-            () -> "No available JenkinsPipelineStrategy in the PipelineConfig " + namespaceName);
-        return false;
-      }
+    V1alpha1PipelineStrategy strategy = spec.getStrategy();
+    if (strategy != null) {
+      pipelineStrategyJenkins = strategy.getJenkins();
     } else {
-      LOGGER.warning("Not spec in PipelineConfig");
+      LOGGER.warning(
+          () -> "No available JenkinsPipelineStrategy in the PipelineConfig " + namespaceName);
       return false;
     }
-
-    // checking if there are triggers to be updated
-    updateTrigger(job, pipelineConfig);
 
     // take care of job's params
     updateParameters(job, pipelineConfig);
