@@ -237,6 +237,8 @@ public class PipelineController
       synchronized (pipeline.getMetadata().getUid().intern()) {
         PipelineClient pipelineClient = (PipelineClient) Clients.get(V1alpha1Pipeline.class);
         V1alpha1Pipeline pipelineCopy = DeepCopyUtils.deepCopy(pipeline);
+        // ensure we won't update Pipeline's spec
+        pipelineCopy.setSpec(pipeline.getSpec());
 
         V1alpha1Condition syncedCondition =
             ConditionUtils.getCondition(

@@ -271,6 +271,8 @@ public class PipelineSyncExecutor implements Runnable {
 
     synchronized (pipeline.getMetadata().getUid().intern()) {
       V1alpha1Pipeline pipelineCopy = DeepCopyUtils.deepCopy(pipeline);
+      // ensure we won't update pipeline's spec
+      pipelineCopy.setSpec(pipeline.getSpec());
 
       addURLsToAnnotations(run, pipelineCopy);
       addBadgesToAnnotations(run, pipelineCopy);

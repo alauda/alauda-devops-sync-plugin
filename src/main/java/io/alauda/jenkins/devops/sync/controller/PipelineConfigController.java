@@ -13,6 +13,7 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineConfigClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
+import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -279,10 +280,7 @@ public class PipelineConfigController
         if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
           return new Result(false);
         }
-      } catch (Throwable e) {
-        logger.error("error", e);
-        logger.error("error {}", ((Object) e));
-
+      } catch (PipelineConfigConvertException | IOException e) {
         logger.warn(
             "[{}] Failed to convert PipelineConfig '{}/{}' to Jenkins Job, reason {}",
             getControllerName(),

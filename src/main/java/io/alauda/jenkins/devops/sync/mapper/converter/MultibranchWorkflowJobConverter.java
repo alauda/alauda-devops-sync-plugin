@@ -9,31 +9,35 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITI
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONFIG_CONDITION_REASON_INCORRECT;
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONFIG_CONDITION_REASON_SUPPORTED;
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONFIG_CONDITION_REASON_UNSUPPORTED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_INTERVAL;
 
 import antlr.ANTLRException;
 import com.cloudbees.hudson.plugins.folder.Folder;
 import com.cloudbees.hudson.plugins.folder.computed.ComputedFolder;
 import com.cloudbees.hudson.plugins.folder.computed.DefaultOrphanedItemStrategy;
+import com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger;
 import hudson.Extension;
 import hudson.model.Item;
+import hudson.plugins.git.extensions.impl.CloneOption;
+import io.alauda.devops.java.client.models.V1alpha1BranchBehaviour;
+import io.alauda.devops.java.client.models.V1alpha1CloneBehaviour;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
 import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1MultiBranchBehaviours;
 import io.alauda.devops.java.client.models.V1alpha1MultiBranchOrphan;
 import io.alauda.devops.java.client.models.V1alpha1MultiBranchPipeline;
 import io.alauda.devops.java.client.models.V1alpha1OriginCodeRepository;
+import io.alauda.devops.java.client.models.V1alpha1PRBehaviour;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineSource;
 import io.alauda.devops.java.client.models.V1alpha1PipelineStrategyJenkins;
 import io.alauda.devops.java.client.models.V1alpha1PipelineTrigger;
-import io.alauda.devops.java.client.models.V1alpha1PipelineTriggerCron;
+import io.alauda.devops.java.client.models.V1alpha1PipelineTriggerInterval;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
-import io.alauda.jenkins.devops.sync.folder.CronFolderTrigger;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
@@ -44,6 +48,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -273,7 +278,12 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     V1alpha1MultiBranchPipeline multiBranchStrategy =
         pipelineConfig.getSpec().getStrategy().getJenkins().getMultiBranch();
 
-    handleSCMTraits(scmSource, multiBranchStrategy.getBehaviours(), gitProvider);
+    // keep compatibility
+    if (!StringUtils.isEmpty(multiBranchStrategy.getBehaviours().getFilterExpression())) {
+      handleSCMTraits(scmSource, multiBranchStrategy.getBehaviours(), gitProvider);
+    } else {
+      handleSCMTraits(scmSource, multiBranchStrategy, gitProvider);
+    }
     handleCredentials(scmSource, pipelineConfig);
     scmSource.setOwner(job);
     scmSource.afterSave();
@@ -378,23 +388,32 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
   private void setUpTriggers(WorkflowMultiBranchProject job, V1alpha1PipelineConfig pipelineConfig)
       throws PipelineConfigConvertException {
     List<V1alpha1PipelineTrigger> triggers = pipelineConfig.getSpec().getTriggers();
-    if (triggers != null) {
-      Optional<V1alpha1PipelineTrigger> triggerOpt =
-          triggers
-              .stream()
-              .filter(trigger -> PIPELINE_TRIGGER_TYPE_CRON.equals(trigger.getType()))
-              .findFirst();
-      if (triggerOpt.isPresent()) {
-        V1alpha1PipelineTrigger trigger = triggerOpt.get();
-        V1alpha1PipelineTriggerCron cron = trigger.getCron();
+    if (CollectionUtils.isEmpty(triggers)) {
+      return;
+    }
 
-        try {
-          job.addTrigger(new CronFolderTrigger(cron.getRule(), cron.isEnabled()));
-        } catch (ANTLRException e) {
-          throw new PipelineConfigConvertException(
-              String.format("Cron trigger is not legal, reason %s", e.getMessage()));
-        }
-      }
+    Optional<V1alpha1PipelineTrigger> triggerOpt =
+        triggers
+            .stream()
+            .filter(trigger -> PIPELINE_TRIGGER_TYPE_INTERVAL.equals(trigger.getType()))
+            .findFirst();
+
+    if (!triggerOpt.isPresent()) {
+      return;
+    }
+
+    V1alpha1PipelineTrigger trigger = triggerOpt.get();
+    V1alpha1PipelineTriggerInterval interval = trigger.getInterval();
+
+    if (!interval.isEnabled()) {
+      return;
+    }
+
+    try {
+      job.addTrigger(new PeriodicFolderTrigger(interval.getInterval()));
+    } catch (ANTLRException e) {
+      throw new PipelineConfigConvertException(
+          String.format("Interval trigger is not legal, reason %s", e.getMessage()));
     }
   }
 
@@ -412,11 +431,15 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       traits.add(gitProvider.getBranchDiscoverTrait(1));
       traits.add(gitProvider.getOriginPRTrait(1));
       traits.add(gitProvider.getForkPRTrait(1));
-      traits.add(gitProvider.getCloneTrait());
+      traits.add(gitProvider.getCloneTrait(null));
     } else {
       traits.add(new BranchDiscoveryTrait());
     }
 
+    setTraits(source, traits);
+  }
+
+  private void setTraits(@Nonnull SCMSource source, List<SCMSourceTrait> traits) {
     try {
       Method method = source.getClass().getMethod("setTraits", List.class);
       method.invoke(source, traits);
@@ -424,6 +447,60 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       e.printStackTrace();
       logger.error(String.format("Can't setting traits, source class is %s", source.getClass()));
     }
+  }
+
+  // TODO should create a PR to unit the interface
+  private void handleSCMTraits(
+      @Nonnull SCMSource source,
+      V1alpha1MultiBranchPipeline behaviours,
+      GitProviderMultiBranch gitProvider) {
+
+    List<SCMSourceTrait> traits = new ArrayList<>();
+    List<String> rules = new LinkedList<>();
+
+    V1alpha1BranchBehaviour branchBehaviours = behaviours.getBranchBehaviour();
+    if (branchBehaviours != null && branchBehaviours.isEnabled()) {
+      rules.addAll(branchBehaviours.getRules());
+
+      if (gitProvider != null) {
+        if (branchBehaviours.isExcludeBranchFiledAsPR()) {
+          traits.add(gitProvider.getBranchDiscoverTrait(1));
+        } else {
+          traits.add(gitProvider.getBranchDiscoverTrait(3));
+        }
+      } else {
+        traits.add(new BranchDiscoveryTrait());
+      }
+    }
+
+    V1alpha1PRBehaviour prBehaviour = behaviours.getPrBehaviour();
+    if (gitProvider != null && prBehaviour != null && prBehaviour.isEnabled()) {
+      rules.add("PR-.*");
+      rules.add("MR-.*");
+
+      if (prBehaviour.isExecuteMerged() && prBehaviour.isExecuteOriginal()) {
+        traits.add(gitProvider.getOriginPRTrait(3));
+      } else if (prBehaviour.isExecuteMerged()) {
+        traits.add(gitProvider.getOriginPRTrait(1));
+      } else if (prBehaviour.isExecuteOriginal()) {
+        traits.add(gitProvider.getOriginPRTrait(2));
+      }
+    }
+
+    V1alpha1CloneBehaviour cloneBehaviour = behaviours.getCloneBehaviour();
+    if (gitProvider != null && cloneBehaviour != null) {
+      CloneOption cloneOption =
+          new CloneOption(
+              cloneBehaviour.isShallowClone(),
+              !cloneBehaviour.isFetchTags(),
+              null,
+              cloneBehaviour.getTimeout());
+      traits.add(gitProvider.getCloneTrait(cloneOption));
+    }
+
+    traits.add(new RegexSCMHeadFilterTrait(String.join("|", rules)));
+
+    setTraits(source, traits);
   }
 
   // TODO should create a PR to unit the interface
