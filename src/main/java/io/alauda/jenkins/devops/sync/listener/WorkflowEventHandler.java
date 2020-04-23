@@ -48,7 +48,6 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
 
   @Override
   public void onDeleted(WorkflowJob item) {
-
     WorkflowJobProperty property = pipelineConfigProjectForJob(item);
     if (property != null) {
       final String namespace = property.getNamespace();
