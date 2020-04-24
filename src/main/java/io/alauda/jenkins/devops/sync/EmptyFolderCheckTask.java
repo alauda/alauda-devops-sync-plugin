@@ -6,9 +6,6 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
-import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
-import io.alauda.devops.java.client.models.V1alpha1JenkinsBinding;
-import io.alauda.devops.java.client.models.V1alpha1JenkinsBindingList;
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.exception.ExceptionUtils;
 import io.kubernetes.client.ApiException;
@@ -20,7 +17,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
-import org.apache.commons.collections4.CollectionUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 import org.slf4j.Logger;
@@ -38,7 +34,7 @@ public class EmptyFolderCheckTask extends AsyncPeriodicWork {
 
   @Override
   protected void execute(TaskListener listener) throws IOException, InterruptedException {
-    logger.debug("Start to check empty folder");
+    logger.info("Start to check empty folder");
     ResourceControllerManager resourceSyncManager =
         ResourceControllerManager.getControllerManager();
 
@@ -51,10 +47,10 @@ public class EmptyFolderCheckTask extends AsyncPeriodicWork {
 
     List<Folder> folders = listFoldersShouldDelete();
 
-    logger.debug("Found {} folders need to be delete", folders.size());
+    logger.info("Found {} folders need to be delete", folders.size());
     for (Folder folder : folders) {
       try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
-        logger.debug("Deleting folder {}", folder.getName());
+        logger.info("Deleting folder {}", folder.getName());
         folder.delete();
       } catch (IOException | InterruptedException e) {
         logger.warn("Failed to delete folder {}, reason {}", folder, e);
@@ -70,7 +66,7 @@ public class EmptyFolderCheckTask extends AsyncPeriodicWork {
     }
 
     if (folders == null) {
-      logger.debug("No folder found in Jenkins, will skip this empty folder check");
+      logger.info("No folder found in Jenkins, will skip this empty folder check");
       return Collections.emptyList();
     }
 
@@ -89,10 +85,7 @@ public class EmptyFolderCheckTask extends AsyncPeriodicWork {
                                 property instanceof AlaudaFolderProperty
                                     && ((AlaudaFolderProperty) property).isDirty())
                     // we should delete folders haven't match namespace
-                    || noMatchedNamespaceInK8s(folder.getName())
-                    // we should delete folders have matched namespace but not matched jenkins
-                    // bindings
-                    || noMatchedJenkinsBindingInNamespace(folder.getName()))
+                    || noMatchedNamespaceInK8s(folder.getName()))
         // if folder contains item that created by user, we should not delete this folder
         .filter(
             folder ->
@@ -113,31 +106,6 @@ public class EmptyFolderCheckTask extends AsyncPeriodicWork {
                           return false;
                         }))
         .collect(Collectors.toList());
-  }
-
-  private boolean noMatchedJenkinsBindingInNamespace(String target) {
-    String jenkinsService = AlaudaSyncGlobalConfiguration.get().getJenkinsService();
-
-    DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-    V1alpha1JenkinsBindingList jenkinsBindingList;
-    try {
-      jenkinsBindingList =
-          api.listNamespacedJenkinsBinding(
-              target, null, null, null, null, null, null, null, null, null);
-
-      List<V1alpha1JenkinsBinding> jenkinsBindings = jenkinsBindingList.getItems();
-      if (CollectionUtils.isEmpty(jenkinsBindings)) {
-        return true;
-      }
-
-      return jenkinsBindings
-          .stream()
-          .noneMatch(
-              jenkinsBinding ->
-                  jenkinsBinding.getSpec().getJenkins().getName().equals(jenkinsService));
-    } catch (ApiException ignore) {
-      return false;
-    }
   }
 
   private boolean noMatchedNamespaceInK8s(String target) {

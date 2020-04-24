@@ -30,6 +30,7 @@ import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 @Extension
 public class MultiBranchProjectEventHandler
     implements ItemEventHandler<WorkflowMultiBranchProject> {
+
   private static final Logger logger =
       Logger.getLogger(MultiBranchProjectEventHandler.class.getName());
 
@@ -39,7 +40,8 @@ public class MultiBranchProjectEventHandler
   }
 
   @Override
-  public void onCreated(WorkflowMultiBranchProject item) {}
+  public void onCreated(WorkflowMultiBranchProject item) {
+  }
 
   @Override
   public void onUpdated(WorkflowMultiBranchProject item) {
@@ -95,7 +97,9 @@ public class MultiBranchProjectEventHandler
             }
           }
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-          e.printStackTrace();
+          logger.warning(String
+              .format("Unable to set traits for PipelineConfig %s, reason: %s", nsName,
+                  e.getMessage()));
         }
       }
 
