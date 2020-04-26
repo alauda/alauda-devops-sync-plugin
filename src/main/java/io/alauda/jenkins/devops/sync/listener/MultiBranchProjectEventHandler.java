@@ -95,7 +95,10 @@ public class MultiBranchProjectEventHandler
             }
           }
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-          e.printStackTrace();
+          logger.warning(
+              String.format(
+                  "Unable to set traits for PipelineConfig %s, reason: %s",
+                  nsName, e.getMessage()));
         }
       }
 
