@@ -27,7 +27,7 @@ public class ExceptionUtils {
     try {
       V1Status status = new Gson().fromJson(body, V1Status.class);
 
-      return status != null && status.getCode() == 404;
+      return status != null && status.getCode() == 404 && "NotFound".equals(status.getReason());
     } catch (JsonSyntaxException ignore) {
       return false;
     }

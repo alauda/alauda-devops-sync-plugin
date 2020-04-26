@@ -88,18 +88,26 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                               .get(name);
                       if (pc == null) {
                         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-                        V1alpha1PipelineConfig newer = null;
+                        V1alpha1PipelineConfig newer;
                         try {
                           newer = api.readNamespacedPipelineConfig(name, ns, null, null, null);
-                        } catch (ApiException e) {
-                          if (ExceptionUtils.isResourceNotFoundException(e)) {
-                            LOGGER.debug("Unable to get newer pipelineConfig");
+
+                          if (newer == null) {
+                            LOGGER.info("Unable to get PipelineConfig '{}/{}', will delete it", ns,
+                                name);
                             orphanList.add(item);
                           }
-                        }
-
-                        if (newer == null || !newer.getMetadata().getUid().equals(uid)) {
-                          orphanList.add(item);
+                        } catch (ApiException e) {
+                          if (ExceptionUtils.isResourceNotFoundException(e)) {
+                            LOGGER.info(
+                                "Unable to get newer PipelineConfig '{}/{}' from apiserver, will delete it, reason: {}",
+                                ns, name, e.getMessage());
+                            orphanList.add(item);
+                          } else {
+                            LOGGER.info(
+                                "Unable to check if PipelineConfig '{}/{}' exists, reason: {}", ns,
+                                name, e.getMessage());
+                          }
                         }
                       }
                     }));
@@ -122,6 +130,6 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
   @Override
   public long getRecurrencePeriod() {
-    return TimeUnit.MINUTES.toMillis(15);
+    return TimeUnit.MINUTES.toMillis(60);
   }
 }
