@@ -1,11 +1,31 @@
 package io.alauda.jenkins.devops.sync.util;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.*;
+import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_BRANCH_SCAN;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_NOT_FOUND;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_UNKNOWN_CAUSE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE;
 
-import hudson.model.*;
+import hudson.model.Action;
+import hudson.model.Cause;
+import hudson.model.CauseAction;
+import hudson.model.Item;
+import hudson.model.ItemGroup;
+import hudson.model.ParameterValue;
+import hudson.model.ParametersAction;
 import hudson.triggers.SCMTrigger;
 import hudson.triggers.TimerTrigger;
-import io.alauda.devops.java.client.models.*;
+import io.alauda.devops.java.client.models.V1alpha1LocalObjectReference;
+import io.alauda.devops.java.client.models.V1alpha1Pipeline;
+import io.alauda.devops.java.client.models.V1alpha1PipelineBuilder;
+import io.alauda.devops.java.client.models.V1alpha1PipelineCause;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.devops.java.client.models.V1alpha1PipelineConfigSpec;
+import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
+import io.alauda.devops.java.client.models.V1alpha1PipelineSpec;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
@@ -142,9 +162,14 @@ public abstract class PipelineGenerator {
     String cause = null;
     if (allCauses.size() > 1) {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
+      List<String> allCauseDetails = new ArrayList<String>();
+      allCauses.forEach(
+          item -> {
+            allCauseDetails.add(causeConvert(item));
+          });
       annotations.put(
           ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(),
-          JSONArray.fromObject(allCauses).toString());
+          JSONArray.fromObject(allCauseDetails).toString());
     } else if (allCauses.size() == 1) {
       cause = causeConvert(allCauses.get(0));
     } else {
