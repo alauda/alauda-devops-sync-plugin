@@ -25,6 +25,7 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.client.PipelineClient;
 import io.alauda.jenkins.devops.sync.exception.PipelineException;
+import io.alauda.jenkins.devops.sync.listener.PipelineSyncExecutor;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
@@ -49,6 +50,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,19 +123,6 @@ public class PipelineController
                               Metrics.incomingRequestCounter.labels("pipeline", "update").inc();
                               String namespace = oldPipeline.getMetadata().getNamespace();
                               String name = oldPipeline.getMetadata().getName();
-                              if (oldPipeline
-                                  .getMetadata()
-                                  .getResourceVersion()
-                                  .equals(newPipeline.getMetadata().getResourceVersion())) {
-                                logger.debug(
-                                    "[{}] resourceVersion of Pipeline '{}/{}' is equal, will skip update event for it",
-                                    CONTROLLER_NAME,
-                                    namespace,
-                                    name);
-                                return false;
-                              }
-
-                              lastEventComingTime = LocalDateTime.now();
 
                               logger.debug(
                                   "[{}] received event: Update, Pipeline '{}/{}'",
@@ -194,6 +183,8 @@ public class PipelineController
 
     @Override
     public Result reconcile(Request request) {
+      lastEventComingTime = LocalDateTime.now();
+
       Metrics.completedRequestCounter.labels("pipeline").inc();
       Metrics.remainedRequestsGauge.labels("pipeline").set(queue.length());
 
@@ -372,6 +363,33 @@ public class PipelineController
             cancelledCondition.setMessage(e.getMessage());
           }
           pipelineClient.update(pipeline, pipelineCopy);
+          return new Result(false);
+        }
+
+        if (completedCondition.getStatus().equals(CONDITION_STATUS_FALSE)
+            || completedCondition.getStatus().equals(CONDITION_STATUS_UNKNOWN)) {
+          WorkflowJob job = jenkinsClient.getJob(pipeline, pipelineConfig);
+          if (job == null) {
+            logger.info(
+                "Failed to add pipeline '{}/{}' to poll queue, unable to find related job",
+                namespace,
+                name);
+            return new Result(false);
+          }
+
+          WorkflowRun run = JenkinsUtils.getRun(job, pipeline);
+          if (run == null) {
+            logger.info(
+                "Failed to add pipeline '{}/{}' to poll queue, unable to find related run",
+                namespace,
+                name);
+
+            return new Result(false);
+          }
+
+          if (!run.isBuilding()) {
+            PipelineSyncExecutor.getInstance().submit(run);
+          }
         }
 
         return new Result(false);

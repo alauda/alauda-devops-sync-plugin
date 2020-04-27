@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
+
   private static final Logger logger = LoggerFactory.getLogger(PipelineClient.class);
 
   private SharedIndexInformer<V1alpha1Pipeline> informer;
@@ -71,6 +72,7 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
           patch);
       return true;
     }
+
     arr.forEach(
         jsonElement -> {
           JsonElement op = jsonElement.getAsJsonObject().get("op");

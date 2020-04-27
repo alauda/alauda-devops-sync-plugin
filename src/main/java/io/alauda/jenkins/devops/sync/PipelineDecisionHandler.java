@@ -21,7 +21,7 @@ import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.alauda.jenkins.devops.sync.listener.PipelineSyncRunListener;
+import io.alauda.jenkins.devops.sync.listener.PipelineSyncExecutor;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.alauda.jenkins.devops.sync.util.PipelineToActionMapper;
 import java.util.ArrayList;
@@ -137,7 +137,7 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
   private String getJobUrl(WorkflowJob workflowJob, String namespace) {
     String jenkinsUrl = "";
-    return PipelineSyncRunListener.joinPaths(jenkinsUrl, workflowJob.getUrl());
+    return PipelineSyncExecutor.joinPaths(jenkinsUrl, workflowJob.getUrl());
   }
 
   private boolean isValidProperty(AlaudaJobProperty property) {
