@@ -91,6 +91,9 @@ pipeline {
 		}
 
 		stage("Code Scan"){
+			when {
+				expression { false }
+			}
 			steps{
 				container("tools"){
 					script{
