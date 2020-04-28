@@ -260,21 +260,23 @@ public class PipelineSyncExecutor implements Runnable {
       return result;
     }
 
-    V1alpha1Pipeline pipelineCopy = DeepCopyUtils.deepCopy(pipeline);
+    synchronized (pipeline.getMetadata().getUid().intern()) {
+      V1alpha1Pipeline pipelineCopy = DeepCopyUtils.deepCopy(pipeline);
 
-    addURLsToAnnotations(run, pipelineCopy);
-    addBadgesToAnnotations(run, pipelineCopy);
+      addURLsToAnnotations(run, pipelineCopy);
+      addBadgesToAnnotations(run, pipelineCopy);
 
-    addRunDetailsToStatus(run, pipelineCopy);
+      addRunDetailsToStatus(run, pipelineCopy);
 
-    mountActionsPipeline(run.getAllActions(), pipelineCopy);
+      mountActionsPipeline(run.getAllActions(), pipelineCopy);
 
-    boolean succeed = Clients.get(V1alpha1Pipeline.class).update(pipeline, pipelineCopy);
-    if (!succeed) {
-      logger.debug("Failed updated pipeline: '{}/{}'", namespace, name);
-      return result;
-    } else {
-      logger.debug("updated pipeline: '{}/{}'", namespace, name);
+      boolean succeed = Clients.get(V1alpha1Pipeline.class).update(pipeline, pipelineCopy);
+      if (!succeed) {
+        logger.debug("Failed updated pipeline: '{}/{}'", namespace, name);
+        return result;
+      } else {
+        logger.debug("updated pipeline: '{}/{}'", namespace, name);
+      }
     }
 
     return result;
