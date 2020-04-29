@@ -211,7 +211,15 @@ public class PipelineSyncExecutor implements Runnable {
         if (status.equals(StatusExt.IN_PROGRESS)
             || status.equals(StatusExt.PAUSED_PENDING_INPUT)
             || (status.equals(NOT_EXECUTED) && run.isBuilding())) {
+          logger.debug(
+              "Run {} status is {}, will try to sync in eight seconds",
+              run.getFullDisplayName(),
+              status);
           result.setRequeue(true);
+          if (result.getRequeueAfter() == null) {
+            // we will schedule a sync after 8s
+            result.setRequeueAfter(Duration.ofSeconds(8));
+          }
         }
 
         if (result.isRequeue()) {

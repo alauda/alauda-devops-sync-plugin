@@ -72,7 +72,7 @@ public class PipelineConfigClient implements ResourceClient<V1alpha1PipelineConf
           patch);
       return true;
     }
-    
+
     arr.forEach(
         jsonElement -> {
           JsonElement op = jsonElement.getAsJsonObject().get("op");
