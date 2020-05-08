@@ -19,6 +19,7 @@ import com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.plugins.git.extensions.impl.CloneOption;
+import hudson.util.FormValidation;
 import io.alauda.devops.java.client.models.V1alpha1BranchBehaviour;
 import io.alauda.devops.java.client.models.V1alpha1CloneBehaviour;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
@@ -52,6 +53,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import javax.annotation.Nonnull;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.BranchSource;
@@ -238,8 +241,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
             // if current SCMSource is not the same with the expectedSCMSource, we will overwrite it
             if (!scmSource.getClass().equals(GitSCMSource.class)
                 || !((GitSCMSource) expectedSCMSource)
-                    .getRemote()
-                    .equals(((GitSCMSource) scmSource).getRemote())) {
+                .getRemote()
+                .equals(((GitSCMSource) scmSource).getRemote())) {
               scmSource = setNewSCMSource(job, expectedSCMSource);
             }
 
@@ -324,7 +327,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
     V1alpha1MultiBranchOrphan orphanStrategyConfiguration = multiBranchStrategy.getOrphaned();
     DefaultOrphanedItemStrategy orphanedItemStrategy;
-    if (orphanStrategyConfiguration == null) {
+    if (orphanStrategyConfiguration == null || !orphanStrategyConfiguration.isEnabled()) {
       orphanedItemStrategy = new DefaultOrphanedItemStrategy(false, "", "");
     } else {
       orphanedItemStrategy =
@@ -421,9 +424,16 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
   private void handleSCMTraits(
       @Nonnull SCMSource source,
       V1alpha1MultiBranchBehaviours behaviours,
-      GitProviderMultiBranch gitProvider) {
+      GitProviderMultiBranch gitProvider) throws PipelineConfigConvertException {
     List<SCMSourceTrait> traits = new ArrayList<>();
     if (behaviours != null && StringUtils.isNotBlank(behaviours.getFilterExpression())) {
+      try {
+        Pattern.compile(behaviours.getFilterExpression());
+      } catch (PatternSyntaxException e) {
+        throw new PipelineConfigConvertException(
+            String.format("Unable to parse Branch discovery rules, reason %s", e.getMessage()));
+      }
+
       traits.add(new RegexSCMHeadFilterTrait(behaviours.getFilterExpression()));
     }
 
@@ -453,7 +463,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
   private void handleSCMTraits(
       @Nonnull SCMSource source,
       V1alpha1MultiBranchPipeline behaviours,
-      GitProviderMultiBranch gitProvider) {
+      GitProviderMultiBranch gitProvider) throws PipelineConfigConvertException {
 
     List<SCMSourceTrait> traits = new ArrayList<>();
     List<String> rules = new LinkedList<>();
@@ -498,7 +508,16 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       traits.add(gitProvider.getCloneTrait(cloneOption));
     }
 
-    traits.add(new RegexSCMHeadFilterTrait(String.join("|", rules)));
+    String regexRule = String.join("|", rules);
+
+    try {
+      Pattern.compile(regexRule);
+    } catch (PatternSyntaxException e) {
+      throw new PipelineConfigConvertException(
+          String.format("Unable to parse Branch discovery rules, reason %s", e.getMessage()));
+    }
+
+    traits.add(new RegexSCMHeadFilterTrait(regexRule));
 
     setTraits(source, traits);
   }

@@ -44,8 +44,8 @@ public interface GitProviderMultiBranch extends ExtensionPoint {
    */
   default CloneOptionTrait getCloneTrait(CloneOption option) {
     if (option == null) {
-      CloneOption cloneOption = new CloneOption(false, false, null, null);
-      cloneOption.setHonorRefspec(true);
+      option = new CloneOption(false, false, null, null);
+      option.setHonorRefspec(true);
     }
 
     return new CloneOptionTrait(option);

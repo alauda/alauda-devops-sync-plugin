@@ -65,8 +65,8 @@ public class GitLabProviderMultiBranch implements PrivateGitProviderMultiBranch 
       // stdout:
       // stderr: fatal: refusing to merge unrelated histories
       // http://10.0.128.67:32001/job/lz-test/job/lz-test-demo/view/change-requests/job/MR-10-merge/1/console
-      CloneOption cloneOption = new CloneOption(false, false, null, null);
-      cloneOption.setHonorRefspec(true);
+      option = new CloneOption(false, false, null, null);
+      option.setHonorRefspec(true);
     }
 
     return new CloneOptionTrait(option);
