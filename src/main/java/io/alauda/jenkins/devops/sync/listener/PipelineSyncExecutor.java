@@ -27,6 +27,7 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITI
 import com.cloudbees.workflow.rest.external.RunExt;
 import com.cloudbees.workflow.rest.external.StageNodeExt;
 import com.cloudbees.workflow.rest.external.StatusExt;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -430,7 +431,7 @@ public class PipelineSyncExecutor implements Runnable {
       if (status != null) {
         PipelineStage pipeStage = stageMap.get(stage.getName());
         if (pipeStage != null) {
-          pipeStage.pause_duration_millis = stage.getPauseDurationMillis();
+          pipeStage.pauseDurationMillis = stage.getPauseDurationMillis();
         }
       }
     }
@@ -660,24 +661,24 @@ public class PipelineSyncExecutor implements Runnable {
     return new ThreadFactoryBuilder().setNameFormat("PipelineSyncWorker" + "-%d").build();
   }
 
-  private static class PipelineJson {
+  public static class PipelineJson {
 
-    String start_stage_id;
-    List<PipelineStage> stages;
+    private String startStageId;
+    private List<PipelineStage> stages;
 
     public PipelineJson() {
-      start_stage_id = null;
+      startStageId = null;
       stages = new ArrayList<>();
     }
 
     public void addStage(PipelineStage stage) {
-      if (start_stage_id == null) {
-        start_stage_id = stage.id;
+      if (startStageId == null) {
+        startStageId = stage.id;
       }
       stages.add(stage);
     }
 
-    private String toBlueJson() {
+    public String toBlueJson() {
       ObjectMapper blueJsonMapper = new ObjectMapper();
       blueJsonMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
       blueJsonMapper.disable(SerializationFeature.FAIL_ON_SELF_REFERENCES);
@@ -689,17 +690,36 @@ public class PipelineSyncExecutor implements Runnable {
       }
       return null;
     }
+
+    @JsonProperty("start_stage_id")
+    public String getStartStageId() {
+      return startStageId;
+    }
+
+    public void setStartStageId(String startStageId) {
+      this.startStageId = startStageId;
+    }
+
+    @JsonProperty("stages")
+    public List<PipelineStage> getStages() {
+      return stages;
+    }
+
+    public void setStages(
+        List<PipelineStage> stages) {
+      this.stages = stages;
+    }
   }
 
-  private static class PipelineStage {
+  public static class PipelineStage {
 
     private String id;
     private String name;
     private String status;
     private String result;
-    private String start_time;
-    private Long duration_millis;
-    private Long pause_duration_millis;
+    private String startTime;
+    private Long durationMillis;
+    private Long pauseDurationMillis;
     private List<BluePipelineNode.Edge> edges;
 
     PipelineStage(
@@ -707,20 +727,21 @@ public class PipelineSyncExecutor implements Runnable {
         String name,
         String status,
         String result,
-        String start_time,
-        Long duration_millis,
-        Long pause_duration_millis,
+        String startTime,
+        Long durationMillis,
+        Long pauseDurationMillis,
         List<BluePipelineNode.Edge> edges) {
       this.id = id;
       this.name = name;
       this.status = status;
       this.result = result;
-      this.start_time = start_time;
-      this.duration_millis = duration_millis;
-      this.pause_duration_millis = pause_duration_millis;
+      this.startTime = startTime;
+      this.durationMillis = durationMillis;
+      this.pauseDurationMillis = pauseDurationMillis;
       this.edges = edges;
     }
 
+    @JsonProperty("id")
     public String getId() {
       return id;
     }
@@ -729,6 +750,7 @@ public class PipelineSyncExecutor implements Runnable {
       this.id = id;
     }
 
+    @JsonProperty("name")
     public String getName() {
       return name;
     }
@@ -737,6 +759,7 @@ public class PipelineSyncExecutor implements Runnable {
       this.name = name;
     }
 
+    @JsonProperty("status")
     public String getStatus() {
       return status;
     }
@@ -745,6 +768,7 @@ public class PipelineSyncExecutor implements Runnable {
       this.status = status;
     }
 
+    @JsonProperty("result")
     public String getResult() {
       return result;
     }
@@ -753,30 +777,34 @@ public class PipelineSyncExecutor implements Runnable {
       this.result = result;
     }
 
-    public String getStart_time() {
-      return start_time;
+    @JsonProperty("start_time")
+    public String getStartTime() {
+      return startTime;
     }
 
-    public void setStart_time(String start_time) {
-      this.start_time = start_time;
+    public void setStartTime(String startTime) {
+      this.startTime = startTime;
     }
 
-    public Long getDuration_millis() {
-      return duration_millis;
+    @JsonProperty("duration_millis")
+    public Long getDurationMillis() {
+      return durationMillis;
     }
 
-    public void setDuration_millis(Long duration_millis) {
-      this.duration_millis = duration_millis;
+    public void setDurationMillis(Long durationMillis) {
+      this.durationMillis = durationMillis;
     }
 
-    public Long getPause_duration_millis() {
-      return pause_duration_millis;
+    @JsonProperty("pauseDurationMillis")
+    public Long getPauseDurationMillis() {
+      return pauseDurationMillis;
     }
 
-    public void setPause_duration_millis(Long pause_duration_millis) {
-      this.pause_duration_millis = pause_duration_millis;
+    public void setPauseDurationMillis(Long pauseDurationMillis) {
+      this.pauseDurationMillis = pauseDurationMillis;
     }
 
+    @JsonProperty("edges")
     public List<Edge> getEdges() {
       return edges;
     }
