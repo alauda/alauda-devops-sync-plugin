@@ -50,6 +50,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import javax.xml.transform.Source;
 import javax.xml.transform.stream.StreamSource;
 import jenkins.model.Jenkins;
 import jenkins.util.Timer;
@@ -273,7 +274,7 @@ public class JenkinsClient {
           // TODO throw an exception here
         }
       } else {
-        ((AbstractItem) jobInJenkins).updateByXml(new StreamSource(jobStream));
+        ((AbstractItem) jobInJenkins).updateByXml(((Source) new StreamSource(jobStream)));
       }
 
       Item item = getItem(namespaceName);

@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
+import jenkins.branch.MultiBranchProject;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -49,82 +50,109 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
       return true;
     }
 
-    if (triggerFromJenkins(actions)) {
-      // in case of triggered by users or triggers
-      WorkflowJob workflowJob = (WorkflowJob) p;
-      String taskName = p.getName();
+    if (!triggerFromJenkins(actions)) {
+      return true;
+    }
+    // in case of triggered by users or triggers
+    WorkflowJob workflowJob = (WorkflowJob) p;
+    String taskName = p.getName();
 
-      AlaudaJobProperty alaudaJobProperty;
-      if (isMultiBranch(workflowJob)) {
-        alaudaJobProperty =
-            ((WorkflowMultiBranchProject) workflowJob.getParent())
-                .getProperties()
-                .get(MultiBranchProperty.class);
-      } else {
-        alaudaJobProperty = workflowJob.getProperty(WorkflowJobProperty.class);
+    AlaudaJobProperty alaudaJobProperty;
+    if (isMultiBranch(workflowJob)) {
+      alaudaJobProperty =
+          ((WorkflowMultiBranchProject) workflowJob.getParent())
+              .getProperties()
+              .get(MultiBranchProperty.class);
+    } else {
+      alaudaJobProperty = workflowJob.getProperty(WorkflowJobProperty.class);
+    }
+
+    if (!isValidProperty(alaudaJobProperty)) {
+      return true;
+    }
+
+    if (isMultiBranch(workflowJob) && !checkMultiBranchJobValid(workflowJob)) {
+      return false;
+    }
+
+    final String namespace = alaudaJobProperty.getNamespace();
+    final String name = alaudaJobProperty.getName();
+    final String jobURL = getJobUrl(workflowJob, namespace);
+
+    LOGGER.info(() -> "Got this namespace " + namespace + " from this alaudaJobProperty: " + name);
+    // TODO: Add trigger API for pipelineconfig (like above)
+
+    V1alpha1PipelineConfig config = null;
+    config = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
+    if (config == null) {
+      return false;
+    } else if (config.getMetadata() == null) {
+      LOGGER.warning("PipelineConfig metadata is null");
+      return false;
+    }
+
+    V1alpha1Pipeline pipeline =
+        PipelineGenerator.buildPipeline(config, workflowJob, jobURL, actions);
+    if (pipeline == null) {
+      return false;
+    }
+
+    actions.add(new CauseAction(new JenkinsPipelineCause(pipeline, config.getMetadata().getUid())));
+    actions.add(new AlaudaQueueAction(namespace, pipeline.getMetadata().getName()));
+
+    ParametersAction params = dumpParams(actions);
+    if (params != null) {
+      LOGGER.fine(() -> "ParametersAction: " + params.toString());
+      PipelineToActionMapper.addParameterAction(pipeline.getMetadata().getName(), params);
+    } else {
+      LOGGER.log(Level.FINE, "The param is null in task : {0}", taskName);
+    }
+
+    CauseAction cause = dumpCause(actions);
+    if (cause != null) {
+      LOGGER.fine(() -> "get CauseAction: " + cause.getDisplayName());
+      for (Cause c : cause.getCauses()) {
+        LOGGER.fine(() -> "Cause: " + c.getShortDescription());
       }
 
-      if (!isValidProperty(alaudaJobProperty)) {
-        return true;
-      }
-
-      final String namespace = alaudaJobProperty.getNamespace();
-      final String name = alaudaJobProperty.getName();
-      final String jobURL = getJobUrl(workflowJob, namespace);
-
-      LOGGER.info(
-          () -> "Got this namespace " + namespace + " from this alaudaJobProperty: " + name);
-      // TODO: Add trigger API for pipelineconfig (like above)
-
-      V1alpha1PipelineConfig config = null;
-      config = Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
-      if (config == null) {
-        return false;
-      } else if (config.getMetadata() == null) {
-        LOGGER.warning("PipelineConfig metadata is null");
-        return false;
-      }
-
-      V1alpha1Pipeline pipeline =
-          PipelineGenerator.buildPipeline(config, workflowJob, jobURL, actions);
-      if (pipeline == null) {
-        return false;
-      }
-
-      actions.add(
-          new CauseAction(new JenkinsPipelineCause(pipeline, config.getMetadata().getUid())));
-      actions.add(new AlaudaQueueAction(namespace, pipeline.getMetadata().getName()));
-
-      ParametersAction params = dumpParams(actions);
-      if (params != null) {
-        LOGGER.fine(() -> "ParametersAction: " + params.toString());
-        PipelineToActionMapper.addParameterAction(pipeline.getMetadata().getName(), params);
-      } else {
-        LOGGER.log(Level.FINE, "The param is null in task : {0}", taskName);
-      }
-
-      CauseAction cause = dumpCause(actions);
-      if (cause != null) {
-        LOGGER.fine(() -> "get CauseAction: " + cause.getDisplayName());
-        for (Cause c : cause.getCauses()) {
-          LOGGER.fine(() -> "Cause: " + c.getShortDescription());
+      // TODO consider how to keep other actions which are not just causeAction
+      // TODO should we add a extension point here?
+      List<Cause> causes = new ArrayList<>(cause.getCauses());
+      for (Action action : actions) {
+        if (action instanceof SCMRevisionAction) {
+          causes.add((SCMRevisionAction) action);
+          break;
         }
-
-        // TODO consider how to keep other actions which are not just causeAction
-        // TODO should we add a extension point here?
-        List<Cause> causes = new ArrayList<>(cause.getCauses());
-        for (Action action : actions) {
-          if (action instanceof SCMRevisionAction) {
-            causes.add((SCMRevisionAction) action);
-            break;
-          }
-        }
-
-        PipelineToActionMapper.addCauseAction(
-            pipeline.getMetadata().getName(), new CauseAction(causes));
-      } else {
-        LOGGER.fine(() -> "Get null CauseAction in task : " + taskName);
       }
+
+      PipelineToActionMapper.addCauseAction(
+          pipeline.getMetadata().getName(), new CauseAction(causes));
+    } else {
+      LOGGER.fine(() -> "Get null CauseAction in task : " + taskName);
+    }
+
+    return true;
+  }
+
+
+  private boolean checkMultiBranchJobValid(WorkflowJob workflowJob) {
+    MultiBranchProject branchProject = ((MultiBranchProject) workflowJob.getParent());
+    WorkflowJob jobInMemory =
+        (WorkflowJob) branchProject.getItemByBranchName(workflowJob.getName());
+    // This job is not valid if we cannot find job by its branch name
+    if (jobInMemory == null) {
+      return false;
+    }
+
+    // if this job isn't the same instance with job stored in its parent project,
+    // multibranch project might create job with same name several times.
+    // We should use only trigger build for job that is actually used in memory.
+    if (jobInMemory != workflowJob) {
+      LOGGER.warning(
+          String.format(
+              "WorkflowJob %s is not the same instance with job %s stored in memory, won't trigger a build for it",
+              workflowJob.hashCode(), jobInMemory.hashCode()));
+      return false;
     }
 
     return true;

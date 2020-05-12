@@ -20,15 +20,28 @@ import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
-import java.util.logging.Logger;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Extension
 public class PipelineQueueListener extends QueueListener {
-  private static final Logger logger = Logger.getLogger(PipelineQueueListener.class.getName());
+
+  private static final Logger logger =
+      LoggerFactory.getLogger(PipelineQueueListener.class.getName());
 
   @Override
   public void onLeft(Queue.LeftItem leftItem) {
-    logger.info(leftItem + " was left");
+    logger.info("{} was left, task {}", leftItem, leftItem.task);
+
+    if (leftItem.task instanceof WorkflowJob) {
+      WorkflowJob job = ((WorkflowJob) leftItem.task);
+      logger.info("Next Build Number {}", job.getNextBuildNumber());
+      logger.info(
+          "Last Build Number {}",
+          job.getLastBuild() == null ? "null" : job.getLastBuild().getNumber());
+    }
+
     boolean isCancelled = leftItem.isCancelled();
     if (!isCancelled) {
       return;
@@ -43,7 +56,7 @@ public class PipelineQueueListener extends QueueListener {
       logger.info(String.format("Pipeline %s-%s was deleted.", namespace, name));
     } else {
       String itemUrl = leftItem.getUrl();
-      logger.warning("Can not found JenkinsPipelineCause, item url: " + itemUrl);
+      logger.warn("Can not found JenkinsPipelineCause, item url: " + itemUrl);
     }
   }
 }

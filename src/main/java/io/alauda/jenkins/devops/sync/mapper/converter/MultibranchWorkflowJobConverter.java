@@ -130,7 +130,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
   }
 
   private void setupSCMSource(WorkflowMultiBranchProject job, V1alpha1PipelineConfig pipelineConfig)
-      throws PipelineConfigConvertException, IOException {
+      throws PipelineConfigConvertException {
     logger.debug("Starting setup SCMSource for Workflow job {}", job.getFullName());
 
     V1alpha1Condition prSupportCondition =
@@ -279,9 +279,14 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     scmSource.afterSave();
   }
 
-  private SCMSource setNewSCMSource(WorkflowMultiBranchProject job, SCMSource newSCMSource) {
-    job.getSourcesList().clear();
-    job.getSourcesList().add(new BranchSource(newSCMSource));
+  private SCMSource setNewSCMSource(WorkflowMultiBranchProject job, SCMSource newSCMSource)
+      throws PipelineConfigConvertException {
+    try {
+      job.setSourcesList(Collections.singletonList(new BranchSource(newSCMSource)));
+    } catch (IOException e) {
+      throw new PipelineConfigConvertException(e.getMessage());
+    }
+
     return newSCMSource;
   }
 
@@ -423,8 +428,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
   // TODO should create a PR to unit the interface
   private void handleCredentials(
-      @Nonnull SCMSource source, @Nonnull V1alpha1PipelineConfig pipelineConfig)
-      throws IOException {
+      @Nonnull SCMSource source, @Nonnull V1alpha1PipelineConfig pipelineConfig) {
     String credentialId;
     try {
       credentialId = CredentialsUtils.getSCMSourceCredentialsId(pipelineConfig);
