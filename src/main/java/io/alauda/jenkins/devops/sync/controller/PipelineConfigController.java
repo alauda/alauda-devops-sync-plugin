@@ -293,14 +293,6 @@ public class PipelineConfigController
             .message(e.getMessage());
       }
 
-      Item item = JenkinsClient.getInstance().getItem(new NamespaceName(namespace, name));
-
-      boolean disabled =
-          (item instanceof WorkflowMultiBranchProject
-                  && ((WorkflowMultiBranchProject) item).isDisabled())
-              || (item instanceof WorkflowJob && ((WorkflowJob) item).isDisabled());
-      pipelineConfigCopy.getSpec().setDisabled(disabled);
-
       logger.debug("[{}] Will update PipelineConfig '{}/{}'", getControllerName(), namespace, name);
       PipelineConfigClient pipelineConfigClient =
           (PipelineConfigClient) Clients.get(V1alpha1PipelineConfig.class);
