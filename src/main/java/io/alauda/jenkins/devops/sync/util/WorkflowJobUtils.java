@@ -3,6 +3,7 @@ package io.alauda.jenkins.devops.sync.util;
 import static io.alauda.jenkins.devops.sync.constants.Annotations.*;
 
 import hudson.model.Job;
+import hudson.model.Run;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.models.V1alpha1PipelineParameter;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
@@ -20,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import jenkins.scm.api.metadata.ObjectMetadataAction;
 import net.sf.json.JSONArray;
@@ -30,6 +32,7 @@ import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 public final class WorkflowJobUtils {
+
   private static final Logger logger = Logger.getLogger(WorkflowJobUtils.class.getName());
 
   private WorkflowJobUtils() {}
@@ -102,6 +105,28 @@ public final class WorkflowJobUtils {
     if (jobDeleted) {
       allJobs.remove(item);
     }
+
+    // sort the jobs by the latest build start time
+    allJobs =
+        allJobs
+            .stream()
+            .sorted(
+                (jobLeft, jobRight) -> {
+                  Run leftNewestBuild = jobLeft.getLastBuild();
+                  Run rightNewestBuild = jobRight.getLastBuild();
+
+                  if (leftNewestBuild == null) {
+                    return 1;
+                  }
+                  if (rightNewestBuild == null) {
+                    return -1;
+                  }
+
+                  return -Long.compare(
+                      leftNewestBuild.getStartTimeInMillis(),
+                      rightNewestBuild.getStartTimeInMillis());
+                })
+            .collect(Collectors.toList());
 
     for (Job job : allJobs) {
       if (!(job instanceof WorkflowJob)) {
@@ -228,6 +253,7 @@ public final class WorkflowJobUtils {
   }
 
   static class BranchItem {
+
     private List<String> branchList = new ArrayList<>();
     private List<String> staleBranchList = new ArrayList<>();
     private List<String> prList = new ArrayList<>();

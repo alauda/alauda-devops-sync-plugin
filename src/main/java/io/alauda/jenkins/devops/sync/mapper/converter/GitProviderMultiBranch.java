@@ -42,11 +42,13 @@ public interface GitProviderMultiBranch extends ExtensionPoint {
    *     timeout: null<br>
    *     honorRefspec: true<br>
    */
-  default CloneOptionTrait getCloneTrait() {
-    CloneOption cloneOption = new CloneOption(false, false, null, null);
-    cloneOption.setHonorRefspec(true);
+  default CloneOptionTrait getCloneTrait(CloneOption option) {
+    if (option == null) {
+      option = new CloneOption(false, false, null, null);
+      option.setHonorRefspec(true);
+    }
 
-    return new CloneOptionTrait(cloneOption);
+    return new CloneOptionTrait(option);
   }
 
   boolean isSourceSame(SCMSource current, SCMSource expected);

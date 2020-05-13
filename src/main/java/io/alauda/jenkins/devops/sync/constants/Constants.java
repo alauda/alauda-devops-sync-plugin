@@ -105,6 +105,7 @@ public final class Constants {
 
   public static final String PIPELINE_TRIGGER_TYPE_CRON = "cron";
   public static final String PIPELINE_TRIGGER_TYPE_CODE_CHANGE = "codeChange";
+  public static final String PIPELINE_TRIGGER_TYPE_INTERVAL = "interval";
   /** Triggered by branch scanning */
   public static final String PIPELINE_TRIGGER_TYPE_BRANCH_SCAN = "branchScan";
   /** Triggered by an upstream job */

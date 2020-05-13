@@ -9,6 +9,7 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_UNKNOWN_CAUSE;
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE;
 
+import com.cloudbees.jenkins.plugins.bitbucket.PullRequestSCMHead;
 import hudson.model.Action;
 import hudson.model.Cause;
 import hudson.model.CauseAction;
@@ -30,6 +31,7 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
+import io.jenkins.plugins.gitlabbranchsource.MergeRequestSCMHead;
 import io.kubernetes.client.ApiException;
 import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import java.util.ArrayList;
@@ -111,7 +113,21 @@ public abstract class PipelineGenerator {
       pr.setSourceBranch(((ChangeRequestSCMHead2) head).getOriginName());
     }
 
+    setupTitle(pr, prHead);
+
     return pr;
+  }
+
+  private static void setupTitle(PullRequest pr, ChangeRequestSCMHead prHead) {
+    String title = "";
+    if (prHead instanceof MergeRequestSCMHead) {
+      title = ((MergeRequestSCMHead) prHead).getTitle();
+    } else if (prHead instanceof PullRequestSCMHead) {
+      title = ((PullRequestSCMHead) prHead).getTitle();
+    } else if (prHead instanceof org.jenkinsci.plugins.github_branch_source.PullRequestSCMHead) {
+      title = ((org.jenkinsci.plugins.github_branch_source.PullRequestSCMHead) prHead).getTitle();
+    }
+    pr.setTitle(title);
   }
 
   @Deprecated
