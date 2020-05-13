@@ -19,7 +19,6 @@ import com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.plugins.git.extensions.impl.CloneOption;
-import hudson.util.FormValidation;
 import io.alauda.devops.java.client.models.V1alpha1BranchBehaviour;
 import io.alauda.devops.java.client.models.V1alpha1CloneBehaviour;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
@@ -61,6 +60,7 @@ import jenkins.branch.BranchSource;
 import jenkins.model.Jenkins;
 import jenkins.plugins.git.GitSCMSource;
 import jenkins.plugins.git.traits.BranchDiscoveryTrait;
+import jenkins.plugins.git.traits.CloneOptionTrait;
 import jenkins.scm.api.SCMSource;
 import jenkins.scm.api.trait.SCMSourceTrait;
 import jenkins.scm.impl.trait.RegexSCMHeadFilterTrait;
@@ -241,8 +241,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
             // if current SCMSource is not the same with the expectedSCMSource, we will overwrite it
             if (!scmSource.getClass().equals(GitSCMSource.class)
                 || !((GitSCMSource) expectedSCMSource)
-                .getRemote()
-                .equals(((GitSCMSource) scmSource).getRemote())) {
+                    .getRemote()
+                    .equals(((GitSCMSource) scmSource).getRemote())) {
               scmSource = setNewSCMSource(job, expectedSCMSource);
             }
 
@@ -424,7 +424,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
   private void handleSCMTraits(
       @Nonnull SCMSource source,
       V1alpha1MultiBranchBehaviours behaviours,
-      GitProviderMultiBranch gitProvider) throws PipelineConfigConvertException {
+      GitProviderMultiBranch gitProvider)
+      throws PipelineConfigConvertException {
     List<SCMSourceTrait> traits = new ArrayList<>();
     if (behaviours != null && StringUtils.isNotBlank(behaviours.getFilterExpression())) {
       try {
@@ -463,7 +464,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
   private void handleSCMTraits(
       @Nonnull SCMSource source,
       V1alpha1MultiBranchPipeline behaviours,
-      GitProviderMultiBranch gitProvider) throws PipelineConfigConvertException {
+      GitProviderMultiBranch gitProvider)
+      throws PipelineConfigConvertException {
 
     List<SCMSourceTrait> traits = new ArrayList<>();
     List<String> rules = new LinkedList<>();
@@ -498,14 +500,18 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     }
 
     V1alpha1CloneBehaviour cloneBehaviour = behaviours.getCloneBehaviour();
-    if (gitProvider != null && cloneBehaviour != null) {
+    if (cloneBehaviour != null) {
       CloneOption cloneOption =
           new CloneOption(
               cloneBehaviour.isShallowClone(),
               !cloneBehaviour.isFetchTags(),
               null,
               cloneBehaviour.getTimeout());
-      traits.add(gitProvider.getCloneTrait(cloneOption));
+      if (gitProvider != null) {
+        traits.add(gitProvider.getCloneTrait(cloneOption));
+      } else {
+        traits.add(new CloneOptionTrait(cloneOption));
+      }
     }
 
     String regexRule = String.join("|", rules);
