@@ -19,7 +19,6 @@ import com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.plugins.git.extensions.impl.CloneOption;
-import hudson.util.FormValidation;
 import io.alauda.devops.java.client.models.V1alpha1BranchBehaviour;
 import io.alauda.devops.java.client.models.V1alpha1CloneBehaviour;
 import io.alauda.devops.java.client.models.V1alpha1CodeRepository;

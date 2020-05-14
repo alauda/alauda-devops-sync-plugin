@@ -1,6 +1,7 @@
 package io.alauda.jenkins.devops.sync.credential;
 
 import com.cloudbees.hudson.plugins.folder.AbstractFolder;
+import com.cloudbees.hudson.plugins.folder.Folder;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
@@ -31,9 +32,8 @@ public class NamespacedMappedFolderScope implements KubernetesSecretScope {
 
   private AbstractFolder<?> findParentAlaudaFolder(ItemGroup itemGroup) {
     while (itemGroup != null) {
-      if (itemGroup instanceof AbstractFolder) {
-        AbstractFolder<?> folder = (AbstractFolder) itemGroup;
-
+      if (itemGroup instanceof Folder) {
+        Folder folder = (Folder) itemGroup;
         AlaudaFolderProperty property = folder.getProperties().get(AlaudaFolderProperty.class);
         if (property != null) {
           return folder;

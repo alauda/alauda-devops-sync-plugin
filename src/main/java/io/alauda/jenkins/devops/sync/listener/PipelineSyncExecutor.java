@@ -707,8 +707,7 @@ public class PipelineSyncExecutor implements Runnable {
       return stages;
     }
 
-    public void setStages(
-        List<PipelineStage> stages) {
+    public void setStages(List<PipelineStage> stages) {
       this.stages = stages;
     }
   }
