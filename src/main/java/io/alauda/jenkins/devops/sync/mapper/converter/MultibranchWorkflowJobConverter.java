@@ -187,6 +187,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       String repoOwner =
           String.join("/", Arrays.copyOfRange(repoFullName, 0, repoFullName.length - 1));
       String codeRepoType = originCodeRepository.getCodeRepoServiceType();
+      String cloneURL = originCodeRepository.getCloneURL();
 
       gitProvider =
           Jenkins.get()
@@ -211,7 +212,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
           // if we cannot create SCMSource, we will fallback to use GitSCMSource
           if (scmSource == null) {
-            scmSource = new GitSCMSource(source.getGit().getUri());
+            scmSource = new GitSCMSource(cloneURL);
             gitProvider = null;
             prSupportCondition
                 .status(CONDITION_STATUS_FALSE)
@@ -237,7 +238,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
           // if we cannot create SCMSource, we will fallback to use GitSCMSource
           if (expectedSCMSource == null) {
-            expectedSCMSource = new GitSCMSource(source.getGit().getUri());
+            expectedSCMSource = new GitSCMSource(cloneURL);
             // if current SCMSource is not the same with the expectedSCMSource, we will overwrite it
             if (!scmSource.getClass().equals(GitSCMSource.class)
                 || !((GitSCMSource) expectedSCMSource)
@@ -268,8 +269,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
         // if the current SCM source is null or is not a GitSCMSource or its remote uri changed, we
         // will overwrite it
         if (!(scmSource instanceof GitSCMSource)
-            || ((GitSCMSource) scmSource).getRemote().equals(source.getGit().getUri())) {
-          scmSource = setNewSCMSource(job, new GitSCMSource(source.getGit().getUri()));
+            || ((GitSCMSource) scmSource).getRemote().equals(cloneURL)) {
+          scmSource = setNewSCMSource(job, new GitSCMSource(cloneURL));
         }
         prSupportCondition
             .status(CONDITION_STATUS_FALSE)
