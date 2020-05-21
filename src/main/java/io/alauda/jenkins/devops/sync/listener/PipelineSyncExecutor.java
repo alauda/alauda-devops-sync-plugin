@@ -98,14 +98,9 @@ public class PipelineSyncExecutor implements Runnable {
   public static final Logger logger = LoggerFactory.getLogger(PipelineSyncExecutor.class);
 
   private static final int DEFAULT_WORKER_COUNT = 1;
-  private static PipelineSyncExecutor instance;
+  private static final PipelineSyncExecutor instance = new PipelineSyncExecutor();
 
   public static PipelineSyncExecutor getInstance() {
-    if (instance == null) {
-      synchronized (PipelineSyncExecutor.class) {
-        instance = new PipelineSyncExecutor();
-      }
-    }
     return instance;
   }
 

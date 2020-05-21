@@ -134,7 +134,6 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
     return true;
   }
 
-
   private boolean checkMultiBranchJobValid(WorkflowJob workflowJob) {
     MultiBranchProject branchProject = ((MultiBranchProject) workflowJob.getParent());
     WorkflowJob jobInMemory =
