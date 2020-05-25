@@ -134,13 +134,15 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
     return true;
   }
 
-
   private boolean checkMultiBranchJobValid(WorkflowJob workflowJob) {
     MultiBranchProject branchProject = ((MultiBranchProject) workflowJob.getParent());
-    WorkflowJob jobInMemory =
-        (WorkflowJob) branchProject.getItemByBranchName(workflowJob.getName());
+    WorkflowJob jobInMemory = (WorkflowJob) branchProject.getItem(workflowJob.getName());
     // This job is not valid if we cannot find job by its branch name
     if (jobInMemory == null) {
+      LOGGER.warning(
+          String.format(
+              "Cannot found WorkflowJob by name %s, won't trigger a build for it",
+              workflowJob.getName()));
       return false;
     }
 
