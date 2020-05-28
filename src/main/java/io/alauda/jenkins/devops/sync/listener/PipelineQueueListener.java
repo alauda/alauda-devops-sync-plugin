@@ -20,7 +20,6 @@ import hudson.model.Queue;
 import hudson.model.queue.QueueListener;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
-import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +32,6 @@ public class PipelineQueueListener extends QueueListener {
   @Override
   public void onLeft(Queue.LeftItem leftItem) {
     logger.info("{} was left, task {}", leftItem, leftItem.task);
-
-    if (leftItem.task instanceof WorkflowJob) {
-      WorkflowJob job = ((WorkflowJob) leftItem.task);
-      logger.info("Next Build Number {}", job.getNextBuildNumber());
-      logger.info(
-          "Last Build Number {}",
-          job.getLastBuild() == null ? "null" : job.getLastBuild().getNumber());
-    }
 
     boolean isCancelled = leftItem.isCancelled();
     if (!isCancelled) {
