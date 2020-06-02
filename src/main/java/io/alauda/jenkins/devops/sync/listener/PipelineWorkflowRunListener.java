@@ -12,6 +12,7 @@ import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
 import io.alauda.jenkins.devops.sync.client.Clients;
+import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import javax.annotation.Nonnull;
@@ -111,7 +112,9 @@ public class PipelineWorkflowRunListener extends RunListener<WorkflowRun> {
     WorkflowJob job = run.getParent();
     if (job.getParent() instanceof WorkflowMultiBranchProject
         && WorkflowJobUtils.parametersHasChange(job)) {
-      WorkflowJobUtils.updateBranchAndPRAnnotations(job);
+      String namespace = property.getNamespace();
+      String name = property.getName();
+      MultibranchProjectSyncExecutor.getInstance().submit(new NamespaceName(namespace, name));
     } else {
       String namespace = property.getNamespace();
       String name = property.getName();
