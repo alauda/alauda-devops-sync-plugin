@@ -135,6 +135,15 @@ public final class Constants {
   public static final Supplier ANNOTATION_BADGE =
       ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-badges");
 
+  public static final Supplier ANNOTATION_PIPELINE_COMMIT =
+      ResourceControllerManager.getControllerManager().getFormattedAnnotation("pipeline-commit");
+  public static final Supplier ANNOTATION_PIPELINE_COMMIT_AUTHOR =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-commit-author");
+  public static final Supplier ANNOTATION_PIPELINE_COMMIT_MSG =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-commit-message");
+
   public static final String PIPELINECONFIG_KIND_MULTI_BRANCH = "multi-branch";
   public static final String PIPELINECONFIG_KIND = "pipeline.kind";
 

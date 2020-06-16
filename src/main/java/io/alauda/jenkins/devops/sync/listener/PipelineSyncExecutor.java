@@ -14,6 +14,9 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_AN
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG;
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG;
 import static io.alauda.jenkins.devops.sync.constants.Constants.ANNOTATION_BADGE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.ANNOTATION_PIPELINE_COMMIT;
+import static io.alauda.jenkins.devops.sync.constants.Constants.ANNOTATION_PIPELINE_COMMIT_AUTHOR;
+import static io.alauda.jenkins.devops.sync.constants.Constants.ANNOTATION_PIPELINE_COMMIT_MSG;
 import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_FALSE;
 import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_TRUE;
 import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_UNKNOWN;
@@ -39,6 +42,7 @@ import hudson.init.Initializer;
 import hudson.model.Action;
 import hudson.model.Job;
 import hudson.model.Run;
+import hudson.scm.ChangeLogSet;
 import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
@@ -69,11 +73,7 @@ import io.kubernetes.client.extended.workqueue.ratelimiter.BucketRateLimiter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -271,6 +271,7 @@ public class PipelineSyncExecutor implements Runnable {
 
       addURLsToAnnotations(run, pipelineCopy);
       addBadgesToAnnotations(run, pipelineCopy);
+      addSCMToAnnotations(run, pipelineCopy);
 
       addRunDetailsToStatus(run, pipelineCopy);
 
@@ -557,6 +558,33 @@ public class PipelineSyncExecutor implements Runnable {
       return logsBlueOceanUrl;
     }
     throw new PipelineException("Unable to find ClassLoader");
+  }
+
+  private void addSCMToAnnotations(@Nonnull Run run, V1alpha1Pipeline pipeline) {
+    if (!(run instanceof WorkflowRun)) {
+      return;
+    }
+
+    Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
+    if (annotations == null) {
+      return;
+    }
+
+    WorkflowRun wfRun = (WorkflowRun) run;
+    Optional<ChangeLogSet<? extends ChangeLogSet.Entry>> opt =
+        wfRun.getChangeSets().stream().findAny();
+    if (opt.isPresent()) {
+      ChangeLogSet<? extends ChangeLogSet.Entry> scm = opt.get();
+      Iterator<? extends ChangeLogSet.Entry> it = scm.iterator();
+      if (it.hasNext()) {
+        ChangeLogSet.Entry entry = it.next();
+
+        annotations.put(ANNOTATION_PIPELINE_COMMIT.get().toString(), entry.getCommitId());
+        annotations.put(
+            ANNOTATION_PIPELINE_COMMIT_AUTHOR.get().toString(), entry.getAuthor().getFullName());
+        annotations.put(ANNOTATION_PIPELINE_COMMIT_MSG.get().toString(), entry.getMsg());
+      }
+    }
   }
 
   private void addBadgesToAnnotations(@Nonnull Run run, V1alpha1Pipeline pipeline) {
