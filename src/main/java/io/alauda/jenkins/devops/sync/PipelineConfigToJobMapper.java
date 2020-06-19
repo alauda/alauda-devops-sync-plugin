@@ -27,7 +27,6 @@ import hudson.plugins.git.BranchSpec;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.SubmoduleConfig;
 import hudson.plugins.git.UserRemoteConfig;
-import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.scm.SCM;
 import hudson.scm.SubversionSCM;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
@@ -42,6 +41,7 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineStrategyJenkins;
 import io.alauda.devops.java.client.models.V1alpha1PipelineTrigger;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
+import io.alauda.jenkins.devops.sync.scm.RecordLastChangeLog;
 import io.alauda.jenkins.devops.sync.util.AlaudaUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -399,8 +399,7 @@ public abstract class PipelineConfigToJobMapper {
     }
   }
 
-  private static GitSCM createGitSCM(V1alpha1PipelineConfig pc, V1alpha1PipelineSource source)
-      throws IOException {
+  private static GitSCM createGitSCM(V1alpha1PipelineConfig pc, V1alpha1PipelineSource source) {
     V1alpha1PipelineSourceGit gitSource = source.getGit();
     String branchRef = gitSource.getRef();
     List<BranchSpec> branchSpecs = Collections.emptyList();
@@ -422,7 +421,7 @@ public abstract class PipelineConfigToJobMapper {
         Collections.<SubmoduleConfig>emptyList(),
         null,
         null,
-        Collections.<GitSCMExtension>emptyList());
+        Collections.singletonList(new RecordLastChangeLog()));
   }
 
   private static SubversionSCM createSvnSCM(
