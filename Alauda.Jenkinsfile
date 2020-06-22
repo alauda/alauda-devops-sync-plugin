@@ -1,5 +1,5 @@
 // https://jenkins.io/doc/book/pipeline/syntax/
-@Library('alauda-cicd@update-plugins') _
+@Library('alauda-cicd') _
 
 // global variables for pipeline
 def GIT_BRANCH
@@ -151,9 +151,9 @@ pipeline {
 	post {
 		always {
 			junit allowEmptyResults: true, testResults: "**/target/surefire-reports/**/*.xml"
-// 			script {
-// 				deploy.alaudaNotification([:])
-// 			}
+			script {
+				deploy.alaudaNotification([:])
+			}
 		}
 	}
 }
