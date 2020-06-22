@@ -11,6 +11,7 @@ import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
+import io.alauda.jenkins.devops.sync.exception.ExceptionUtils;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.ApiException;
 import java.io.IOException;
@@ -77,7 +78,6 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
                       String ns = pro.getNamespace();
                       String name = pro.getName();
-                      String uid = pro.getUid();
 
                       V1alpha1PipelineConfig pc =
                           Clients.get(V1alpha1PipelineConfig.class)
@@ -86,19 +86,27 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                               .get(name);
                       if (pc == null) {
                         DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
-                        V1alpha1PipelineConfig newer = null;
+                        V1alpha1PipelineConfig newer;
                         try {
                           newer = api.readNamespacedPipelineConfig(name, ns, null, null, null);
-                        } catch (ApiException e) {
-                          LOGGER.debug("Unable to get newer pipelineConfig");
-                          orphanList.add(item);
-                        }
 
-                        if (newer == null || !newer.getMetadata().getUid().equals(uid)) {
-                          orphanList.add(item);
+                          if (newer == null) {
+                            LOGGER.info("Unable to get PipelineConfig '{}/{}', will delete it", ns,
+                                name);
+                            orphanList.add(item);
+                          }
+                        } catch (ApiException e) {
+                          if (ExceptionUtils.isResourceNotFoundException(e)) {
+                            LOGGER.info(
+                                "Unable to get newer PipelineConfig '{}/{}' from apiserver, will delete it, reason: {}",
+                                ns, name, e.getMessage());
+                            orphanList.add(item);
+                          } else {
+                            LOGGER.info(
+                                "Unable to check if PipelineConfig '{}/{}' exists, reason: {}", ns,
+                                name, e.getMessage());
+                          }
                         }
-                      } else if (!pc.getMetadata().getUid().equals(uid)) {
-                        orphanList.add(item);
                       }
                     }));
 
@@ -120,6 +128,6 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
   @Override
   public long getRecurrencePeriod() {
-    return TimeUnit.MINUTES.toMillis(15);
+    return TimeUnit.MINUTES.toMillis(60);
   }
 }
