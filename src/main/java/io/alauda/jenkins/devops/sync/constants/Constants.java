@@ -140,9 +140,25 @@ public final class Constants {
   public static final Supplier ANNOTATION_PIPELINE_COMMIT_AUTHOR =
       ResourceControllerManager.getControllerManager()
           .getFormattedAnnotation("pipeline-commit-author");
+  public static final Supplier ANNOTATION_PIPELINE_COMMIT_AUTHOR_EMAIL =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-commit-author-email");
   public static final Supplier ANNOTATION_PIPELINE_COMMIT_MSG =
       ResourceControllerManager.getControllerManager()
           .getFormattedAnnotation("pipeline-commit-message");
+
+  public static final Supplier ANNOTATION_TEST_PASSED =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-passed-unit-test-cases");
+  public static final Supplier ANNOTATION_TEST_FAILED =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-failed-unit-test-cases");
+  public static final Supplier ANNOTATION_TEST_SKIPPED =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-skipped-unit-test-cases");
+  public static final Supplier ANNOTATION_TEST_TOTAL =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-total-unit-test-cases");
 
   public static final String PIPELINECONFIG_KIND_MULTI_BRANCH = "multi-branch";
   public static final String PIPELINECONFIG_KIND = "pipeline.kind";
