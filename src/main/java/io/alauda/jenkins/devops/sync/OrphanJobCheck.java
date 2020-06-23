@@ -71,7 +71,6 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
                 String ns = pro.getNamespace();
                 String name = pro.getName();
-                String uid = pro.getUid();
 
                 ResourcesCache cache = ResourcesCache.getInstance();
 
@@ -80,11 +79,9 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                     PipelineConfig newer = client.pipelineConfigs()
                             .inNamespace(ns).withName(name).get();
 
-                    if(newer == null || !newer.getMetadata().getUid().equals(uid)) {
+                    if(newer == null) {
                         orphanList.add(item);
                     }
-                } else if(!pc.getMetadata().getUid().equals(uid)) {
-                    orphanList.add(item);
                 }
             });
         });

@@ -119,19 +119,7 @@ public class CacheWorker extends AsyncPeriodicWork {
                 }
 
                 if(property != null) {
-                    if(!property.getUid().equals(meta.getUid())) {
-                        LOGGER.severe(String.format("Found stale workflow job[%s], going to remove it.", name));
-                        notExists = true;
-                        try {
-                            item.delete();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-                        needModfiy = !property.getResourceVersion().equals(meta.getResourceVersion());
-                    }
+                    needModfiy = !property.getResourceVersion().equals(meta.getResourceVersion());
                 } else {
                     errMsg = "Exists workflow job that created by manual";
                 }
