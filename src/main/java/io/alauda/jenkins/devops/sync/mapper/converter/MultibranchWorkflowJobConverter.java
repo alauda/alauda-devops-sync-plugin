@@ -39,6 +39,7 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
+import io.alauda.jenkins.devops.sync.scm.RecordLastChangeLogTrait;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
@@ -448,6 +449,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       traits.add(new BranchDiscoveryTrait());
     }
 
+    traits.add(new RecordLastChangeLogTrait());
     setTraits(source, traits);
   }
 
@@ -524,6 +526,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           String.format("Unable to parse Branch discovery rules, reason %s", e.getMessage()));
     }
 
+    traits.add(new RecordLastChangeLogTrait());
     traits.add(new RegexSCMHeadFilterTrait(regexRule));
 
     setTraits(source, traits);

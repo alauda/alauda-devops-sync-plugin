@@ -3,26 +3,7 @@ package io.alauda.jenkins.devops.sync.listener;
 import static com.cloudbees.workflow.rest.external.StatusExt.ABORTED;
 import static com.cloudbees.workflow.rest.external.StatusExt.FAILED;
 import static com.cloudbees.workflow.rest.external.StatusExt.NOT_EXECUTED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BLUEOCEAN_LOG_URL;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_BUILD_URI;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_CONSOLE_LOG_URL;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_LOG_URL;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_PROGRESSIVE_LOG;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STAGES_LOG;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_STEPS_LOG;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_VIEW_LOG;
-import static io.alauda.jenkins.devops.sync.constants.Constants.ANNOTATION_BADGE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_FALSE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_TRUE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_UNKNOWN;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_CANCELLED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_COMPLETE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_FAILED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_PENDING_INPUT;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_RUNNING;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_TYPE_COMPLETED;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 import com.cloudbees.workflow.rest.external.RunExt;
 import com.cloudbees.workflow.rest.external.StageNodeExt;
@@ -39,6 +20,7 @@ import hudson.init.Initializer;
 import hudson.model.Action;
 import hudson.model.Job;
 import hudson.model.Run;
+import hudson.tasks.junit.TestResultAction;
 import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
@@ -54,6 +36,7 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.exception.PipelineException;
+import io.alauda.jenkins.devops.sync.scm.LastChangeData;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
@@ -69,11 +52,7 @@ import io.kubernetes.client.extended.workqueue.ratelimiter.BucketRateLimiter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -271,7 +250,8 @@ public class PipelineSyncExecutor implements Runnable {
 
       addURLsToAnnotations(run, pipelineCopy);
       addBadgesToAnnotations(run, pipelineCopy);
-
+      addSCMToAnnotations(run, pipelineCopy);
+      addTestResultAnnotations(run, pipelineCopy);
       addRunDetailsToStatus(run, pipelineCopy);
 
       mountActionsPipeline(run.getAllActions(), pipelineCopy);
@@ -557,6 +537,51 @@ public class PipelineSyncExecutor implements Runnable {
       return logsBlueOceanUrl;
     }
     throw new PipelineException("Unable to find ClassLoader");
+  }
+
+  private void addSCMToAnnotations(@Nonnull Run run, V1alpha1Pipeline pipeline) {
+    if (!(run instanceof WorkflowRun)) {
+      return;
+    }
+
+    Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
+    if (annotations == null) {
+      return;
+    }
+
+    WorkflowRun wfRun = (WorkflowRun) run;
+    LastChangeData lastChangeData = wfRun.getAction(LastChangeData.class);
+    if (lastChangeData == null) {
+      return;
+    }
+
+    annotations.put(ANNOTATION_PIPELINE_COMMIT.get().toString(), lastChangeData.getCommit());
+    annotations.put(ANNOTATION_PIPELINE_COMMIT_AUTHOR.get().toString(), lastChangeData.getAuthor());
+    annotations.put(
+        ANNOTATION_PIPELINE_COMMIT_AUTHOR_EMAIL.get().toString(), lastChangeData.getAuthorEmail());
+    annotations.put(ANNOTATION_PIPELINE_COMMIT_MSG.get().toString(), lastChangeData.getMessage());
+  }
+
+  private void addTestResultAnnotations(WorkflowRun run, V1alpha1Pipeline pipeline) {
+    Map<String, String> annotations = pipeline.getMetadata().getAnnotations();
+    if (annotations == null) {
+      return;
+    }
+
+    TestResultAction testResultAction = run.getAction(hudson.tasks.junit.TestResultAction.class);
+    if (testResultAction == null) {
+      return;
+    }
+
+    annotations.put(
+        ANNOTATION_TEST_PASSED.get().toString(),
+        String.valueOf(testResultAction.getPassedTests().size()));
+    annotations.put(
+        ANNOTATION_TEST_FAILED.get().toString(), String.valueOf(testResultAction.getFailCount()));
+    annotations.put(
+        ANNOTATION_TEST_TOTAL.get().toString(), String.valueOf(testResultAction.getTotalCount()));
+    annotations.put(
+        ANNOTATION_TEST_SKIPPED.get().toString(), String.valueOf(testResultAction.getSkipCount()));
   }
 
   private void addBadgesToAnnotations(@Nonnull Run run, V1alpha1Pipeline pipeline) {
