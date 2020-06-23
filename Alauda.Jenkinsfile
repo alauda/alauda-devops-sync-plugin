@@ -102,10 +102,6 @@ pipeline {
 			steps{
 				script{
 					hpiRelease.deploy("-Dmaven.test.skip=true -Dmaven.site.skip=true -Dmaven.javadoc.skip=true")
-					if(hpiRelease.deployToUC){
-						hpiRelease.triggerBackendIndexing(RELEASE_VERSION)
-						hpiRelease.waitUC(PLUGIN_NAME, RELEASE_VERSION, 15)
-					}
 				}
 			}
 		}
@@ -151,9 +147,9 @@ pipeline {
 	post {
 		always {
 			junit allowEmptyResults: true, testResults: "**/target/surefire-reports/**/*.xml"
-			script {
-				deploy.alaudaNotification([:])
-			}
+// 			script {
+// 				deploy.alaudaNotification([:])
+// 			}
 		}
 	}
 }
