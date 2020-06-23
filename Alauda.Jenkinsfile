@@ -147,9 +147,9 @@ pipeline {
 	post {
 		always {
 			junit allowEmptyResults: true, testResults: "**/target/surefire-reports/**/*.xml"
-// 			script {
-// 				deploy.alaudaNotification([:])
-// 			}
+			script {
+				deploy.alaudaNotification([:])
+			}
 		}
 	}
 }
