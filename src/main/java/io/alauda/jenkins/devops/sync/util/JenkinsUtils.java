@@ -400,7 +400,7 @@ public abstract class JenkinsUtils {
     }
   }
 
-  private static boolean hasBuildRunningOrCompleted(WorkflowJob job, V1alpha1Pipeline pipeline) {
+  public static boolean hasBuildRunningOrCompleted(WorkflowJob job, V1alpha1Pipeline pipeline) {
     return getRun(job, pipeline) != null;
   }
 

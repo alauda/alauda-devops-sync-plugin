@@ -48,8 +48,14 @@ public class ReplayUtils {
       V1alpha1Pipeline currentPipeline,
       V1alpha1Pipeline originalPipeline)
       throws PipelineException {
+
     String namespace = currentPipeline.getMetadata().getNamespace();
     String currentPipelineName = currentPipeline.getMetadata().getName();
+
+    if (JenkinsUtils.hasBuildRunningOrCompleted(job, currentPipeline)) {
+      logger.info("Pipeline '{}/{}' is running or completed, won't replay again", namespace, currentPipelineName);
+      return;
+    }
 
     WorkflowRun originalRun = JenkinsUtils.getRun(job, originalPipeline);
     if (originalRun == null) {
