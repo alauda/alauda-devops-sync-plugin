@@ -54,7 +54,7 @@ public class AlaudaDisplayURLProvider extends DisplayURLProvider {
   @Override
   public String getRunURL(Run<?, ?> run) {
     if (StringUtils.isEmpty(ALAUDA_DEVOPS_PLATFORM_ADDRESS)) {
-      DisplayURLProvider.getDefault().getRunURL(run);
+      return DisplayURLProvider.getDefault().getRunURL(run);
     }
 
     JenkinsPipelineCause alaudaCause = PipelineUtils.findAlaudaCause(run);
@@ -87,7 +87,7 @@ public class AlaudaDisplayURLProvider extends DisplayURLProvider {
     }
 
     return String.format(
-        "%s#/workspace/%s/pipelines/all/%s/",
+        "%sworkspace/%s/pipelines/all/%s/",
         getRoot(), alaudaJobProperty.getNamespace(), alaudaJobProperty.getName());
   }
 
