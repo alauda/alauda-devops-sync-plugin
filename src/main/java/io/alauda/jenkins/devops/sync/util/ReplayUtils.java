@@ -53,7 +53,10 @@ public class ReplayUtils {
     String currentPipelineName = currentPipeline.getMetadata().getName();
 
     if (JenkinsUtils.hasBuildRunningOrCompleted(job, currentPipeline)) {
-      logger.info("Pipeline '{}/{}' is running or completed, won't replay again", namespace, currentPipelineName);
+      logger.info(
+          "Pipeline '{}/{}' is running or completed, won't replay again",
+          namespace,
+          currentPipelineName);
       return;
     }
 

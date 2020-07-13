@@ -182,13 +182,15 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
 
       Optional<ChangeLogSet<? extends ChangeLogSet.Entry>> opt =
           job.getLastBuild().getChangeSets().stream().findAny();
-      opt.orElse(null)
-          .forEach(
-              a -> {
-                a.getAuthor();
-                a.getCommitId();
-                a.getMsg();
-              });
+      opt.ifPresent(
+          changeLogSet -> {
+            changeLogSet.forEach(
+                a -> {
+                  a.getAuthor();
+                  a.getCommitId();
+                  a.getMsg();
+                });
+          });
 
       try {
         Clients.get(V1alpha1PipelineConfig.class).update(jobPipelineConfig, newJobPipelineConfig);

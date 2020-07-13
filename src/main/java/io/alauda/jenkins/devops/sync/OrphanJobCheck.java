@@ -12,6 +12,7 @@ import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.exception.ExceptionUtils;
+import io.alauda.jenkins.devops.sync.function.AlaudaPipelineFilter;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.ApiException;
 import java.io.IOException;
@@ -62,16 +63,7 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
             folder
                 .getItems()
                 .stream()
-                .filter(
-                    item -> {
-                      if (!(item instanceof WorkflowJob)) {
-                        return false;
-                      }
-
-                      WorkflowJobProperty pro =
-                          WorkflowJobUtils.getAlaudaProperty((WorkflowJob) item);
-                      return pro != null && pro.isValid();
-                    })
+                .filter(new AlaudaPipelineFilter())
                 .forEach(
                     item -> {
                       WorkflowJobProperty pro =
@@ -79,7 +71,6 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
 
                       String ns = pro.getNamespace();
                       String name = pro.getName();
-                      String uid = pro.getUid();
 
                       V1alpha1PipelineConfig pc =
                           Clients.get(V1alpha1PipelineConfig.class)
