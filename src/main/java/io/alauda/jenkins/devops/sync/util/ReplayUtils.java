@@ -51,6 +51,14 @@ public class ReplayUtils {
     String namespace = currentPipeline.getMetadata().getNamespace();
     String currentPipelineName = currentPipeline.getMetadata().getName();
 
+    if (JenkinsUtils.hasBuildRunningOrCompleted(job, currentPipeline)) {
+      logger.info(
+          "Pipeline '{}/{}' is running or completed, won't replay again",
+          namespace,
+          currentPipelineName);
+      return;
+    }
+
     WorkflowRun originalRun = JenkinsUtils.getRun(job, originalPipeline);
     if (originalRun == null) {
       V1ObjectMeta originalMeta = originalPipeline.getMetadata();
