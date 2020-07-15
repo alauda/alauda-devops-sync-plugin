@@ -93,20 +93,24 @@ public class OrphanJobCheck extends AsyncPeriodicWork {
                           newer = api.readNamespacedPipelineConfig(name, ns, null, null, null);
 
                           if (newer == null) {
-                            LOGGER.info("Unable to get PipelineConfig '{}/{}', will delete it", ns,
-                                name);
+                            LOGGER.info(
+                                "Unable to get PipelineConfig '{}/{}', will delete it", ns, name);
                             orphanList.add(item);
                           }
                         } catch (ApiException e) {
                           if (ExceptionUtils.isResourceNotFoundException(e)) {
                             LOGGER.info(
                                 "Unable to get newer PipelineConfig '{}/{}' from apiserver, will delete it, reason: {}",
-                                ns, name, e.getMessage());
+                                ns,
+                                name,
+                                e.getMessage());
                             orphanList.add(item);
                           } else {
                             LOGGER.info(
-                                "Unable to check if PipelineConfig '{}/{}' exists, reason: {}", ns,
-                                name, e.getMessage());
+                                "Unable to check if PipelineConfig '{}/{}' exists, reason: {}",
+                                ns,
+                                name,
+                                e.getMessage());
                           }
                         }
                       }

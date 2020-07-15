@@ -40,8 +40,7 @@ public class MultiBranchProjectEventHandler
   }
 
   @Override
-  public void onCreated(WorkflowMultiBranchProject item) {
-  }
+  public void onCreated(WorkflowMultiBranchProject item) {}
 
   @Override
   public void onUpdated(WorkflowMultiBranchProject item) {
@@ -97,9 +96,10 @@ public class MultiBranchProjectEventHandler
             }
           }
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-          logger.warning(String
-              .format("Unable to set traits for PipelineConfig %s, reason: %s", nsName,
-                  e.getMessage()));
+          logger.warning(
+              String.format(
+                  "Unable to set traits for PipelineConfig %s, reason: %s",
+                  nsName, e.getMessage()));
         }
       }
 
