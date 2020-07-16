@@ -23,7 +23,13 @@ public class RecordLastChangeLogTrait extends GitSCMExtensionTrait<RecordLastCha
 
   @Override
   public boolean equals(Object o) {
-    // there's not any fields in this Object
+    // there's not any fields in this Object, so they're always same
     return true;
+  }
+
+  @Override
+  public int hashCode() {
+    // there's not any fields in this Object, so they're always same
+    return 1;
   }
 }
