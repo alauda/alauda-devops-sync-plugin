@@ -20,4 +20,10 @@ public class RecordLastChangeLogTrait extends GitSCMExtensionTrait<RecordLastCha
       return "Record the last changeLog";
     }
   }
+
+  @Override
+  public boolean equals(Object o) {
+    // there's not any fields in this Object
+    return true;
+  }
 }

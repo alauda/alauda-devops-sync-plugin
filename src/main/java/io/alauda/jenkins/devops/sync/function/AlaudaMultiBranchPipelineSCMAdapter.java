@@ -22,9 +22,9 @@ public class AlaudaMultiBranchPipelineSCMAdapter implements Consumer<TopLevelIte
         .forEach(
             scmSource -> {
               List<SCMSourceTrait> traits = scmSource.getTraits();
-              if (traits != null) {
-                scmSource.getTraits().removeIf(trait -> trait instanceof RecordLastChangeLogTrait);
-                scmSource.getTraits().add(new RecordLastChangeLogTrait());
+              RecordLastChangeLogTrait trait = new RecordLastChangeLogTrait();
+              if (traits != null && !scmSource.getTraits().contains(trait)) {
+                scmSource.getTraits().add(trait);
               }
             });
     try {
