@@ -110,6 +110,8 @@ public final class Constants {
   public static final String PIPELINE_TRIGGER_TYPE_BRANCH_SCAN = "branchScan";
   /** Triggered by an upstream job */
   public static final String PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE = "upstreamCause";
+  /** Triggered by an upstream job */
+  public static final String PIPELINE_TRIGGER_TYPE_REPLAY_CAUSE = "replayCause";
   /** Triggered by multi-causes */
   public static final String PIPELINE_TRIGGER_TYPE_MULTI_CAUSES = "multiCauses";
   /** Triggered by unknown cause */
