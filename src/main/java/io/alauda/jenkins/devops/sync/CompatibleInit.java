@@ -20,7 +20,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class CompatibleInit {
+
   private static final Logger logger = LoggerFactory.getLogger(CompatibleInit.class);
+
+  private CompatibleInit() {
+  }
 
   @Initializer(after = InitMilestone.JOB_LOADED)
   @SuppressWarnings("unused")
