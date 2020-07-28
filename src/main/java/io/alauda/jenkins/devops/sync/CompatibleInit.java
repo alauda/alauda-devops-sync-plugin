@@ -23,8 +23,7 @@ public class CompatibleInit {
 
   private static final Logger logger = LoggerFactory.getLogger(CompatibleInit.class);
 
-  private CompatibleInit() {
-  }
+  private CompatibleInit() {}
 
   @Initializer(after = InitMilestone.JOB_LOADED)
   @SuppressWarnings("unused")
