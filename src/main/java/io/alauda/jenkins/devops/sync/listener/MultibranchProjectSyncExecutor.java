@@ -107,9 +107,9 @@ public class MultibranchProjectSyncExecutor implements Runnable {
       int finalIndex = i;
       executor.scheduleWithFixedDelay(
           () -> {
-            logger.info("Starting MultibranchProjectSyncExecutor {}", finalIndex);
+            logger.debug("Starting MultibranchProjectSyncExecutor {}", finalIndex);
             worker();
-            logger.info("Resuming MultibranchProjectSyncExecutor {}", finalIndex);
+            logger.debug("Resuming MultibranchProjectSyncExecutor {}", finalIndex);
           },
           0,
           1,
@@ -264,7 +264,6 @@ public class MultibranchProjectSyncExecutor implements Runnable {
               + ".params",
           toJSON(pipelineParameters));
     }
-
     logger.info("branch items {}", new JSON().serialize(branchItem));
 
     putIfNotEmpty(meta, MULTI_BRANCH_PR.get().toString(), branchItem.getPrList());
@@ -273,7 +272,7 @@ public class MultibranchProjectSyncExecutor implements Runnable {
     putIfNotEmpty(
         meta, MULTI_BRANCH_STALE_BRANCH.get().toString(), branchItem.getStaleBranchList());
 
-    logger.info("Starting to update PipelineConfig, old {}, \n new {}", oldPC, newPC);
+    logger.debug("Starting to update PipelineConfig, old {}, \n new {}", oldPC, newPC);
     Clients.get(V1alpha1PipelineConfig.class).update(oldPC, newPC);
   }
 
