@@ -87,7 +87,7 @@ public class AlaudaDisplayURLProvider extends DisplayURLProvider {
     }
 
     return String.format(
-        "%sworkspace/%s/pipelines/all/%s/",
+        "%s#/workspace/%s/pipelines/all/%s/",
         getRoot(), alaudaJobProperty.getNamespace(), alaudaJobProperty.getName());
   }
 
