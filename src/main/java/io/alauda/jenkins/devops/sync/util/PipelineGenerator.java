@@ -28,8 +28,10 @@ import io.jenkins.plugins.gitlabbranchsource.MergeRequestSCMHead;
 import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
@@ -125,7 +127,7 @@ public abstract class PipelineGenerator {
    * @param cause cause object
    * @return cause name
    */
-  private static String causeConvert(Cause cause) {
+  public static String causeConvert(Cause cause) {
     LOGGER.log(Level.FINE, "causeConvert from " + cause.getClass());
 
     String causeName;
@@ -162,10 +164,10 @@ public abstract class PipelineGenerator {
       allCauses.addAll(causeAction.getCauses());
     }
 
-    String cause = null;
+    String cause;
     if (allCauses.size() > 1) {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
-      List<String> allCauseDetails = new ArrayList<String>();
+      Set<String> allCauseDetails = new HashSet<>();
       allCauses.forEach(
           item -> {
             allCauseDetails.add(causeConvert(item));

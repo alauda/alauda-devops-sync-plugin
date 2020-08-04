@@ -18,6 +18,8 @@ import hudson.PluginManager;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.Action;
+import hudson.model.Cause;
+import hudson.model.CauseAction;
 import hudson.model.Job;
 import hudson.model.Run;
 import hudson.tasks.junit.TestResultAction;
@@ -39,6 +41,7 @@ import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.alauda.jenkins.devops.sync.scm.LastChangeData;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.jenkins.blueocean.rest.factory.BlueRunFactory;
 import io.jenkins.blueocean.rest.model.BluePipelineNode;
@@ -252,6 +255,7 @@ public class PipelineSyncExecutor implements Runnable {
       addBadgesToAnnotations(run, pipelineCopy);
       addSCMToAnnotations(run, pipelineCopy);
       addTestResultAnnotations(run, pipelineCopy);
+      addCausesToAnnotation(run, pipelineCopy);
       addRunDetailsToStatus(run, pipelineCopy);
 
       mountActionsPipeline(run.getAllActions(), pipelineCopy);
@@ -582,6 +586,34 @@ public class PipelineSyncExecutor implements Runnable {
         ANNOTATION_TEST_TOTAL.get().toString(), String.valueOf(testResultAction.getTotalCount()));
     annotations.put(
         ANNOTATION_TEST_SKIPPED.get().toString(), String.valueOf(testResultAction.getSkipCount()));
+  }
+
+  private void addCausesToAnnotation(WorkflowRun run, V1alpha1Pipeline pipelineCopy) {
+    List<Action> actions = (List<Action>) run.getAllActions();
+    List<Cause> allCauses = new ArrayList<>();
+    for (Action action : actions) {
+      if (!(action instanceof CauseAction)) {
+        continue;
+      }
+
+      CauseAction causeAction = (CauseAction) action;
+      allCauses.addAll(causeAction.getCauses());
+    }
+
+    if (allCauses.size() > 1) {
+      Set<String> allCauseDetails = new HashSet<>();
+      allCauses.forEach(item -> allCauseDetails.add(PipelineGenerator.causeConvert(item)));
+
+      Map<String, String> annotations = pipelineCopy.getMetadata().getAnnotations();
+      if (annotations == null) {
+        annotations = new HashMap<>();
+        pipelineCopy.getMetadata().setAnnotations(annotations);
+      }
+
+      annotations.put(
+          ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS.get().toString(),
+          JSONArray.fromObject(allCauseDetails).toString());
+    }
   }
 
   private void addBadgesToAnnotations(@Nonnull Run run, V1alpha1Pipeline pipeline) {
