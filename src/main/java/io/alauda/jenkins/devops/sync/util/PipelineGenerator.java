@@ -1,14 +1,5 @@
 package io.alauda.jenkins.devops.sync.util;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_BRANCH_SCAN;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_NOT_FOUND;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_UNKNOWN_CAUSE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE;
-
 import com.cloudbees.jenkins.plugins.bitbucket.PullRequestSCMHead;
 import hudson.model.Action;
 import hudson.model.Cause;
@@ -48,9 +39,12 @@ import jenkins.scm.api.mixin.ChangeRequestSCMHead;
 import jenkins.scm.api.mixin.ChangeRequestSCMHead2;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.jenkinsci.plugins.workflow.cps.replay.ReplayCause;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
+
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 public abstract class PipelineGenerator {
 
@@ -152,6 +146,8 @@ public abstract class PipelineGenerator {
       causeName = PIPELINE_TRIGGER_TYPE_BRANCH_SCAN;
     } else if (cause instanceof Cause.UpstreamCause) {
       causeName = PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE;
+    } else if (cause instanceof ReplayCause) {
+      causeName = PIPELINE_TRIGGER_TYPE_REPLAY_CAUSE;
     } else {
       causeName = PIPELINE_TRIGGER_TYPE_UNKNOWN_CAUSE;
     }
