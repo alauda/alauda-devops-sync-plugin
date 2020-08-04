@@ -1,5 +1,7 @@
 package io.alauda.jenkins.devops.sync.util;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
+
 import com.cloudbees.jenkins.plugins.bitbucket.PullRequestSCMHead;
 import hudson.model.Action;
 import hudson.model.Cause;
@@ -23,12 +25,12 @@ import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.jenkins.plugins.gitlabbranchsource.MergeRequestSCMHead;
-import io.kubernetes.client.ApiException;
 import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
 import jenkins.branch.Branch;
@@ -44,17 +46,10 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-
 public abstract class PipelineGenerator {
 
   private static final Logger LOGGER = Logger.getLogger(PipelineGenerator.class.getName());
   private static String TRIGGER_BY = "Triggered by Jenkins job at ";
-
-  public static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, List<Action> actions)
-      throws ApiException {
-    return buildPipeline(config, null, actions);
-  }
 
   public static V1alpha1Pipeline buildPipeline(
       V1alpha1PipelineConfig config,
@@ -124,12 +119,6 @@ public abstract class PipelineGenerator {
     pr.setTitle(title);
   }
 
-  @Deprecated
-  public static V1alpha1Pipeline buildPipeline(
-      V1alpha1PipelineConfig config, String triggerURL, List<Action> actions) throws ApiException {
-    return buildPipeline(config, new HashMap<>(), triggerURL, actions);
-  }
-
   /**
    * Convert a cause object into name
    *
@@ -137,7 +126,9 @@ public abstract class PipelineGenerator {
    * @return cause name
    */
   private static String causeConvert(Cause cause) {
-    String causeName = null;
+    LOGGER.log(Level.FINE, "causeConvert from " + cause.getClass());
+
+    String causeName;
     if (cause instanceof SCMTrigger.SCMTriggerCause) {
       causeName = PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
     } else if (cause instanceof TimerTrigger.TimerTriggerCause) {
