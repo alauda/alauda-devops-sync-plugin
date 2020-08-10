@@ -1,5 +1,7 @@
 package io.alauda.jenkins.devops.sync.util;
 
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
+
 import com.cloudbees.jenkins.plugins.bitbucket.PullRequestSCMHead;
 import hudson.model.Action;
 import hudson.model.Cause;
@@ -44,8 +46,6 @@ import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.*;
-
 public abstract class PipelineGenerator {
 
   private static final Logger LOGGER = Logger.getLogger(PipelineGenerator.class.getName());
@@ -64,31 +64,36 @@ public abstract class PipelineGenerator {
     ItemGroup parent = job.getParent();
     Map<String, String> annotations = new HashMap<>();
     if (parent instanceof WorkflowMultiBranchProject) {
-      BranchJobProperty property = job.getProperty(BranchJobProperty.class);
-      if (property != null) {
-        Branch branch = property.getBranch();
-        annotations.put(Annotations.MULTI_BRANCH_NAME.get().toString(), branch.getName());
-
-        String scmURL = "";
-        ObjectMetadataAction metadataAction = job.getAction(ObjectMetadataAction.class);
-        if (metadataAction != null) {
-          scmURL = metadataAction.getObjectUrl();
-        }
-
-        PullRequest pr = getPR(job);
-        if (pr != null) {
-          pr.setUrl(scmURL);
-          annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "pr");
-          annotations.put(
-              Annotations.MULTI_BRANCH_PR_DETAIL.get().toString(),
-              JSONObject.fromObject(pr).toString());
-        } else {
-          annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "branch");
-        }
-      }
+      addBranchSCMToAnnotations(job, annotations);
     }
 
     return buildPipeline(config, annotations, triggerURL, actions);
+  }
+
+  public static void addBranchSCMToAnnotations(
+      @Nonnull WorkflowJob job, Map<String, String> annotations) {
+    BranchJobProperty property = job.getProperty(BranchJobProperty.class);
+    if (property != null) {
+      Branch branch = property.getBranch();
+      annotations.put(Annotations.MULTI_BRANCH_NAME.get().toString(), branch.getName());
+
+      String scmURL = "";
+      ObjectMetadataAction metadataAction = job.getAction(ObjectMetadataAction.class);
+      if (metadataAction != null) {
+        scmURL = metadataAction.getObjectUrl();
+      }
+
+      PullRequest pr = getPR(job);
+      if (pr != null) {
+        pr.setUrl(scmURL);
+        annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "pr");
+        annotations.put(
+            Annotations.MULTI_BRANCH_PR_DETAIL.get().toString(),
+            JSONObject.fromObject(pr).toString());
+      } else {
+        annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "branch");
+      }
+    }
   }
 
   public static PullRequest getPR(Item item) {
