@@ -39,6 +39,7 @@ import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.alauda.jenkins.devops.sync.scm.LastChangeData;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
+import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
 import io.jenkins.blueocean.rest.factory.BlueRunFactory;
 import io.jenkins.blueocean.rest.model.BluePipelineNode;
@@ -550,6 +551,11 @@ public class PipelineSyncExecutor implements Runnable {
     }
 
     WorkflowRun wfRun = (WorkflowRun) run;
+    WorkflowJob wfJob = wfRun.getParent();
+    if (wfJob.getParent() instanceof WorkflowMultiBranchProject) {
+      PipelineGenerator.addBranchSCMToAnnotations(wfJob, annotations);
+    }
+
     LastChangeData lastChangeData = wfRun.getAction(LastChangeData.class);
     if (lastChangeData == null) {
       return;
