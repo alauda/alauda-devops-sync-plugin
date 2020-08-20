@@ -4,6 +4,7 @@ import com.google.common.base.Objects;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
+import hudson.scm.ChangeLogSet;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.PipelineConfigToJobMapper;
@@ -14,6 +15,7 @@ import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
 import io.kubernetes.client.models.V1ObjectMeta;
 import io.kubernetes.client.models.V1Status;
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.lang.StringUtils;
@@ -177,6 +179,18 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
         // pipeline so lets not create/update a PipelineConfig yet
         return;
       }
+
+      Optional<ChangeLogSet<? extends ChangeLogSet.Entry>> opt =
+          job.getLastBuild().getChangeSets().stream().findAny();
+      opt.ifPresent(
+          changeLogSet -> {
+            changeLogSet.forEach(
+                a -> {
+                  a.getAuthor();
+                  a.getCommitId();
+                  a.getMsg();
+                });
+          });
 
       try {
         Clients.get(V1alpha1PipelineConfig.class).update(jobPipelineConfig, newJobPipelineConfig);

@@ -110,6 +110,8 @@ public final class Constants {
   public static final String PIPELINE_TRIGGER_TYPE_BRANCH_SCAN = "branchScan";
   /** Triggered by an upstream job */
   public static final String PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE = "upstreamCause";
+  /** Triggered by replaying an job */
+  public static final String PIPELINE_TRIGGER_TYPE_REPLAY_CAUSE = "replayCause";
   /** Triggered by multi-causes */
   public static final String PIPELINE_TRIGGER_TYPE_MULTI_CAUSES = "multiCauses";
   /** Triggered by unknown cause */
@@ -134,6 +136,31 @@ public final class Constants {
 
   public static final Supplier ANNOTATION_BADGE =
       ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins-badges");
+
+  public static final Supplier ANNOTATION_PIPELINE_COMMIT =
+      ResourceControllerManager.getControllerManager().getFormattedAnnotation("pipeline-commit");
+  public static final Supplier ANNOTATION_PIPELINE_COMMIT_AUTHOR =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-commit-author");
+  public static final Supplier ANNOTATION_PIPELINE_COMMIT_AUTHOR_EMAIL =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-commit-author-email");
+  public static final Supplier ANNOTATION_PIPELINE_COMMIT_MSG =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-commit-message");
+
+  public static final Supplier ANNOTATION_TEST_PASSED =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-passed-unit-test-cases");
+  public static final Supplier ANNOTATION_TEST_FAILED =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-failed-unit-test-cases");
+  public static final Supplier ANNOTATION_TEST_SKIPPED =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-skipped-unit-test-cases");
+  public static final Supplier ANNOTATION_TEST_TOTAL =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-total-unit-test-cases");
 
   public static final String PIPELINECONFIG_KIND_MULTI_BRANCH = "multi-branch";
   public static final String PIPELINECONFIG_KIND = "pipeline.kind";

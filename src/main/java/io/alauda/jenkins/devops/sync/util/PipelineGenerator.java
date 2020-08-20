@@ -1,13 +1,6 @@
 package io.alauda.jenkins.devops.sync.util;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_CAUSES_DETAILS;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_BRANCH_SCAN;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_CRON;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_NOT_FOUND;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_UNKNOWN_CAUSE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 import com.cloudbees.jenkins.plugins.bitbucket.PullRequestSCMHead;
 import hudson.model.Action;
@@ -32,12 +25,14 @@ import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.jenkins.plugins.gitlabbranchsource.MergeRequestSCMHead;
-import io.kubernetes.client.ApiException;
 import io.kubernetes.client.models.V1ObjectMetaBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nonnull;
 import jenkins.branch.Branch;
@@ -48,6 +43,7 @@ import jenkins.scm.api.mixin.ChangeRequestSCMHead;
 import jenkins.scm.api.mixin.ChangeRequestSCMHead2;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.jenkinsci.plugins.workflow.cps.replay.ReplayCause;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -57,11 +53,6 @@ public abstract class PipelineGenerator {
   private static final Logger LOGGER = Logger.getLogger(PipelineGenerator.class.getName());
   private static String TRIGGER_BY = "Triggered by Jenkins job at ";
 
-  public static V1alpha1Pipeline buildPipeline(V1alpha1PipelineConfig config, List<Action> actions)
-      throws ApiException {
-    return buildPipeline(config, null, actions);
-  }
-
   public static V1alpha1Pipeline buildPipeline(
       V1alpha1PipelineConfig config,
       @Nonnull WorkflowJob job,
@@ -70,31 +61,36 @@ public abstract class PipelineGenerator {
     ItemGroup parent = job.getParent();
     Map<String, String> annotations = new HashMap<>();
     if (parent instanceof WorkflowMultiBranchProject) {
-      BranchJobProperty property = job.getProperty(BranchJobProperty.class);
-      if (property != null) {
-        Branch branch = property.getBranch();
-        annotations.put(Annotations.MULTI_BRANCH_NAME.get().toString(), branch.getName());
-
-        String scmURL = "";
-        ObjectMetadataAction metadataAction = job.getAction(ObjectMetadataAction.class);
-        if (metadataAction != null) {
-          scmURL = metadataAction.getObjectUrl();
-        }
-
-        PullRequest pr = getPR(job);
-        if (pr != null) {
-          pr.setUrl(scmURL);
-          annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "pr");
-          annotations.put(
-              Annotations.MULTI_BRANCH_PR_DETAIL.get().toString(),
-              JSONObject.fromObject(pr).toString());
-        } else {
-          annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "branch");
-        }
-      }
+      addBranchSCMToAnnotations(job, annotations);
     }
 
     return buildPipeline(config, annotations, triggerURL, actions);
+  }
+
+  public static void addBranchSCMToAnnotations(
+      @Nonnull WorkflowJob job, Map<String, String> annotations) {
+    BranchJobProperty property = job.getProperty(BranchJobProperty.class);
+    if (property != null) {
+      Branch branch = property.getBranch();
+      annotations.put(Annotations.MULTI_BRANCH_NAME.get().toString(), branch.getName());
+
+      String scmURL = "";
+      ObjectMetadataAction metadataAction = job.getAction(ObjectMetadataAction.class);
+      if (metadataAction != null) {
+        scmURL = metadataAction.getObjectUrl();
+      }
+
+      PullRequest pr = getPR(job);
+      if (pr != null) {
+        pr.setUrl(scmURL);
+        annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "pr");
+        annotations.put(
+            Annotations.MULTI_BRANCH_PR_DETAIL.get().toString(),
+            JSONObject.fromObject(pr).toString());
+      } else {
+        annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "branch");
+      }
+    }
   }
 
   public static PullRequest getPR(Item item) {
@@ -130,20 +126,16 @@ public abstract class PipelineGenerator {
     pr.setTitle(title);
   }
 
-  @Deprecated
-  public static V1alpha1Pipeline buildPipeline(
-      V1alpha1PipelineConfig config, String triggerURL, List<Action> actions) throws ApiException {
-    return buildPipeline(config, new HashMap<>(), triggerURL, actions);
-  }
-
   /**
    * Convert a cause object into name
    *
    * @param cause cause object
    * @return cause name
    */
-  private static String causeConvert(Cause cause) {
-    String causeName = null;
+  public static String causeConvert(Cause cause) {
+    LOGGER.log(Level.FINE, "causeConvert from " + cause.getClass());
+
+    String causeName;
     if (cause instanceof SCMTrigger.SCMTriggerCause) {
       causeName = PIPELINE_TRIGGER_TYPE_CODE_CHANGE;
     } else if (cause instanceof TimerTrigger.TimerTriggerCause) {
@@ -152,6 +144,8 @@ public abstract class PipelineGenerator {
       causeName = PIPELINE_TRIGGER_TYPE_BRANCH_SCAN;
     } else if (cause instanceof Cause.UpstreamCause) {
       causeName = PIPELINE_TRIGGER_TYPE_UPSTREAM_CAUSE;
+    } else if (cause instanceof ReplayCause) {
+      causeName = PIPELINE_TRIGGER_TYPE_REPLAY_CAUSE;
     } else {
       causeName = PIPELINE_TRIGGER_TYPE_UNKNOWN_CAUSE;
     }
@@ -175,10 +169,10 @@ public abstract class PipelineGenerator {
       allCauses.addAll(causeAction.getCauses());
     }
 
-    String cause = null;
+    String cause;
     if (allCauses.size() > 1) {
       cause = PIPELINE_TRIGGER_TYPE_MULTI_CAUSES;
-      List<String> allCauseDetails = new ArrayList<String>();
+      Set<String> allCauseDetails = new HashSet<>();
       allCauses.forEach(
           item -> {
             allCauseDetails.add(causeConvert(item));

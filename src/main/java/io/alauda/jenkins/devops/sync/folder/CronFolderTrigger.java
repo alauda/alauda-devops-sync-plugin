@@ -39,7 +39,7 @@ public class CronFolderTrigger extends Trigger<ComputedFolder<?>> {
   @Override
   public void run() {
     if (job == null || !enabled) {
-      LOGGER.info("Job is null or current trigger is disabled.");
+      LOGGER.fine("Job is null or current trigger is disabled.");
       return;
     }
 
