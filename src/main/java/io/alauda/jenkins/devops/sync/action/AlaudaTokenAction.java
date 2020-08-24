@@ -34,7 +34,8 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * This action provides a
+ * This action provides a API for getting the Jenkins token. In order to make sure you have the access to get it,
+ * you need to pass the k8s cluster token.
  */
 @Extension
 @Symbol("alaudaToken")
