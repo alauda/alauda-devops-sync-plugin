@@ -31,3 +31,11 @@ Run the following command line in the root directory of current project:
 Or, if you want to upload a plugin from the remote file:
 
 `jcli plugin upload --remote http://jenkins.com/job/a/lastSuccessfulBuild/artifact/target/target.hpi`
+
+## API
+
+Below are parts of API from current plugin:
+
+| API | Description |
+|---|---|
+| GET `/alaudaToken/generate?token=xxx` | Create and return the token of Jenkins, the parameter `token` belong to k8s cluster which Jenkins located in. <br/>The sample esponse could be `{"status":"ok","data":{"token":"11c0cf84eb76733fefbf541d3e0ac11b28"}}` <br/>or `{"status":"error","message":"invalid token of Jenkins k8s cluster"}`|
