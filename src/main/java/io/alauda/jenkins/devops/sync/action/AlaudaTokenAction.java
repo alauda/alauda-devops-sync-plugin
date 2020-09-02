@@ -71,7 +71,7 @@ public class AlaudaTokenAction implements UnprotectedRootAction {
       return HttpResponses.errorJSON("invalid token of Jenkins k8s cluster");
     }
 
-    User user = Jenkins.get().getUser("admin");
+    User user = User.getById("admin", true);
     if (user == null) {
       return HttpResponses.errorJSON("cannot found user admin");
     }
