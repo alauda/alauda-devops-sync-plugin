@@ -58,8 +58,10 @@ public abstract class JenkinsUtils {
   private JenkinsUtils() {}
 
   public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(
-      WorkflowJob job, List<V1alpha1PipelineParameter> params, boolean replaceExisting)
+      WorkflowJob job, V1alpha1PipelineConfig pipelineConfig, boolean replaceExisting)
       throws IOException {
+    List<V1alpha1PipelineParameter> params = pipelineConfig.getSpec().getParameters();
+
     // get existing property defs, including any manually added from the
     // jenkins console independent of PC
     ParametersDefinitionProperty jenkinsParams =
@@ -78,7 +80,9 @@ public abstract class JenkinsUtils {
       }
       paramMap = new HashMap<>();
       // store any existing parameters in map for easy key lookup
-      if (jenkinsParams != null) {
+      if (jenkinsParams != null
+          && !PipelineConfigUtils.isTemplatePipeline(pipelineConfig)
+          && !PipelineConfigUtils.isGraphPipeline(pipelineConfig)) {
         List<ParameterDefinition> existingParamList = jenkinsParams.getParameterDefinitions();
         for (ParameterDefinition param : existingParamList) {
           // if a user supplied param, add

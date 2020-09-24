@@ -132,8 +132,7 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
 
     // (re)populate job param list with any parameters
     // from the PipelineConfig
-    JenkinsUtils.addJobParamForPipelineParameters(
-        job, pipelineConfig.getSpec().getParameters(), true);
+    JenkinsUtils.addJobParamForPipelineParameters(job, pipelineConfig, true);
 
     // Setting triggers according to pipeline config
     List<ANTLRException> triggerExceptions =
