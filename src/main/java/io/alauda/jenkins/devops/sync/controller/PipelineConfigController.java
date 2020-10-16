@@ -110,17 +110,6 @@ public class PipelineConfigController
 
                               String namespace = oldPipelineConfig.getMetadata().getNamespace();
                               String name = oldPipelineConfig.getMetadata().getName();
-                              if (oldPipelineConfig
-                                  .getMetadata()
-                                  .getResourceVersion()
-                                  .equals(newPipelineConfig.getMetadata().getResourceVersion())) {
-                                logger.debug(
-                                    "[{}] resourceVersion of PipelineConfig '{}/{}' is equal, will skip update event for it",
-                                    CONTROLLER_NAME,
-                                    namespace,
-                                    name);
-                                return false;
-                              }
 
                               logger.debug(
                                   "[{}] receives event: Update; PipelineConfig '{}/{}'",
@@ -270,12 +259,11 @@ public class PipelineConfigController
       PipelineConfigUtils.dependencyCheck(
           pipelineConfigCopy, pipelineConfigCopy.getStatus().getConditions());
       try {
-        if (jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
-          return new Result(false);
-        }
-
-        if (!jenkinsClient.upsertJob(pipelineConfigCopy)) {
-          return new Result(false);
+        if (!jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
+          boolean succeedUpdated = jenkinsClient.upsertJob(pipelineConfigCopy);
+          if (!succeedUpdated) {
+            return new Result(false);
+          }
         }
       } catch (PipelineConfigConvertException | IOException e) {
         logger.warn(
