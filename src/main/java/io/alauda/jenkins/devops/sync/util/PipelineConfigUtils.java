@@ -2,6 +2,7 @@ package io.alauda.jenkins.devops.sync.util;
 
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND;
 import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINECONFIG_KIND_MULTI_BRANCH;
+import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONFIG_LABEL_TEMPLATE;
 
 import hudson.Plugin;
 import hudson.util.VersionNumber;
@@ -14,8 +15,10 @@ import java.util.logging.Logger;
 import javax.annotation.Nonnull;
 import jenkins.model.Jenkins;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 
 public abstract class PipelineConfigUtils {
+
   private static final Logger logger = Logger.getLogger(PipelineConfigUtils.class.getName());
 
   private PipelineConfigUtils() {}
@@ -108,6 +111,16 @@ public abstract class PipelineConfigUtils {
     Map<String, String> labels = pipelineConfig.getMetadata().getLabels();
     return (labels != null
         && PIPELINECONFIG_KIND_MULTI_BRANCH.equals(labels.get(PIPELINECONFIG_KIND)));
+  }
+
+  public static boolean isTemplatePipeline(@Nonnull V1alpha1PipelineConfig pipelineConfig) {
+    Map<String, String> labels = pipelineConfig.getMetadata().getLabels();
+    return labels != null && !StringUtils.isEmpty(labels.get(PIPELINE_CONFIG_LABEL_TEMPLATE));
+  }
+
+  public static boolean isGraphPipeline(@Nonnull V1alpha1PipelineConfig pipelineConfig) {
+    return pipelineConfig.getSpec().getTemplate() != null
+        && pipelineConfig.getSpec().getTemplate().getPipelineTemplate() != null;
   }
 
   public static void updateDisabledStatus(

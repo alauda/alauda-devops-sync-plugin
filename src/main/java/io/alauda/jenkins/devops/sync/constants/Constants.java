@@ -164,6 +164,7 @@ public final class Constants {
 
   public static final String PIPELINECONFIG_KIND_MULTI_BRANCH = "multi-branch";
   public static final String PIPELINECONFIG_KIND = "pipeline.kind";
+  public static final String PIPELINE_CONFIG_LABEL_TEMPLATE = "templateName";
 
   public static final String GITHUB_SCM_SOURCE =
       "org.jenkinsci.plugins.github_branch_source.GitHubSCMSource";
