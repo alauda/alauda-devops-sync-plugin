@@ -3,13 +3,13 @@ package io.alauda.jenkins.devops.sync.var;
 import static io.alauda.jenkins.devops.sync.listener.PipelineSyncExecutor.mountActionsPipeline;
 
 import com.cloudbees.groovy.cps.NonCPS;
-import com.google.gson.GsonBuilder;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.action.PipelineAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
+import io.kubernetes.client.JSON;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,7 +94,7 @@ public class PipelineContext {
     if (pipeline != null) {
       V1alpha1Pipeline newPipeline = DeepCopyUtils.deepCopy(pipeline);
       mountActionsPipeline(run.getAllActions(), newPipeline);
-      data.put("pipeline", JSONObject.fromObject(new GsonBuilder().create().toJson(newPipeline)));
+      data.put("pipeline", JSONObject.fromObject(new JSON().serialize(newPipeline)));
     }
     return data;
   }
