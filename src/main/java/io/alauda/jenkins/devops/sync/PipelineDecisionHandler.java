@@ -17,6 +17,8 @@ package io.alauda.jenkins.devops.sync;
 
 import hudson.Extension;
 import hudson.model.*;
+import hudson.plugins.git.util.BuildData;
+import hudson.triggers.SCMTrigger.SCMTriggerCause;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
@@ -27,6 +29,7 @@ import io.alauda.jenkins.devops.sync.util.PipelineToActionMapper;
 import io.kubernetes.client.ApiException;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 
 import javax.annotation.Nonnull;
@@ -67,6 +70,17 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
             if (!isValidProperty(alaudaJobProperty)) {
                 return true;
             }
+
+            if (isTriggerBySCMTrigger(actions)) {
+                if (isJobLastBuildDuplicateWithThisBuild(workflowJob)) {
+                    LOGGER.log(Level.WARNING, String.format(
+                        "Job %s already has a duplicated build %s triggered by SCM triggered, cancel this build",
+                        workflowJob.getFullDisplayName(),
+                        workflowJob.getLastBuild().getFullDisplayName()));
+                    return false;
+                }
+            }
+
 
             final String namespace = alaudaJobProperty.getNamespace();
             final String name = alaudaJobProperty.getName();
@@ -129,6 +143,38 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
         }
 
         return true;
+    }
+
+    /**
+     * If the last build is triggered by SCM Trigger and is running but doesn't checkout any codes yet.
+     * SCM Trigger will continuously trigger new build as it will compare the revision with the last completed build.
+     * In this case, we will cancel any new build triggered SCM Trigger.
+     *
+     * @param job job which current build belong to
+     * @return true if the last build is triggered by SCM trigger and running but doesn't checkouts codes.
+     */
+    private boolean isJobLastBuildDuplicateWithThisBuild(WorkflowJob job) {
+        WorkflowRun lastBuild = job.getLastBuild();
+        if (lastBuild == null || !lastBuild.isBuilding()) {
+            return false;
+        }
+
+        // check if the last build is triggered by SCM Trigger
+        if (!isTriggerBySCMTrigger(lastBuild.getAllActions())) {
+            return false;
+        }
+
+        BuildData buildData = lastBuild.getAction(BuildData.class);
+
+        // if buildData is null, build might doesn't checkout codes yet
+        return buildData == null;
+    }
+
+    private boolean isTriggerBySCMTrigger(@Nonnull List<? extends Action> actions) {
+        return actions.stream()
+            .filter(a -> a instanceof CauseAction)
+            .flatMap(a -> ((CauseAction) a).getCauses().stream())
+            .anyMatch(c -> c instanceof SCMTriggerCause);
     }
 
     private boolean isMultiBranch(WorkflowJob wfJob) {
