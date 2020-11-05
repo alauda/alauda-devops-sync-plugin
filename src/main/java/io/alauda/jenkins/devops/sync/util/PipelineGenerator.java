@@ -217,6 +217,7 @@ public abstract class PipelineGenerator {
     // mark this pipeline created by Jenkins
     Map<String, String> labels = new HashMap<>();
     labels.put(Constants.PIPELINE_CREATED_BY, Constants.ALAUDA_SYNC_PLUGIN);
+    labels.put(Constants.PIPELINE_SIMPLIFIED, Constants.PIPELINE_SIMPLIFIED_STATUS_TRUE);
 
     String namespace = config.getMetadata().getNamespace();
     // update pipeline to k8s
@@ -250,8 +251,6 @@ public abstract class PipelineGenerator {
         new V1alpha1LocalObjectReference().name(config.getMetadata().getName()));
     pipeSpec.setJenkinsBinding(spec.getJenkinsBinding());
     pipeSpec.setRunPolicy(spec.getRunPolicy());
-    pipeSpec.setTriggers(spec.getTriggers());
-    pipeSpec.setStrategy(spec.getStrategy());
     pipeSpec.setHooks(spec.getHooks());
     pipeSpec.setSource(spec.getSource());
     return pipeSpec;

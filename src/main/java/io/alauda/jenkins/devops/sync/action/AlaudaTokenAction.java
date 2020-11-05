@@ -20,7 +20,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.CheckForNull;
-import jenkins.model.Jenkins;
 import jenkins.security.ApiTokenProperty;
 import jenkins.security.apitoken.ApiTokenStore;
 import org.jenkinsci.Symbol;
@@ -32,10 +31,9 @@ import org.kohsuke.stapler.export.ExportedBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
- * This action provides a API for getting the Jenkins token. In order to make sure you have the access to get it,
- * you need to pass the k8s cluster token.
+ * This action provides a API for getting the Jenkins token. In order to make sure you have the
+ * access to get it, you need to pass the k8s cluster token.
  */
 @Extension
 @Symbol("alaudaToken")
