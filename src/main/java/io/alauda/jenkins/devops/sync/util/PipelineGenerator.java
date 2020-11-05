@@ -250,8 +250,6 @@ public abstract class PipelineGenerator {
         new V1alpha1LocalObjectReference().name(config.getMetadata().getName()));
     pipeSpec.setJenkinsBinding(spec.getJenkinsBinding());
     pipeSpec.setRunPolicy(spec.getRunPolicy());
-    pipeSpec.setTriggers(spec.getTriggers());
-    pipeSpec.setStrategy(spec.getStrategy());
     pipeSpec.setHooks(spec.getHooks());
     pipeSpec.setSource(spec.getSource());
     return pipeSpec;
