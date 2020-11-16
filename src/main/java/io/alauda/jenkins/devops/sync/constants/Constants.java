@@ -124,6 +124,9 @@ public final class Constants {
 
   public static final String PIPELINE_CREATED_BY = "created_by";
 
+  public static final String PIPELINE_SIMPLIFIED = "simplified";
+  public static final String PIPELINE_SIMPLIFIED_STATUS_TRUE = "true";
+
   public static final String FOLDER_DESCRIPTION = "Folder for the Alauda DevOps project: ";
   public static final String JOB_STATUS_QUEUE = "QUEUED";
   public static final String JOB_STATUS_RUNNING = "RUNNING";
