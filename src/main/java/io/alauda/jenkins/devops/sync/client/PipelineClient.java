@@ -87,7 +87,7 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
 
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
     try {
-      api.patchNamespacedPipeline(name, namespace, bodyWithoutRemove, null, null);
+      api.patchNamespacedPipeline(name, namespace, bodyWithoutRemove, null, null, null, null);
     } catch (ApiException e) {
       logger.warn(
           String.format(
@@ -97,7 +97,7 @@ public class PipelineClient implements ResourceClient<V1alpha1Pipeline> {
       return false;
     }
     try {
-      api.patchNamespacedPipeline(name, namespace, bodyOnlyRemove, null, null);
+      api.patchNamespacedPipeline(name, namespace, bodyOnlyRemove, null, null, null, null);
     } catch (ApiException e) {
       logger.warn(
           String.format(

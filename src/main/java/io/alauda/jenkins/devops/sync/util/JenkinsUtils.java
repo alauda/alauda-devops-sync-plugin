@@ -27,12 +27,16 @@ import hudson.triggers.Trigger;
 import io.alauda.devops.java.client.models.*;
 import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.action.AlaudaQueueAction;
+import io.alauda.jenkins.devops.sync.event.EventAction;
+import io.alauda.jenkins.devops.sync.event.EventParam;
+import io.alauda.jenkins.devops.sync.event.EventType;
 import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.kubernetes.client.models.V1ObjectMeta;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -329,9 +333,9 @@ public abstract class JenkinsUtils {
     }
 
     List<Action> pipelineActions = new ArrayList<>();
-    CauseAction bCauseAction = new CauseAction(newCauses);
-    pipelineActions.add(bCauseAction);
+    pipelineActions.add(new CauseAction(newCauses));
     pipelineActions.add(new AlaudaQueueAction(namespace, pipelineName));
+    pipelineActions.addAll(getEventTriggerAction(pipeline));
 
     V1alpha1PipelineSourceGit sourceGit = pipeline.getSpec().getSource().getGit();
     String commit = null;
@@ -402,6 +406,41 @@ public abstract class JenkinsUtils {
       logger.error("updatePipelinePhase Interrupted: {}", e.getMessage());
       Thread.currentThread().interrupt();
     }
+  }
+
+  /**
+   * getEventTriggerAction will return a list of EventTriggerAction by pipeline. If pipeline wasn't
+   * triggered by a event, it will return a empty list.
+   *
+   * @param pipeline the triggered pipeline
+   * @return list of EventTriggerAction
+   */
+  @Nonnull
+  private static List<Action> getEventTriggerAction(V1alpha1Pipeline pipeline) {
+    List<Action> triggerActions = new LinkedList<>();
+
+    V1alpha1PipelineCause pipelineCause = pipeline.getSpec().getCause();
+    if (pipelineCause == null) {
+      return triggerActions;
+    }
+
+    if (pipelineCause.getType().equals(PIPELINE_CAUSE_TYPE_EVENT_CODE_PUSH)) {
+      V1alpha1CodeTriggerParameter codeTriggerParameter = pipelineCause.getCodeTriggerParameter();
+      if (codeTriggerParameter == null) {
+        return triggerActions;
+      }
+
+      Map<EventParam, String> params = new HashMap<>();
+      params.put(EventParam.CODE_REPO_PUSH_EVENT_BRANCH, codeTriggerParameter.getBranch());
+      params.put(EventParam.CODE_REPO_PUSH_EVENT_REPO_NAME, codeTriggerParameter.getRepoName());
+      params.put(
+          EventParam.CODE_REPO_PUSH_EVENT_REPO_NAMESPACE, codeTriggerParameter.getRepoNamespace());
+
+      EventAction eventAction = new EventAction(EventType.CodeRepoPush, params);
+      triggerActions.add(eventAction);
+    }
+
+    return triggerActions;
   }
 
   public static boolean hasBuildRunningOrCompleted(WorkflowJob job, V1alpha1Pipeline pipeline) {
