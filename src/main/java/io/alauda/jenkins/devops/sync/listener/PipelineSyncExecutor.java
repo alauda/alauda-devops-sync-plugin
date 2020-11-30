@@ -607,7 +607,10 @@ public class PipelineSyncExecutor implements Runnable {
 
     if (allCauses.size() > 1) {
       Set<String> allCauseDetails = new HashSet<>();
-      allCauses.forEach(item -> allCauseDetails.add(PipelineGenerator.causeConvert(item)));
+      allCauses
+          .stream()
+          .filter(cause -> !(cause instanceof JenkinsPipelineCause))
+          .forEach(item -> allCauseDetails.add(PipelineGenerator.causeConvert(item)));
 
       Map<String, String> annotations = pipelineCopy.getMetadata().getAnnotations();
       if (annotations == null) {

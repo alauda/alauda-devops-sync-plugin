@@ -244,4 +244,8 @@ public final class Constants {
   public static final String PIPELINE_CONDITION_REASON_CANCELLING_FAILED = "CancellingFailed";
 
   public static final String PIPELINE_CAUSE_TYPE_EVENT_CODE_PUSH = "codePushEvent";
+  public static final String PIPELINE_CAUSE_TYPE_MANUAL = "manual";
+
+  public static final String PIPELINE_MANUAL_TRIGGER_TYPE = "manualTrigger";
+  public static final String PIPELINE_MANUAL_TRIGGER_TYPE_CODE_TRIGGER = "codeTrigger";
 }

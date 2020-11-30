@@ -1,10 +1,11 @@
 package io.alauda.jenkins.devops.sync.event;
 
+import java.io.Serializable;
 import java.util.Map;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.Whitelisted;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 
-public class EventContext {
+public class EventContext implements Serializable {
 
   private final EventAction eventAction;
 
@@ -26,12 +27,12 @@ public class EventContext {
     Map<EventParam, String> params = eventAction.getParams();
 
     return new CodeRepoPushEventContext(
-        params.get(EventParam.CODE_REPO_PUSH_EVENT_BRANCH),
-        params.get(EventParam.CODE_REPO_PUSH_EVENT_REPO_NAMESPACE),
-        params.get(EventParam.CODE_REPO_PUSH_EVENT_REPO_NAME));
+        params.get(EventParam.CODE_REPO_EVENT_BRANCH),
+        params.get(EventParam.CODE_REPO_EVENT_REPO_NAMESPACE),
+        params.get(EventParam.CODE_REPO_EVENT_REPO_NAME));
   }
 
-  public static class CodeRepoPushEventContext {
+  public static class CodeRepoPushEventContext implements Serializable {
 
     private final String branch;
     private final String repoNamespace;

@@ -44,6 +44,7 @@ import javax.annotation.Nonnull;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.MultiBranchProject;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.eclipse.jgit.transport.URIish;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -431,10 +432,10 @@ public abstract class JenkinsUtils {
       }
 
       Map<EventParam, String> params = new HashMap<>();
-      params.put(EventParam.CODE_REPO_PUSH_EVENT_BRANCH, codeTriggerParameter.getBranch());
-      params.put(EventParam.CODE_REPO_PUSH_EVENT_REPO_NAME, codeTriggerParameter.getRepoName());
+      params.put(EventParam.CODE_REPO_EVENT_BRANCH, codeTriggerParameter.getBranch());
+      params.put(EventParam.CODE_REPO_EVENT_REPO_NAME, codeTriggerParameter.getRepoName());
       params.put(
-          EventParam.CODE_REPO_PUSH_EVENT_REPO_NAMESPACE, codeTriggerParameter.getRepoNamespace());
+          EventParam.CODE_REPO_EVENT_REPO_NAMESPACE, codeTriggerParameter.getRepoNamespace());
 
       EventAction eventAction = new EventAction(EventType.CodeRepoPush, params);
       triggerActions.add(eventAction);
