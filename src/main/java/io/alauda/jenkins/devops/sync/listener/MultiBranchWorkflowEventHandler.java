@@ -5,6 +5,7 @@ import hudson.model.Item;
 import hudson.model.ItemGroup;
 import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
+import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -19,6 +20,7 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
 
   private static final Logger logger =
       LoggerFactory.getLogger(MultiBranchWorkflowEventHandler.class);
+  private JenkinsClient jenkinsClient = JenkinsClient.getInstance();
 
   @Override
   public boolean accept(Item item) {
@@ -27,11 +29,15 @@ public class MultiBranchWorkflowEventHandler implements ItemEventHandler<Workflo
     }
 
     ItemGroup<? extends Item> parent = item.getParent();
-    return (parent instanceof WorkflowMultiBranchProject);
+    // proceed if this job is belong to a multibranch project created by PipelineConfig
+    return (parent instanceof WorkflowMultiBranchProject)
+        && jenkinsClient.getMultiBranchProperty((WorkflowMultiBranchProject) parent) != null;
   }
 
   @Override
   public void onCreated(WorkflowJob item) {
+    // disable resume for all branch job
+    item.setResumeBlocked(true);
     addToSyncExecutor(item);
   }
 

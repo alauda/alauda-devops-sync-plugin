@@ -1,4 +1,4 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.tasks.period;
 
 import hudson.Extension;
 import hudson.ExtensionList;

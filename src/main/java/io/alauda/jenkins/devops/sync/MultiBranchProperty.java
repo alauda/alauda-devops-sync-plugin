@@ -19,6 +19,8 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
   private String resourceVersion;
   private String contextAnnotation;
 
+  private boolean configuredDefaultResume;
+
   @DataBoundConstructor
   public MultiBranchProperty(String namespace, String name, String uid, String resourceVersion) {
     this.namespace = namespace;
@@ -81,6 +83,14 @@ public class MultiBranchProperty extends AbstractFolderProperty<AbstractFolder<?
   @Override
   public void setContextAnnotation(String contextAnnotation) {
     this.contextAnnotation = contextAnnotation;
+  }
+
+  public boolean isConfiguredDefaultResume() {
+    return configuredDefaultResume;
+  }
+
+  public void setConfiguredDefaultResume(boolean configuredDefaultResume) {
+    this.configuredDefaultResume = configuredDefaultResume;
   }
 
   @Extension
