@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.jenkinsci.plugins.workflow.flow.FlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
+import org.jenkinsci.plugins.workflow.job.properties.DisableResumeJobProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +73,12 @@ public class WorkflowJobConverter implements JobConverter<WorkflowJob> {
           new WorkflowJobProperty(
               meta.getNamespace(), meta.getName(), meta.getUid(), meta.getResourceVersion(), null);
       property.setContextAnnotation(property.generateAnnotationAsJSON(pipelineConfig));
+      property.setConfiguredDefaultResume(true);
 
+      // job.setResumeBlocked will persistent the configuration job and fire the listener.
+      // This might use the incomplete job configuration to update PipelineConfig.
+      // So we will call addProperty() to avoid persistent during the creation.
+      job.addProperty(new DisableResumeJobProperty());
       job.addProperty(property);
     } else {
       if (!(item instanceof WorkflowJob)) {

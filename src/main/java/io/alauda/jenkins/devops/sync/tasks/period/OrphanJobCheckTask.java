@@ -1,4 +1,4 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.tasks.period;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import hudson.Extension;
@@ -9,6 +9,7 @@ import hudson.security.ACL;
 import hudson.security.ACLContext;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
+import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.exception.ExceptionUtils;
@@ -25,12 +26,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Extension
-public class OrphanJobCheck extends AsyncPeriodicWork {
+public class OrphanJobCheckTask extends AsyncPeriodicWork {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(OrphanJobCheck.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(OrphanJobCheckTask.class.getName());
 
-  public OrphanJobCheck() {
-    super("OrphanJobCheck");
+  public OrphanJobCheckTask() {
+    super("OrphanJobCheckTask");
   }
 
   private List<Item> orphanList = new ArrayList<>();

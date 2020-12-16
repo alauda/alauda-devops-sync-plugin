@@ -80,7 +80,7 @@ public class JenkinsClient {
 
   private JenkinsClient() {
     cachedJobMap = new ConcurrentHashMap<>();
-    jenkins = Jenkins.getInstance();
+    jenkins = Jenkins.get();
 
     mapper = new PipelineConfigMapper();
     deleteInProgress = new HashSet<>();
@@ -97,6 +97,18 @@ public class JenkinsClient {
       String jobPath = mapper.jenkinsJobPath(namespaceName.getNamespace(), namespaceName.getName());
       return jenkins.getItemByFullName(jobPath);
     }
+  }
+
+  public boolean isCreatedByPipelineConfig(Item item) {
+    if (item instanceof WorkflowJob) {
+      return getWorkflowJobProperty((WorkflowJob) item) != null;
+    }
+
+    if (item instanceof WorkflowMultiBranchProject) {
+      return getMultiBranchProperty((WorkflowMultiBranchProject) item) != null;
+    }
+
+    return false;
   }
 
   /**

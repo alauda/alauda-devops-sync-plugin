@@ -364,6 +364,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
               name,
               pipelineConfig.getMetadata().getUid(),
               pipelineConfig.getMetadata().getResourceVersion());
+      property.setConfiguredDefaultResume(true);
 
       job.addProperty(property);
     } else if (!(item instanceof WorkflowMultiBranchProject)) {

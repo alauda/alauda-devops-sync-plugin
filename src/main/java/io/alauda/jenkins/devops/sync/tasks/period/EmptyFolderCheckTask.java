@@ -1,4 +1,4 @@
-package io.alauda.jenkins.devops.sync;
+package io.alauda.jenkins.devops.sync.tasks.period;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
 import hudson.Extension;
@@ -6,6 +6,9 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
+import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
+import io.alauda.jenkins.devops.sync.MultiBranchProperty;
+import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.exception.ExceptionUtils;
 import io.kubernetes.client.ApiException;

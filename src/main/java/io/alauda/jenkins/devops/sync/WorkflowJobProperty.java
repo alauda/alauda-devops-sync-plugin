@@ -36,6 +36,8 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
   private String resourceVersion;
   private String contextAnnotation;
 
+  private boolean configuredDefaultResume;
+
   @DataBoundConstructor
   public WorkflowJobProperty(
       String namespace, String name, String uid, String resourceVersion, String contextAnnotation) {
@@ -114,5 +116,13 @@ public class WorkflowJobProperty extends JobProperty<Job<?, ?>> implements Alaud
     return String.format(
         "uid: %s, namespace: %s, name: %s, contextAnnotation %s",
         this.uid, this.namespace, this.name, this.contextAnnotation);
+  }
+
+  public boolean isConfiguredDefaultResume() {
+    return configuredDefaultResume;
+  }
+
+  public void setConfiguredDefaultResume(boolean configuredDefaultResume) {
+    this.configuredDefaultResume = configuredDefaultResume;
   }
 }
