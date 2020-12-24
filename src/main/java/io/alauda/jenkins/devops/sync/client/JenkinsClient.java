@@ -608,7 +608,7 @@ public class JenkinsClient {
 
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
     try {
-      api.patchJenkins(name, body, null, null);
+      api.patchJenkins(name, body, null, null, null, null);
     } catch (ApiException e) {
       logger.warn("Failed to update Jenkins '{}', reason: {}", name, e.getMessage());
       return false;
