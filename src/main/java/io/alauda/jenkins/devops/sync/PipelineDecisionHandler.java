@@ -80,10 +80,11 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
 
     if (isTriggerBySCMTrigger(actions)) {
       if (isJobLastBuildDuplicateWithThisBuild(workflowJob)) {
-        LOGGER.log(Level.WARNING, String.format(
-            "Job %s already has a duplicated build %s triggered by SCM triggered, cancel this build",
-            workflowJob.getFullDisplayName(),
-            workflowJob.getLastBuild().getFullDisplayName()));
+        LOGGER.log(
+            Level.WARNING,
+            String.format(
+                "Job %s already has a duplicated build %s triggered by SCM triggered, cancel this build",
+                workflowJob.getFullDisplayName(), workflowJob.getLastBuild().getFullDisplayName()));
         return false;
       }
     }
@@ -248,12 +249,13 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
   }
 
   /**
-   * If the last build is triggered by SCM Trigger and is running but doesn't checkout any codes yet.
-   * SCM Trigger will continuously trigger new build as it will compare the revision with the last completed build.
-   * In this case, we will cancel any new build triggered SCM Trigger.
+   * If the last build is triggered by SCM Trigger and is running but doesn't checkout any codes
+   * yet. SCM Trigger will continuously trigger new build as it will compare the revision with the
+   * last completed build. In this case, we will cancel any new build triggered SCM Trigger.
    *
    * @param job job which current build belong to
-   * @return true if the last build is triggered by SCM trigger and running but doesn't checkouts codes.
+   * @return true if the last build is triggered by SCM trigger and running but doesn't checkouts
+   *     codes.
    */
   private boolean isJobLastBuildDuplicateWithThisBuild(WorkflowJob job) {
     WorkflowRun lastBuild = job.getLastBuild();
@@ -273,7 +275,8 @@ public class PipelineDecisionHandler extends Queue.QueueDecisionHandler {
   }
 
   private boolean isTriggerBySCMTrigger(@Nonnull List<? extends Action> actions) {
-    return actions.stream()
+    return actions
+        .stream()
         .filter(a -> a instanceof CauseAction)
         .flatMap(a -> ((CauseAction) a).getCauses().stream())
         .anyMatch(c -> c instanceof SCMTriggerCause);

@@ -25,7 +25,7 @@ import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.jenkins.plugins.gitlabbranchsource.MergeRequestSCMHead;
-import io.kubernetes.client.models.V1ObjectMetaBuilder;
+import io.kubernetes.client.openapi.models.V1ObjectMetaBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;

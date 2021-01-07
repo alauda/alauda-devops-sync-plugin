@@ -18,6 +18,7 @@ package io.alauda.jenkins.devops.sync.util;
 import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 import antlr.ANTLRException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.*;
 import hudson.model.queue.QueueTaskFuture;
 import hudson.plugins.git.RevisionParameterAction;
@@ -31,7 +32,7 @@ import io.alauda.jenkins.devops.sync.event.EventAction;
 import io.alauda.jenkins.devops.sync.event.EventParam;
 import io.alauda.jenkins.devops.sync.event.EventType;
 import io.alauda.jenkins.devops.sync.exception.PipelineException;
-import io.kubernetes.client.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -44,7 +45,6 @@ import javax.annotation.Nonnull;
 import jenkins.branch.BranchProjectFactory;
 import jenkins.branch.MultiBranchProject;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
 import org.eclipse.jgit.transport.URIish;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -62,6 +62,7 @@ public abstract class JenkinsUtils {
 
   private JenkinsUtils() {}
 
+  @SuppressFBWarnings
   public static Map<String, ParameterDefinition> addJobParamForPipelineParameters(
       WorkflowJob job, V1alpha1PipelineConfig pipelineConfig, boolean replaceExisting)
       throws IOException {
@@ -173,7 +174,7 @@ public abstract class JenkinsUtils {
         case PIPELINE_TRIGGER_TYPE_CODE_CHANGE:
           V1alpha1PipelineTriggerCodeChange codeTrigger = pipelineTrigger.getCodeChange();
 
-          if (codeTrigger == null || !codeTrigger.isEnabled()) {
+          if (codeTrigger == null || !codeTrigger.getEnabled()) {
             logger.warn(
                 "Trigger type `{}` has empty description or is disabled...",
                 PIPELINE_TRIGGER_TYPE_CODE_CHANGE);
@@ -195,7 +196,7 @@ public abstract class JenkinsUtils {
           break;
         case PIPELINE_TRIGGER_TYPE_CRON:
           V1alpha1PipelineTriggerCron cronTrigger = pipelineTrigger.getCron();
-          if (cronTrigger == null || !cronTrigger.isEnabled()) {
+          if (cronTrigger == null || !cronTrigger.getEnabled()) {
             logger.warn(
                 "Trigger type `{}` has empty description or is disabled...",
                 PIPELINE_TRIGGER_TYPE_CRON);

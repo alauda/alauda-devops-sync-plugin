@@ -1,5 +1,6 @@
 package io.alauda.jenkins.devops.sync.client;
 
+import io.kubernetes.client.common.KubernetesObject;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -10,7 +11,8 @@ public class Clients {
 
   private Clients() {}
 
-  public static <ApiType> void register(Class<ApiType> apiType, ResourceClient<ApiType> client) {
+  public static <ApiType extends KubernetesObject> void register(
+      Class<ApiType> apiType, ResourceClient<ApiType> client) {
     registeredClients.put(apiType, client);
   }
 
@@ -19,7 +21,8 @@ public class Clients {
   }
 
   @SuppressWarnings("unchecked")
-  public static <ApiType> ResourceClient<ApiType> get(Class<ApiType> apiType) {
+  public static <ApiType extends KubernetesObject> ResourceClient<ApiType> get(
+      Class<ApiType> apiType) {
     return registeredClients.get(apiType);
   }
 

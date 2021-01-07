@@ -9,7 +9,7 @@ import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.action.PipelineAction;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
-import io.kubernetes.client.JSON;
+import io.kubernetes.client.openapi.JSON;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

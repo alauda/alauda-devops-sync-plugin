@@ -2,8 +2,8 @@ package io.alauda.jenkins.devops.sync.exception;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import io.kubernetes.client.ApiException;
-import io.kubernetes.client.models.V1Status;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.models.V1Status;
 
 public class ExceptionUtils {
 

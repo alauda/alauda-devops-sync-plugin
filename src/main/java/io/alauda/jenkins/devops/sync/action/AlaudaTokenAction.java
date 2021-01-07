@@ -9,9 +9,9 @@ import io.alauda.jenkins.devops.support.KubernetesCluster;
 import io.alauda.jenkins.devops.support.KubernetesClusterConfiguration;
 import io.alauda.jenkins.devops.support.client.Clients;
 import io.alauda.jenkins.devops.support.exception.KubernetesClientException;
-import io.kubernetes.client.ApiClient;
-import io.kubernetes.client.ApiException;
-import io.kubernetes.client.apis.CoreV1Api;
+import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.util.credentials.AccessTokenAuthentication;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -23,6 +23,7 @@ import javax.annotation.CheckForNull;
 import jenkins.security.ApiTokenProperty;
 import jenkins.security.apitoken.ApiTokenStore;
 import org.jenkinsci.Symbol;
+import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.HttpResponse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -64,6 +65,7 @@ public class AlaudaTokenAction implements UnprotectedRootAction {
   }
 
   @Exported
+  @SuppressRestrictedWarnings(value = ApiTokenStore.class)
   public HttpResponse doGenerate(StaplerRequest req, StaplerResponse rsp) {
     if (!authCheck(req.getParameter("token"))) {
       return HttpResponses.errorJSON("invalid token of Jenkins k8s cluster");
@@ -111,7 +113,7 @@ public class AlaudaTokenAction implements UnprotectedRootAction {
 
     CoreV1Api api = new CoreV1Api(apiClient);
     try {
-      api.listNamespace(null, null, null, null, null, null, null, null);
+      api.listNamespace(null, null, null, null, null, null, null, null, null, null);
     } catch (ApiException e) {
       logger.warn("failed when verifying k8s cluster with " + cluster.getMasterUrl(), e);
       return false;

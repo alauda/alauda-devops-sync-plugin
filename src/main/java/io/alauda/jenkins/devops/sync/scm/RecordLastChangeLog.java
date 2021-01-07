@@ -1,5 +1,6 @@
 package io.alauda.jenkins.devops.sync.scm;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.Run;
@@ -31,6 +32,7 @@ public class RecordLastChangeLog extends GitSCMExtension {
   public RecordLastChangeLog() {}
 
   @Override
+  @SuppressFBWarnings(value = "DM_DEFAULT_ENCODING")
   public Revision decorateRevisionToBuild(
       GitSCM scm,
       Run<?, ?> build,

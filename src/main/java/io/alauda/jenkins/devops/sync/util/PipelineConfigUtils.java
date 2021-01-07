@@ -125,7 +125,7 @@ public abstract class PipelineConfigUtils {
 
   public static void updateDisabledStatus(
       @Nonnull V1alpha1PipelineConfig pipelineConfig, boolean disabled, String trigger) {
-    if (!pipelineConfig.getSpec().isDisabled().equals(disabled)) {
+    if (!pipelineConfig.getSpec().getDisabled().equals(disabled)) {
       pipelineConfig.getSpec().setDisabled(disabled);
     }
   }

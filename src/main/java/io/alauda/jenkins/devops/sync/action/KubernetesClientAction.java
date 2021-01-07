@@ -1,6 +1,7 @@
 package io.alauda.jenkins.devops.sync.action;
 
 import antlr.ANTLRException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.UnprotectedRootAction;
 import hudson.util.HttpResponses;
@@ -20,6 +21,7 @@ import org.kohsuke.stapler.export.ExportedBean;
 @Extension
 @Symbol("alauda")
 @ExportedBean
+@SuppressFBWarnings
 public class KubernetesClientAction implements UnprotectedRootAction {
   private static final Logger logger = Logger.getLogger(KubernetesClientAction.class.getName());
 
@@ -58,19 +60,6 @@ public class KubernetesClientAction implements UnprotectedRootAction {
 
     return HttpResponses.errorJSON("no debug file");
   }
-
-  //    public HttpResponse doAllNamespaces() {
-  //        try {
-  //            Jenkins.getInstance().checkPermission(Jenkins.ADMINISTER);
-  //        } catch (AccessDeniedException e) {
-  //            return HttpResponses.errorJSON("No administer");
-  //        }
-  //
-  //        JSONArray array = new JSONArray();
-  //
-  // array.addAll(JenkinsBindingController.getCurrentJenkinsBindingController().getBindingNamespaces());
-  //        return HttpResponses.okJSON(array);
-  //    }
 
   /**
    * Do check cronTab text

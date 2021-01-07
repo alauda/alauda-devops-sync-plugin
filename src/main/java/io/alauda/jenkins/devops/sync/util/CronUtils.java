@@ -4,7 +4,6 @@ import antlr.ANTLRException;
 import hudson.scheduler.CronTab;
 import hudson.scheduler.CronTabList;
 import hudson.scheduler.Hash;
-import hudson.scheduler.Messages;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Vector;
@@ -30,7 +29,7 @@ public class CronUtils {
       if (lineNumber == 1 && line.startsWith("TZ=")) {
         timezone = CronTabList.getValidTimezone(line.replace("TZ=", ""));
         if (timezone == null) {
-          throw new ANTLRException("Invalid or unsupported timezone '" + timezone + "'");
+          throw new ANTLRException("Invalid or unsupported timezone '" + line + "'");
         }
         continue;
       }
@@ -39,7 +38,7 @@ public class CronUtils {
       try {
         r.add(new CronTab(line, lineNumber, hash, timezone));
       } catch (ANTLRException e) {
-        throw new ANTLRException(Messages.CronTabList_InvalidInput(line, e.toString()), e);
+        throw new ANTLRException(String.format("Invalid Input: %s", e.toString()), e);
       }
     }
 

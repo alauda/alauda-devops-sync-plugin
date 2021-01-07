@@ -4,6 +4,7 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_AN
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_ANNOTATIONS_JENKINS_IDENTITY;
 import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_USED_BASEDOMAIN;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.ExtensionList;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
@@ -16,13 +17,13 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
-import io.kubernetes.client.ApiClient;
-import io.kubernetes.client.ApiException;
-import io.kubernetes.client.Configuration;
 import io.kubernetes.client.extended.controller.ControllerManager;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
 import io.kubernetes.client.informer.SharedInformerFactory;
+import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.Configuration;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Extension
+@SuppressFBWarnings("IS2_INCONSISTENT_SYNC")
 public class ResourceControllerManager implements KubernetesClusterConfigurationListener {
 
   private static final Logger logger = LoggerFactory.getLogger(ResourceControllerManager.class);
@@ -241,7 +243,7 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
     };
   }
 
-  public boolean isStarted() {
+  public synchronized boolean isStarted() {
     return started.get()
         && controllerManagerThread != null
         && !controllerManagerThread.isShutdown();

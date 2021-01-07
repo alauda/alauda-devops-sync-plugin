@@ -18,6 +18,7 @@ package io.alauda.jenkins.devops.sync;
 import static io.alauda.jenkins.devops.sync.constants.Constants.DEFAULT_JENKINS_FILEPATH;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.model.BooleanParameterDefinition;
 import hudson.model.ParameterDefinition;
 import hudson.model.ParameterValue;
@@ -295,6 +296,7 @@ public abstract class PipelineConfigToJobMapper {
   }
 
   @Nonnull
+  @SuppressFBWarnings
   private static V1alpha1PipelineParameter convertTo(ParameterDefinition def) {
     if (!isSupportParamType(def)) {
       String errDesc = "Not support type:" + def.getType() + ", please fix these.";

@@ -8,7 +8,7 @@ import io.alauda.jenkins.devops.sync.AlaudaJobProperty;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
-import io.kubernetes.client.models.V1Status;
+import io.kubernetes.client.openapi.models.V1Status;
 import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
 

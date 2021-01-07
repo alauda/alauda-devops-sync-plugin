@@ -43,8 +43,8 @@ public class PipelineQueueListener extends QueueListener {
     taskPool.submit(new TaskRun(leftItem));
   }
 
-  class TaskRun implements Runnable {
-    private Queue.LeftItem item;
+  static class TaskRun implements Runnable {
+    private final Queue.LeftItem item;
 
     public TaskRun(Queue.LeftItem item) {
       this.item = item;
@@ -68,7 +68,7 @@ public class PipelineQueueListener extends QueueListener {
         // don't delete the queue item when a job was disabled
         V1alpha1PipelineConfig pc =
             Clients.get(V1alpha1PipelineConfig.class).lister().namespace(namespace).get(name);
-        if (pc.getSpec().isDisabled()) {
+        if (pc.getSpec().getDisabled()) {
           logger.info(
               "PipelineConfig {}/{} was disabled, don't delete the queue item {}",
               namespace,

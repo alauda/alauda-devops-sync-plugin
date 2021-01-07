@@ -12,8 +12,7 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.controller.predicates.BindResourcePredicate;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
-import io.kubernetes.client.models.V1ObjectMeta;
-import io.kubernetes.client.models.V1Status;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.lang.StringUtils;
@@ -63,8 +62,7 @@ public class WorkflowEventHandler implements ItemEventHandler<WorkflowJob> {
       if (pipelineConfig != null) {
         logger.info(() -> "Got pipeline config for  " + namespace + "/" + pipelineConfigName);
 
-        V1Status result =
-            Clients.get(V1alpha1PipelineConfig.class).delete(namespace, pipelineConfigName);
+        Clients.get(V1alpha1PipelineConfig.class).delete(namespace, pipelineConfigName);
 
         logger.info(() -> "Deleting PipelineConfig " + namespace + "/" + pipelineConfigName);
 

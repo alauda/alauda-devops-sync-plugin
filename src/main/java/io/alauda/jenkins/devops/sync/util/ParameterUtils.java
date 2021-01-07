@@ -26,7 +26,7 @@ public abstract class ParameterUtils {
       value = String.valueOf(parameterValue.getValue());
     } else if (parameterValue instanceof BooleanParameterValue) {
       type = "BooleanParameterDefinition";
-      value = ((BooleanParameterValue) parameterValue).getValue().toString();
+      value = ((BooleanParameterValue) parameterValue).value + "";
     } else {
       return null;
     }

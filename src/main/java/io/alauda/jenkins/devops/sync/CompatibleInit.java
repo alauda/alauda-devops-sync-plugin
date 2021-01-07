@@ -11,6 +11,7 @@ import io.alauda.jenkins.devops.sync.function.AlaudaPipelineSCMAdapter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import jenkins.model.Jenkins;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -41,7 +42,7 @@ public class CompatibleInit {
     }
 
     try (FileOutputStream out = new FileOutputStream(flagFile)) {
-      out.write("".getBytes());
+      out.write("".getBytes(StandardCharsets.UTF_8));
     } catch (IOException e) {
       logger.error("cannot set the compatible init flag", e);
     }
