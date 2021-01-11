@@ -569,6 +569,7 @@ public class PipelineSyncExecutor implements Runnable {
     annotations.put(
         ANNOTATION_PIPELINE_COMMIT_AUTHOR_EMAIL.get().toString(), lastChangeData.getAuthorEmail());
     annotations.put(ANNOTATION_PIPELINE_COMMIT_MSG.get().toString(), lastChangeData.getMessage());
+    annotations.put(ANNOTATION_PIPELINE_BRANCH.get().toString(), lastChangeData.getBranch());
   }
 
   private void addTestResultAnnotations(WorkflowRun run, V1alpha1Pipeline pipeline) {

@@ -12,6 +12,7 @@ public class LastChangeData implements Action, Serializable {
   private String authorEmail;
   private String commit;
   private String message;
+  private String branch;
 
   @CheckForNull
   @Override
@@ -65,5 +66,14 @@ public class LastChangeData implements Action, Serializable {
 
   public void setMessage(String message) {
     this.message = message;
+  }
+
+  @Exported
+  public String getBranch() {
+    return branch;
+  }
+
+  public void setBranch(String branch) {
+    this.branch = branch;
   }
 }

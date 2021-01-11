@@ -5,16 +5,20 @@ import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.Run;
 import hudson.model.TaskListener;
+import hudson.plugins.git.Branch;
 import hudson.plugins.git.GitException;
 import hudson.plugins.git.GitSCM;
 import hudson.plugins.git.Revision;
 import hudson.plugins.git.extensions.GitSCMExtension;
 import hudson.plugins.git.extensions.GitSCMExtensionDescriptor;
+import io.jsonwebtoken.lang.Collections;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import javax.annotation.Nonnull;
+import org.apache.commons.lang3.StringUtils;
 import org.jenkinsci.plugins.gitclient.GitClient;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.slf4j.Logger;
@@ -27,6 +31,7 @@ public class RecordLastChangeLog extends GitSCMExtension {
   private static final String GIT_COMMIT_AUTHOR = "GIT_COMMIT_AUTHOR";
   private static final String GIT_COMMIT_AUTHOR_EMAIL = "GIT_COMMIT_AUTHOR_EMAIL";
   private static final String GIT_COMMIT_MESSAGE = "GIT_COMMIT_MESSAGE";
+  private static final String GIT_COMMIT_BRANCH = "GIT_COMMIT_BRANCH";
 
   @DataBoundConstructor
   public RecordLastChangeLog() {}
@@ -45,6 +50,19 @@ public class RecordLastChangeLog extends GitSCMExtension {
     if (lastChangeData == null) {
       lastChangeData = new LastChangeData();
       build.addAction(lastChangeData);
+    }
+
+    Collection<Branch> branches = rev.getBranches();
+    if (!Collections.isEmpty(branches)) {
+      Branch branch = branches.iterator().next();
+      String branchName = branch.getName();
+      if (branchName.startsWith("origin/")) {
+        branchName = StringUtils.removeStart(branchName, "origin/");
+      } else if (branchName.startsWith("refs/remotes/origin/")) {
+        branchName = StringUtils.removeStart(branchName, "refs/remotes/origin/");
+      }
+
+      lastChangeData.setBranch(branchName);
     }
 
     ByteArrayOutputStream data = new ByteArrayOutputStream();
@@ -94,6 +112,7 @@ public class RecordLastChangeLog extends GitSCMExtension {
       environment.put(GIT_COMMIT_AUTHOR, lastChangeData.getAuthor());
       environment.put(GIT_COMMIT_AUTHOR_EMAIL, lastChangeData.getAuthorEmail());
       environment.put(GIT_COMMIT_MESSAGE, lastChangeData.getMessage());
+      environment.put(GIT_COMMIT_BRANCH, lastChangeData.getBranch());
     }
 
     super.onCheckoutCompleted(scm, build, git, listener);
