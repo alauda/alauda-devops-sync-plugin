@@ -79,7 +79,19 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
                 resourceSyncController.add(controllerManagerBuilder, informerFactory);
               });
 
-          controllerManager = controllerManagerBuilder.build();
+          synchronized (ResourceControllerManager.this) {
+            try {
+              if (controllerManager != null) {
+                logger.info(
+                    "[ResourceControllerManager] The previous ControllerManager doesn't shutdown, try to stop it now..");
+                controllerManager.shutdown();
+              }
+            } catch (Throwable e) {
+              logger.info(
+                  "[ResourceControllerManager] Failed to stop the previous ControllerManager, there might are potential problem");
+            }
+            controllerManager = controllerManagerBuilder.build();
+          }
 
           logger.info(
               "[ResourceControllerManager] ControllerManager initialized, waiting for informers sync");
