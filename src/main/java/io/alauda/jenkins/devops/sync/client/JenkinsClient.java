@@ -4,15 +4,9 @@ import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_N
 import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import hudson.BulkChange;
-import hudson.model.AbstractItem;
-import hudson.model.Item;
-import hudson.model.ItemGroup;
+import hudson.model.*;
 import hudson.model.Queue;
-import hudson.model.TopLevelItem;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
 import hudson.triggers.SafeTimerTask;
@@ -22,11 +16,7 @@ import io.alauda.devops.java.client.models.V1alpha1Jenkins;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.devops.java.client.utils.PatchGenerator;
-import io.alauda.jenkins.devops.sync.AlaudaFolderProperty;
-import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
-import io.alauda.jenkins.devops.sync.MultiBranchProperty;
-import io.alauda.jenkins.devops.sync.PipelineConfigProjectProperty;
-import io.alauda.jenkins.devops.sync.WorkflowJobProperty;
+import io.alauda.jenkins.devops.sync.*;
 import io.alauda.jenkins.devops.sync.exception.PipelineConfigConvertException;
 import io.alauda.jenkins.devops.sync.exception.PipelineException;
 import io.alauda.jenkins.devops.sync.mapper.PipelineConfigMapper;
@@ -34,16 +24,11 @@ import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineConfigUtils;
 import io.alauda.jenkins.devops.sync.util.PipelineUtils;
-import io.kubernetes.client.ApiException;
+import io.kubernetes.client.custom.V1Patch;
+import io.kubernetes.client.openapi.ApiException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -602,13 +587,9 @@ public class JenkinsClient {
 
     logger.debug("Patch: {}", patch);
 
-    List<JsonObject> body = new LinkedList<>();
-    JsonArray arr = new Gson().fromJson(patch, JsonArray.class);
-    arr.forEach(jsonElement -> body.add(jsonElement.getAsJsonObject()));
-
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
     try {
-      api.patchJenkins(name, body, null, null, null, null);
+      api.patchJenkins(name, new V1Patch(patch), null, null, null, null);
     } catch (ApiException e) {
       logger.warn("Failed to update Jenkins '{}', reason: {}", name, e.getMessage());
       return false;

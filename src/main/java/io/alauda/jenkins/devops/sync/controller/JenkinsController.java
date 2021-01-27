@@ -14,8 +14,6 @@ import io.alauda.jenkins.devops.sync.client.JenkinsClient;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.alauda.jenkins.devops.sync.tasks.period.ConnectionAliveDetectTask;
-import io.kubernetes.client.ApiException;
-import io.kubernetes.client.JSON;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
@@ -28,6 +26,8 @@ import io.kubernetes.client.extended.workqueue.ratelimiter.BucketRateLimiter;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.JSON;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.LinkedList;
@@ -73,7 +73,6 @@ public class JenkinsController
                       params.resourceVersion,
                       params.timeoutSeconds,
                       params.watch,
-                      null,
                       null),
               V1alpha1Jenkins.class,
               V1alpha1JenkinsList.class,
@@ -222,7 +221,7 @@ public class JenkinsController
       boolean succeed = JenkinsClient.getInstance().updateJenkins(jenkins, jenkinsCopy);
 
       if (!succeed) {
-        new Result(true);
+        return new Result(true);
       }
       return new Result(false);
     }

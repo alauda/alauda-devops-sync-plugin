@@ -8,7 +8,6 @@ import io.alauda.jenkins.devops.sync.AlaudaSyncGlobalConfiguration;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.JenkinsBindingClient;
 import io.alauda.jenkins.devops.sync.tasks.period.ConnectionAliveDetectTask;
-import io.kubernetes.client.ApiException;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
@@ -16,6 +15,7 @@ import io.kubernetes.client.extended.controller.reconciler.Request;
 import io.kubernetes.client.extended.controller.reconciler.Result;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
+import io.kubernetes.client.openapi.ApiException;
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
@@ -45,7 +45,6 @@ public class JenkinsBindingController
                       callGeneratorParams.resourceVersion,
                       callGeneratorParams.timeoutSeconds,
                       callGeneratorParams.watch,
-                      null,
                       null),
               V1alpha1JenkinsBinding.class,
               V1alpha1JenkinsBindingList.class,

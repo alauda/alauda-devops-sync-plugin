@@ -11,7 +11,7 @@ import hudson.model.Run;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.exception.PipelineException;
-import io.kubernetes.client.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;

@@ -19,7 +19,7 @@ import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_DEVOPS_AN
 
 import hudson.model.Cause;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
-import io.kubernetes.client.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import java.util.Objects;
 import org.apache.commons.lang.StringUtils;
 

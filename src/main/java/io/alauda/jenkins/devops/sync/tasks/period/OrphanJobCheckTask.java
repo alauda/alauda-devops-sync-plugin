@@ -15,7 +15,7 @@ import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.exception.ExceptionUtils;
 import io.alauda.jenkins.devops.sync.function.AlaudaPipelineFilter;
 import io.alauda.jenkins.devops.sync.util.WorkflowJobUtils;
-import io.kubernetes.client.ApiException;
+import io.kubernetes.client.openapi.ApiException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;

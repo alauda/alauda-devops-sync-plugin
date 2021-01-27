@@ -329,7 +329,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
     V1alpha1MultiBranchOrphan orphanStrategyConfiguration = multiBranchStrategy.getOrphaned();
     DefaultOrphanedItemStrategy orphanedItemStrategy;
-    if (orphanStrategyConfiguration == null || !orphanStrategyConfiguration.isEnabled()) {
+    if (orphanStrategyConfiguration == null || !orphanStrategyConfiguration.getEnabled()) {
       orphanedItemStrategy = new DefaultOrphanedItemStrategy(false, "", "");
     } else {
       orphanedItemStrategy =
@@ -377,12 +377,12 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     }
 
     boolean jobIsDisabled = job.isDisabled();
-    if (!pipelineConfig.getSpec().isDisabled().equals(jobIsDisabled)) {
+    if (!pipelineConfig.getSpec().getDisabled().equals(jobIsDisabled)) {
       try {
         Method methodSetDisabled =
             ComputedFolder.class.getDeclaredMethod("setDisabled", boolean.class);
         methodSetDisabled.setAccessible(true);
-        methodSetDisabled.invoke(job, pipelineConfig.getSpec().isDisabled());
+        methodSetDisabled.invoke(job, pipelineConfig.getSpec().getDisabled());
       } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
         logger.error("set job disable failed", e);
       }
@@ -411,7 +411,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     V1alpha1PipelineTrigger trigger = triggerOpt.get();
     V1alpha1PipelineTriggerInterval interval = trigger.getInterval();
 
-    if (!interval.isEnabled()) {
+    if (!interval.getEnabled()) {
       return;
     }
 
@@ -475,11 +475,11 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     List<String> rules = new LinkedList<>();
 
     V1alpha1BranchBehaviour branchBehaviours = behaviours.getBranchBehaviour();
-    if (branchBehaviours != null && branchBehaviours.isEnabled()) {
+    if (branchBehaviours != null && branchBehaviours.getEnabled()) {
       rules.addAll(branchBehaviours.getRules());
 
       if (gitProvider != null) {
-        if (branchBehaviours.isExcludeBranchFiledAsPR()) {
+        if (branchBehaviours.getExcludeBranchFiledAsPR()) {
           traits.add(gitProvider.getBranchDiscoverTrait(1));
         } else {
           traits.add(gitProvider.getBranchDiscoverTrait(3));
@@ -490,15 +490,15 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     }
 
     V1alpha1PRBehaviour prBehaviour = behaviours.getPrBehaviour();
-    if (gitProvider != null && prBehaviour != null && prBehaviour.isEnabled()) {
+    if (gitProvider != null && prBehaviour != null && prBehaviour.getEnabled()) {
       rules.add("PR-.*");
       rules.add("MR-.*");
 
-      if (prBehaviour.isExecuteMerged() && prBehaviour.isExecuteOriginal()) {
+      if (prBehaviour.getExecuteMerged() && prBehaviour.getExecuteOriginal()) {
         traits.add(gitProvider.getOriginPRTrait(3));
-      } else if (prBehaviour.isExecuteMerged()) {
+      } else if (prBehaviour.getExecuteMerged()) {
         traits.add(gitProvider.getOriginPRTrait(1));
-      } else if (prBehaviour.isExecuteOriginal()) {
+      } else if (prBehaviour.getExecuteOriginal()) {
         traits.add(gitProvider.getOriginPRTrait(2));
       }
     }
@@ -507,8 +507,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     if (cloneBehaviour != null) {
       CloneOption cloneOption =
           new CloneOption(
-              cloneBehaviour.isShallowClone(),
-              !cloneBehaviour.isFetchTags(),
+              cloneBehaviour.getShallowClone(),
+              !cloneBehaviour.getFetchTags(),
               null,
               cloneBehaviour.getTimeout());
       if (gitProvider != null) {

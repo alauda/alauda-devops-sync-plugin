@@ -18,6 +18,7 @@ package io.alauda.jenkins.devops.sync.util;
 import static io.alauda.jenkins.devops.sync.constants.Constants.FOLDER_DESCRIPTION;
 
 import com.cloudbees.hudson.plugins.folder.Folder;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.BulkChange;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
@@ -37,7 +38,6 @@ import io.alauda.jenkins.devops.sync.constants.Annotations;
 import io.alauda.jenkins.devops.sync.constants.Constants;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,6 +49,7 @@ import org.apache.tools.ant.filters.StringInputStream;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
+@SuppressFBWarnings({"DM_DEFAULT_ENCODING", "DMI_HARDCODED_ABSOLUTE_FILENAME"})
 public abstract class AlaudaUtils {
   private static final Logger logger = Logger.getLogger(AlaudaUtils.class.getName());
   private static final String PLUGIN_NAME = "alauda-sync";
@@ -72,8 +73,6 @@ public abstract class AlaudaUtils {
             jenkinsPodNamespace = jenkinsPodNamespace.trim();
           }
 
-        } catch (FileNotFoundException e) {
-          logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
         } catch (IOException e) {
           logger.log(Level.FINE, "getNamespaceFromPodInputs", e);
         }

@@ -4,7 +4,7 @@ import hudson.model.*;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
 import io.alauda.jenkins.devops.sync.JenkinsPipelineCause;
 import io.alauda.jenkins.devops.sync.client.Clients;
-import io.kubernetes.client.models.V1Status;
+import io.kubernetes.client.openapi.models.V1Status;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;

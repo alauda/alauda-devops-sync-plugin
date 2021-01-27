@@ -2,8 +2,8 @@ package io.alauda.jenkins.devops.sync.client;
 
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.cache.Lister;
-import io.kubernetes.client.models.V1Namespace;
-import io.kubernetes.client.models.V1Status;
+import io.kubernetes.client.openapi.models.V1Namespace;
+import io.kubernetes.client.openapi.models.V1Status;
 
 public class NamespaceClient implements ResourceClient<V1Namespace> {
   private SharedIndexInformer<V1Namespace> informer;

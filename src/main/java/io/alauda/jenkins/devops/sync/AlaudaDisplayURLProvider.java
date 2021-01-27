@@ -74,6 +74,11 @@ public class AlaudaDisplayURLProvider extends DisplayURLProvider {
     return DisplayURLProvider.getDefault().getChangesURL(run);
   }
 
+  @Override
+  public String getTestsURL(Run<?, ?> run) {
+    return DisplayURLProvider.getDefault().getTestsURL(run);
+  }
+
   @Nonnull
   @Override
   public String getJobURL(Job<?, ?> job) {

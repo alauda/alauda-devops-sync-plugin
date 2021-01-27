@@ -6,7 +6,7 @@ import hudson.ExtensionPoint;
 import hudson.model.AsyncPeriodicWork;
 import hudson.model.TaskListener;
 import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
-import io.kubernetes.client.ApiException;
+import io.kubernetes.client.openapi.ApiException;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;

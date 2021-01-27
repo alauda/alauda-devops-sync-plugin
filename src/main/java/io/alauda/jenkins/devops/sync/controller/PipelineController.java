@@ -31,7 +31,6 @@ import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.JenkinsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.ReplayUtils;
-import io.kubernetes.client.ApiException;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
@@ -43,6 +42,7 @@ import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
+import io.kubernetes.client.openapi.ApiException;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -85,7 +85,6 @@ public class PipelineController
                       callGeneratorParams.resourceVersion,
                       callGeneratorParams.timeoutSeconds,
                       callGeneratorParams.watch,
-                      null,
                       null),
               V1alpha1Pipeline.class,
               V1alpha1PipelineList.class,
@@ -414,7 +413,7 @@ public class PipelineController
     }
 
     private boolean isCancelling(V1alpha1Pipeline pipeline) {
-      if (!pipeline.getSpec().isCancel()) {
+      if (!pipeline.getSpec().getCancel()) {
         return false;
       }
 

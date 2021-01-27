@@ -1,5 +1,6 @@
 package io.alauda.jenkins.devops.sync.scm;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import jenkins.plugins.git.traits.GitSCMExtensionTrait;
 import jenkins.plugins.git.traits.GitSCMExtensionTraitDescriptor;
@@ -22,6 +23,7 @@ public class RecordLastChangeLogTrait extends GitSCMExtensionTrait<RecordLastCha
   }
 
   @Override
+  @SuppressFBWarnings(value = "EQ_ALWAYS_TRUE")
   public boolean equals(Object o) {
     // there's not any fields in this Object, so they're always same
     return true;

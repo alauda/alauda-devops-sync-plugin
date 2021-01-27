@@ -23,12 +23,12 @@ import io.alauda.jenkins.devops.sync.controller.ResourceControllerManager;
 import io.alauda.jenkins.devops.sync.multiBranch.PullRequest;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
 import io.alauda.jenkins.devops.sync.util.PipelineGenerator;
-import io.kubernetes.client.ApiException;
-import io.kubernetes.client.JSON;
 import io.kubernetes.client.extended.workqueue.DefaultRateLimitingQueue;
 import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
 import io.kubernetes.client.extended.workqueue.ratelimiter.BucketRateLimiter;
-import io.kubernetes.client.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.JSON;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -207,9 +207,9 @@ public class MultibranchProjectSyncExecutor implements Runnable {
                     return -1;
                   }
 
-                  return -Long.compare(
-                      leftNewestBuild.getStartTimeInMillis(),
-                      rightNewestBuild.getStartTimeInMillis());
+                  return Long.compare(
+                      rightNewestBuild.getStartTimeInMillis(),
+                      leftNewestBuild.getStartTimeInMillis());
                 })
             .collect(Collectors.toList());
 

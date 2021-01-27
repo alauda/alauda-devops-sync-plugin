@@ -5,7 +5,6 @@ import hudson.model.AsyncPeriodicWork;
 import hudson.model.Node;
 import hudson.model.TaskListener;
 import hudson.slaves.Cloud;
-import io.kubernetes.client.util.common.Collections;
 import java.io.IOException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -16,6 +15,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import jenkins.model.Jenkins;
+import org.apache.commons.collections4.CollectionUtils;
 import org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud;
 import org.csanchez.jenkins.plugins.kubernetes.KubernetesSlave;
 import org.csanchez.jenkins.plugins.kubernetes.PodTemplateUtils;
@@ -49,7 +49,7 @@ public class AgentCleaner extends AsyncPeriodicWork {
 
   private void checkAgentForCloud(KubernetesCloud cloud) throws Exception {
     List<Node> nodes = Jenkins.get().getNodes();
-    if (Collections.isEmptyCollection(nodes)) {
+    if (CollectionUtils.isEmpty(nodes)) {
       return;
     }
 

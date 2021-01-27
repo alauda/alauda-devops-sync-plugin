@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.jenkins-ci.plugins</groupId>
     <artifactId>plugin</artifactId>
-    <version>2.36</version>
+    <version>4.15</version>
     <relativePath></relativePath>
   </parent>
   <groupId>io.alauda.jenkins.plugins</groupId>
@@ -58,7 +58,7 @@
     <log.level>INFO</log.level>
     <findbugs.failOnError>false</findbugs.failOnError>
     <exec-maven-plugin.version>1.5.0</exec-maven-plugin.version>
-    <okhttp.version>3.12.0</okhttp.version>
+    <okhttp.version>3.14.9</okhttp.version>
     <revision>2.13</revision>
     <validation-api.version>1.1.0.Final</validation-api.version>
     <sundrio.version>0.4.2</sundrio.version>
@@ -66,19 +66,17 @@
     <sha1></sha1>
     <jsonschema2pojo.version>0.4.23</jsonschema2pojo.version>
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
-    <org.json.version>20180130</org.json.version>
-    <devops.client.java>1.0.11</devops.client.java>
+    <org.json.version>20190722</org.json.version>
+    <devops.client.java>1.0.12</devops.client.java>
     <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
-    <jackson.version>2.9.8</jackson.version>
-    <jackson2.version>2.7.5</jackson2.version>
-    <jenkins.version>2.164.3</jenkins.version>
+    <jenkins.version>2.249.3</jenkins.version>
   </properties>
   <dependencyManagement>
     <dependencies>
       <dependency>
         <groupId>io.jenkins.tools.bom</groupId>
-        <artifactId>bom-2.164.x</artifactId>
-        <version>4</version>
+        <artifactId>bom-2.249.x</artifactId>
+        <version>18</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -89,16 +87,6 @@
       <groupId>io.jenkins.blueocean</groupId>
       <artifactId>blueocean-rest</artifactId>
       <version>1.5.0</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>jackson-databind</artifactId>
-          <groupId>com.fasterxml.jackson.core</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jackson-core</artifactId>
-          <groupId>com.fasterxml.jackson.core</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
@@ -109,20 +97,6 @@
       <groupId>io.jenkins.blueocean</groupId>
       <artifactId>blueocean-rest-impl</artifactId>
       <version>1.5.0</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>jackson-databind</artifactId>
-          <groupId>com.fasterxml.jackson.core</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jackson-core</artifactId>
-          <groupId>com.fasterxml.jackson.core</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>snakeyaml</artifactId>
-          <groupId>org.yaml</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
@@ -132,26 +106,6 @@
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>subversion</artifactId>
       <version>2.12.1</version>
-    </dependency>
-    <dependency>
-      <groupId>io.alauda.jenkins.plugins</groupId>
-      <artifactId>alauda-devops-credentials-provider</artifactId>
-      <version>2.0.0</version>
-    </dependency>
-    <dependency>
-      <groupId>io.alauda.jenkins.plugins</groupId>
-      <artifactId>alauda-kubernetes-support</artifactId>
-      <version>2.3.0</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>checker-qual</artifactId>
-          <groupId>org.checkerframework</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>error_prone_annotations</artifactId>
-          <groupId>com.google.errorprone</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.alauda</groupId>
@@ -165,6 +119,38 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>io.alauda.jenkins.plugins</groupId>
+      <artifactId>alauda-devops-credentials-provider</artifactId>
+      <version>3.4-b.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.alauda.jenkins.plugins</groupId>
+      <artifactId>alauda-kubernetes-support</artifactId>
+      <version>3.4-b.2</version>
+      <exclusions>
+        <exclusion>
+          <artifactId>checker-qual</artifactId>
+          <groupId>org.checkerframework</groupId>
+        </exclusion>
+        <exclusion>
+          <artifactId>error_prone_annotations</artifactId>
+          <groupId>com.google.errorprone</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.kohsuke</groupId>
+      <artifactId>access-modifier-suppressions</artifactId>
+      <version>1.21</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.kohsuke</groupId>
+      <artifactId>access-modifier-annotation</artifactId>
+      <version>1.21</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>label-linked-jobs</artifactId>
       <version>5.1.2</version>
@@ -173,21 +159,11 @@
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>prometheus</artifactId>
       <version>2.0.6</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>httpcore</artifactId>
-          <groupId>org.apache.httpcomponents</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jackson2-api</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-      <version>1.11</version>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>2.8.0</version>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci</groupId>
@@ -218,9 +194,23 @@
       <version>1.5</version>
     </dependency>
     <dependency>
+      <groupId>org.bitbucket.b_c</groupId>
+      <artifactId>jose4j</artifactId>
+      <version>0.7.3</version>
+    </dependency>    <dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-api</artifactId>
+    <version>1.7.30</version>
+  </dependency>
+    <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
       <version>4.5.10</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpcore</artifactId>
+      <version>4.4.12</version>
     </dependency>
     <dependency>
       <groupId>org.jenkinsci.plugins</groupId>
@@ -244,7 +234,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins.workflow</groupId>
       <artifactId>workflow-support</artifactId>
-      <version>2.18</version>
+      <version>3.6</version>
     </dependency>
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
@@ -271,31 +261,11 @@
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>cloudbees-bitbucket-branch-source</artifactId>
       <version>2.7.0</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>jackson2-api</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>github-branch-source</artifactId>
       <version>2.7.3-alauda</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>jackson2-api</artifactId>
-          <groupId>org.jenkins-ci.plugins</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>commons-lang3</artifactId>
-          <groupId>org.apache.commons</groupId>
-        </exclusion>
-        <exclusion>
-          <artifactId>jackson-databind</artifactId>
-          <groupId>com.fasterxml.jackson.core</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.jenkins.plugins</groupId>
@@ -306,17 +276,46 @@
       <groupId>org.csanchez.jenkins.plugins</groupId>
       <artifactId>kubernetes</artifactId>
       <version>1.12.1</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>jackson-module-jaxb-annotations</artifactId>
-          <groupId>com.fasterxml.jackson.module</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.jenkins-ci.plugins</groupId>
-      <artifactId>git</artifactId>
-<!--      <version>4.2.0</version>-->
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.12.0</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.15</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.code.gson</groupId>
+      <artifactId>gson</artifactId>
+      <version>2.8.6</version>
+    </dependency>
+    <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>2.10.8</version>
+    </dependency>
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+      <version>1.27</version>
+    </dependency>
+    <dependency>
+      <groupId>io.prometheus</groupId>
+      <artifactId>simpleclient</artifactId>
+      <version>0.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.prometheus</groupId>
+      <artifactId>simpleclient_common</artifactId>
+      <version>0.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>1.20</version>
     </dependency>
   </dependencies>
   <repositories>

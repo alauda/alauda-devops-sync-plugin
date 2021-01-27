@@ -10,8 +10,6 @@ import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.client.NamespaceClient;
 import io.alauda.jenkins.devops.sync.monitor.Metrics;
 import io.alauda.jenkins.devops.sync.tasks.period.ConnectionAliveDetectTask;
-import io.kubernetes.client.ApiException;
-import io.kubernetes.client.apis.CoreV1Api;
 import io.kubernetes.client.extended.controller.Controller;
 import io.kubernetes.client.extended.controller.builder.ControllerBuilder;
 import io.kubernetes.client.extended.controller.builder.ControllerManagerBuilder;
@@ -23,8 +21,10 @@ import io.kubernetes.client.extended.workqueue.RateLimitingQueue;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.SharedInformerFactory;
 import io.kubernetes.client.informer.cache.Lister;
-import io.kubernetes.client.models.V1Namespace;
-import io.kubernetes.client.models.V1NamespaceList;
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.openapi.models.V1Namespace;
+import io.kubernetes.client.openapi.models.V1NamespaceList;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.concurrent.Executors;
@@ -59,10 +59,11 @@ public class NamespaceController
                       null,
                       null,
                       null,
+                      null,
                       callGeneratorParams.resourceVersion,
+                      null,
                       callGeneratorParams.timeoutSeconds,
                       callGeneratorParams.watch,
-                      null,
                       null),
               V1Namespace.class,
               V1NamespaceList.class,
@@ -125,7 +126,8 @@ public class NamespaceController
   @Override
   public boolean hasResourceExists() throws ApiException {
     CoreV1Api api = new CoreV1Api();
-    V1NamespaceList namespaceList = api.listNamespace(null, null, null, null, 1, "0", null, null);
+    V1NamespaceList namespaceList =
+        api.listNamespace(null, null, null, null, null, 1, "0", null, null, null);
 
     if (namespaceList == null
         || namespaceList.getItems() == null

@@ -9,7 +9,7 @@ import hudson.Extension;
 import io.alauda.jenkins.plugins.credentials.SecretUtils;
 import io.alauda.jenkins.plugins.credentials.convertor.CredentialsConversionException;
 import io.alauda.jenkins.plugins.credentials.convertor.SecretToCredentialConverter;
-import io.kubernetes.client.models.V1Secret;
+import io.kubernetes.client.openapi.models.V1Secret;
 
 @Extension
 public class OAuth2CredentialsConverter extends SecretToCredentialConverter {

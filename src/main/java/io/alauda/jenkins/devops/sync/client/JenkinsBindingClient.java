@@ -3,7 +3,7 @@ package io.alauda.jenkins.devops.sync.client;
 import io.alauda.devops.java.client.models.V1alpha1JenkinsBinding;
 import io.kubernetes.client.informer.SharedIndexInformer;
 import io.kubernetes.client.informer.cache.Lister;
-import io.kubernetes.client.models.V1Status;
+import io.kubernetes.client.openapi.models.V1Status;
 
 public class JenkinsBindingClient implements ResourceClient<V1alpha1JenkinsBinding> {
   private SharedIndexInformer<V1alpha1JenkinsBinding> informer;

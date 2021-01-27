@@ -3,7 +3,7 @@ package io.alauda.jenkins.devops.sync;
 import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
 import io.alauda.jenkins.devops.sync.client.Clients;
 import io.alauda.jenkins.devops.sync.constants.Annotations;
-import io.kubernetes.client.models.V1ObjectMeta;
+import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import java.util.HashMap;
 import java.util.Map;
 import net.sf.json.JSONObject;
@@ -53,13 +53,13 @@ public interface AlaudaJobProperty {
    */
   default String generateAnnotationAsJSON(V1alpha1PipelineConfig pc) {
     V1ObjectMeta meta = pc.getMetadata();
-    Map<String, String> Annotation = meta.getAnnotations();
+    Map<String, String> annotations = meta.getAnnotations();
     String contextAnnotation = "{}";
-    if (Annotation != null) {
+    if (annotations != null) {
       Map<String, String> annotationResult = new HashMap<>();
-      for (String key : Annotation.keySet()) {
-        if (key.startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT.get().toString())) {
-          annotationResult.put(key, Annotation.get(key));
+      for (Map.Entry<String, String> entry : annotations.entrySet()) {
+        if (entry.getKey().startsWith(Annotations.ALAUDA_PIPELINE_CONTEXT.get().toString())) {
+          annotationResult.put(entry.getKey(), entry.getValue());
         }
       }
       contextAnnotation = JSONObject.fromObject(annotationResult).toString();

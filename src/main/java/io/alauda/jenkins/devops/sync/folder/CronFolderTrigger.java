@@ -4,6 +4,7 @@ import static hudson.Util.fixNull;
 
 import antlr.ANTLRException;
 import com.cloudbees.hudson.plugins.folder.computed.ComputedFolder;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.model.Items;
@@ -17,6 +18,7 @@ import hudson.util.FormValidation;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.logging.Logger;
+import org.kohsuke.accmod.restrictions.suppressions.SuppressRestrictedWarnings;
 import org.kohsuke.stapler.AncestorInPath;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -56,6 +58,8 @@ public class CronFolderTrigger extends Trigger<ComputedFolder<?>> {
     }
 
     /** Performs syntax check. */
+    @SuppressRestrictedWarnings(value = Messages.class)
+    @SuppressFBWarnings("DLS_DEAD_LOCAL_STORE")
     public FormValidation doCheckCrontab(@QueryParameter String value, @AncestorInPath Item item) {
       try {
         CronTabList ctl =
