@@ -270,7 +270,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
         // if the current SCM source is null or is not a GitSCMSource or its remote uri changed, we
         // will overwrite it
         if (!(scmSource instanceof GitSCMSource)
-            || ((GitSCMSource) scmSource).getRemote().equals(cloneURL)) {
+            || !((GitSCMSource) scmSource).getRemote().equals(cloneURL)) {
           scmSource = setNewSCMSource(job, new GitSCMSource(cloneURL));
         }
         prSupportCondition
