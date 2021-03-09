@@ -418,7 +418,36 @@ public abstract class JenkinsUtils {
    * @return list of EventTriggerAction
    */
   @Nonnull
-  private static List<Action> getEventTriggerAction(V1alpha1Pipeline pipeline) {
+  //  private static List<Action> getEventTriggerAction(V1alpha1Pipeline pipeline) {
+  //    List<Action> triggerActions = new LinkedList<>();
+  //
+  //    V1alpha1PipelineCause pipelineCause = pipeline.getSpec().getCause();
+  //    if (pipelineCause == null) {
+  //      return triggerActions;
+  //    }
+  //
+  //    if (pipelineCause.getType().equals(PIPELINE_CAUSE_TYPE_EVENT_CODE_PUSH)) {
+  //      V1alpha1CodeTriggerParameter codeTriggerParameter =
+  // pipelineCause.getCodeTriggerParameter();
+  //      if (codeTriggerParameter == null) {
+  //        return triggerActions;
+  //      }
+  //
+  //      Map<EventParam, String> params = new HashMap<>();
+  //      params.put(EventParam.CODE_REPO_EVENT_BRANCH, codeTriggerParameter.getBranch());
+  //      params.put(EventParam.CODE_REPO_EVENT_REPO_NAME, codeTriggerParameter.getRepoName());
+  //      params.put(
+  //          EventParam.CODE_REPO_EVENT_REPO_NAMESPACE, codeTriggerParameter.getRepoNamespace());
+  //
+  //      EventAction eventAction = new EventAction(EventType.CodeRepoPush, params);
+  //      triggerActions.add(eventAction);
+  //    }
+  //
+  //    return triggerActions;
+  //  }
+
+  private static List<Action> getEventTriggerAction(V1alpha1Pipeline pipeline)
+      throws PipelineException {
     List<Action> triggerActions = new LinkedList<>();
 
     V1alpha1PipelineCause pipelineCause = pipeline.getSpec().getCause();
@@ -426,20 +455,44 @@ public abstract class JenkinsUtils {
       return triggerActions;
     }
 
-    if (pipelineCause.getType().equals(PIPELINE_CAUSE_TYPE_EVENT_CODE_PUSH)) {
-      V1alpha1CodeTriggerParameter codeTriggerParameter = pipelineCause.getCodeTriggerParameter();
-      if (codeTriggerParameter == null) {
-        return triggerActions;
-      }
+    EventAction eventAction = null;
+    Map<EventParam, String> params = new HashMap<>();
+    V1alpha1CodeTriggerParameter codeTriggerParameter = pipelineCause.getCodeTriggerParameter();
+    switch (pipelineCause.getType()) {
+      default:
+      case PIPELINE_CAUSE_TYPE_EVENT_CODE_PUSH:
+        if (codeTriggerParameter == null) {
+          return triggerActions;
+        }
 
-      Map<EventParam, String> params = new HashMap<>();
-      params.put(EventParam.CODE_REPO_EVENT_BRANCH, codeTriggerParameter.getBranch());
-      params.put(EventParam.CODE_REPO_EVENT_REPO_NAME, codeTriggerParameter.getRepoName());
-      params.put(
-          EventParam.CODE_REPO_EVENT_REPO_NAMESPACE, codeTriggerParameter.getRepoNamespace());
+        params.put(EventParam.CODE_REPO_EVENT_BRANCH, codeTriggerParameter.getBranch());
+        params.put(EventParam.CODE_REPO_EVENT_REPO_NAME, codeTriggerParameter.getRepoName());
+        params.put(
+            EventParam.CODE_REPO_EVENT_REPO_NAMESPACE, codeTriggerParameter.getRepoNamespace());
 
-      EventAction eventAction = new EventAction(EventType.CodeRepoPush, params);
-      triggerActions.add(eventAction);
+        eventAction = new EventAction(EventType.CodeRepoPush, params);
+        triggerActions.add(eventAction);
+        break;
+      case PIPELINE_CAUSE_TYPE_EVENT_PULL_REQUEST_BRANCH:
+      case PIPELINE_CAUSE_TYPE_EVENT_PULL_REQUEST:
+        if (codeTriggerParameter == null) {
+          return triggerActions;
+        }
+
+        String[] sourceAndTarget = codeTriggerParameter.getBranch().split(",");
+        if (sourceAndTarget.length < 2) {
+          throw new PipelineException("Could not find source and target branch");
+        }
+
+        params.put(EventParam.CODE_REPO_EVENT_SOURCE_BRANCH, sourceAndTarget[0]);
+        params.put(EventParam.CODE_REPO_EVENT_TARGET_BRANCH, sourceAndTarget[1]);
+        params.put(EventParam.CODE_REPO_EVENT_REPO_NAME, codeTriggerParameter.getRepoName());
+        params.put(
+            EventParam.CODE_REPO_EVENT_REPO_NAMESPACE, codeTriggerParameter.getRepoNamespace());
+
+        eventAction = new EventAction(EventType.PRBranch, params);
+        triggerActions.add(eventAction);
+        break;
     }
 
     return triggerActions;
