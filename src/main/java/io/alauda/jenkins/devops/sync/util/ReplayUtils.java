@@ -18,6 +18,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import jenkins.model.ParameterizedJobMixIn;
 import jenkins.scm.api.SCMRevisionAction;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowExecution;
@@ -155,16 +159,34 @@ public class ReplayUtils {
     return scripts;
   }
 
-  private static CpsFlowExecution getExecution(Run run) {
-    FlowExecutionOwner owner = ((FlowExecutionOwner.Executable) run).asFlowExecutionOwner();
-    if (owner == null) {
-      logger.error("cannot get FlowExecutionOwner from run " + run);
-      return null;
-    } else {
-      logger.debug("get FlowExecutionOwner " + owner + " from run " + run);
-      logger.debug("get FlowExecution " + owner.getOrNull());
-    }
+  private static CpsFlowExecution getExecution(WorkflowRun run) throws PipelineException {
+    FlowExecutionOwner owner = run.asFlowExecutionOwner();
     FlowExecution exec = owner.getOrNull();
+    if (exec == null) {
+      try {
+        logger.info(
+            "Cannot get the execution of run {}, try to trigger the lazy-load of execution",
+            run.getFullDisplayName());
+        // if execution is null we will trigger the lazy-load of execution and we will wait at most
+        // 5 seconds here.
+        CompletableFuture.runAsync(run::getExecution).get(5L, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("Error when get execution of original run {}, thread interrupted", run.getFullDisplayName());
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        throw new PipelineException(
+            String.format("Failed to get execution of original run %s", run.getFullDisplayName()),
+            e);
+      } catch (TimeoutException e) {
+        throw new PipelineException(
+            String.format(
+                "Timeout when loading the execution of original run %s", run.getFullDisplayName()),
+            e);
+      }
+      // get execution again after triggering the laze-load
+      exec = owner.getOrNull();
+    }
+
     return exec instanceof CpsFlowExecution ? (CpsFlowExecution) exec : null;
   }
 
