@@ -151,6 +151,8 @@ public final class Constants {
   public static final Supplier ANNOTATION_PIPELINE_COMMIT_MSG =
       ResourceControllerManager.getControllerManager()
           .getFormattedAnnotation("pipeline-commit-message");
+  public static final Supplier ANNOTATION_PIPELINE_BRANCH =
+      ResourceControllerManager.getControllerManager().getFormattedAnnotation("pipeline-branch");
 
   public static final Supplier ANNOTATION_TEST_PASSED =
       ResourceControllerManager.getControllerManager()
