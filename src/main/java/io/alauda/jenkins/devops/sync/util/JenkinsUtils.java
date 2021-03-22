@@ -459,7 +459,6 @@ public abstract class JenkinsUtils {
     Map<EventParam, String> params = new HashMap<>();
     V1alpha1CodeTriggerParameter codeTriggerParameter = pipelineCause.getCodeTriggerParameter();
     switch (pipelineCause.getType()) {
-      default:
       case PIPELINE_CAUSE_TYPE_EVENT_CODE_PUSH:
         if (codeTriggerParameter == null) {
           return triggerActions;
