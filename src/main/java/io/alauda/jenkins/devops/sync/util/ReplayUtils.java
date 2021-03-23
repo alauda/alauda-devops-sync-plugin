@@ -172,7 +172,9 @@ public class ReplayUtils {
         // 5 seconds here.
         CompletableFuture.runAsync(run::getExecution).get(5L, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
-        logger.warn("Error when get execution of original run {}, thread interrupted", run.getFullDisplayName());
+        logger.warn(
+            "Error when get execution of original run {}, thread interrupted",
+            run.getFullDisplayName());
         Thread.currentThread().interrupt();
       } catch (ExecutionException e) {
         throw new PipelineException(
