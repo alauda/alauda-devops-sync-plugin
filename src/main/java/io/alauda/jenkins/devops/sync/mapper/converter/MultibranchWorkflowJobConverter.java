@@ -392,6 +392,16 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
 
   private void setUpTriggers(WorkflowMultiBranchProject job, V1alpha1PipelineConfig pipelineConfig)
       throws PipelineConfigConvertException {
+    Optional<PeriodicFolderTrigger> existPeriodTrigger =
+            job.getTriggers()
+                    .values()
+                    .stream()
+                    .filter(trigger -> trigger instanceof PeriodicFolderTrigger)
+                    .map(trigger -> (PeriodicFolderTrigger) trigger)
+                    .findAny();
+    // remove period trigger if exists
+    existPeriodTrigger.ifPresent(job::removeTrigger);
+
     List<V1alpha1PipelineTrigger> triggers = pipelineConfig.getSpec().getTriggers();
     if (CollectionUtils.isEmpty(triggers)) {
       return;
