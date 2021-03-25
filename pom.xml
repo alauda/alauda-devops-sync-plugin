@@ -67,7 +67,7 @@
     <jsonschema2pojo.version>0.4.23</jsonschema2pojo.version>
     <findbugs-maven-plugin.version>3.0.1</findbugs-maven-plugin.version>
     <org.json.version>20190722</org.json.version>
-    <devops.client.java>1.0.12</devops.client.java>
+    <devops.client.java>1.0.13</devops.client.java>
     <okhttp.bundle.version>3.9.1_2</okhttp.bundle.version>
     <jenkins.version>2.249.3</jenkins.version>
   </properties>

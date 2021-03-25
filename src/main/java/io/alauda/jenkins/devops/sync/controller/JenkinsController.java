@@ -71,6 +71,7 @@ public class JenkinsController
                       null,
                       null,
                       params.resourceVersion,
+                      null,
                       params.timeoutSeconds,
                       params.watch,
                       null),
@@ -165,7 +166,7 @@ public class JenkinsController
   public boolean hasResourceExists() throws ApiException {
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
     V1alpha1JenkinsList jenkinsList =
-        api.listJenkins(null, null, null, null, null, 1, "0", null, null);
+        api.listJenkins(null, null, null, null, null, 1, "0", null, null, null);
 
     if (jenkinsList == null
         || jenkinsList.getItems() == null

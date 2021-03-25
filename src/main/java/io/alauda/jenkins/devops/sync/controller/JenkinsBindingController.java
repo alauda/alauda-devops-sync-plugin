@@ -43,6 +43,7 @@ public class JenkinsBindingController
                       null,
                       null,
                       callGeneratorParams.resourceVersion,
+                      null,
                       callGeneratorParams.timeoutSeconds,
                       callGeneratorParams.watch,
                       null),
@@ -98,7 +99,8 @@ public class JenkinsBindingController
   public boolean hasResourceExists() throws ApiException {
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
     V1alpha1JenkinsBindingList bindingList =
-        api.listJenkinsBindingForAllNamespaces(null, null, null, null, 1, null, "0", null, null);
+        api.listJenkinsBindingForAllNamespaces(
+            null, null, null, null, 1, null, "0", null, null, null);
 
     if (bindingList == null
         || bindingList.getItems() == null

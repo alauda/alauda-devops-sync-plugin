@@ -46,6 +46,7 @@ public class CodeRepositoryController
                       null,
                       null,
                       callGeneratorParams.resourceVersion,
+                      null,
                       callGeneratorParams.timeoutSeconds,
                       callGeneratorParams.watch,
                       null),
@@ -101,7 +102,8 @@ public class CodeRepositoryController
   public boolean hasResourceExists() throws ApiException {
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
     V1alpha1CodeRepositoryList repositoryList =
-        api.listCodeRepositoryForAllNamespaces(null, null, null, null, 1, null, "0", null, null);
+        api.listCodeRepositoryForAllNamespaces(
+            null, null, null, null, 1, null, "0", null, null, null);
 
     if (repositoryList == null
         || repositoryList.getItems() == null

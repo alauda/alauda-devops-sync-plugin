@@ -65,6 +65,7 @@ public class PipelineConfigController
                       null,
                       null,
                       callGeneratorParams.resourceVersion,
+                      null,
                       callGeneratorParams.timeoutSeconds,
                       callGeneratorParams.watch,
                       null),
@@ -153,7 +154,8 @@ public class PipelineConfigController
   public boolean hasResourceExists() throws ApiException {
     DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
     V1alpha1PipelineConfigList pipelineConfigList =
-        api.listPipelineConfigForAllNamespaces(null, null, null, null, 1, null, "0", null, null);
+        api.listPipelineConfigForAllNamespaces(
+            null, null, null, null, 1, null, "0", null, null, null);
 
     return pipelineConfigList != null
         && pipelineConfigList.getItems() != null
