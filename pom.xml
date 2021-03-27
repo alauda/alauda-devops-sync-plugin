@@ -126,7 +126,7 @@
     <dependency>
       <groupId>io.alauda.jenkins.plugins</groupId>
       <artifactId>alauda-kubernetes-support</artifactId>
-      <version>3.4-b.2</version>
+      <version>3.4-PR-48.1</version>
       <exclusions>
         <exclusion>
           <artifactId>checker-qual</artifactId>
