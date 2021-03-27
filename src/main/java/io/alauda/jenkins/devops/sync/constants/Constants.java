@@ -171,6 +171,10 @@ public final class Constants {
   public static final String PIPELINECONFIG_KIND = "pipeline.kind";
   public static final String PIPELINE_CONFIG_LABEL_TEMPLATE = "templateName";
 
+  public static final Supplier ANNOTATION_PIPELINE_CANCEL_RETRY =
+      ResourceControllerManager.getControllerManager()
+          .getFormattedAnnotation("pipeline-cancel-retry");
+
   public static final String GITHUB_SCM_SOURCE =
       "org.jenkinsci.plugins.github_branch_source.GitHubSCMSource";
   public static final String GITHUB_BRANCH_DISCOVERY_TRAIT =
