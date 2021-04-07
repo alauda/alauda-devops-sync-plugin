@@ -9,7 +9,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.Job;
-import hudson.model.Run;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
@@ -30,10 +29,7 @@ import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.JSON;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,6 +40,7 @@ import jenkins.scm.api.metadata.ObjectMetadataAction;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -191,29 +188,33 @@ public class MultibranchProjectSyncExecutor implements Runnable {
 
     logger.info("Jon number {}", allJobs.size());
 
-    // sort the jobs by the latest build start time
-    allJobs =
-        allJobs
+    // init a pair list to sort all jobs
+    List<Pair> pairs = new ArrayList<>();
+
+    for (Job job : allJobs) {
+      Pair pair = Pair.of(job.getLastBuild().getStartTimeInMillis(), job);
+      pairs.add(pair);
+    }
+
+    // sort the pair list
+    List<Pair> sortedPairs =
+        pairs
             .stream()
             .sorted(
-                (jobLeft, jobRight) -> {
-                  Run leftNewestBuild = jobLeft.getLastBuild();
-                  Run rightNewestBuild = jobRight.getLastBuild();
-
-                  if (leftNewestBuild == null) {
-                    return 1;
-                  }
-                  if (rightNewestBuild == null) {
-                    return -1;
-                  }
-
-                  return Long.compare(
-                      rightNewestBuild.getStartTimeInMillis(),
-                      leftNewestBuild.getStartTimeInMillis());
+                (left, right) -> {
+                  Integer leftBuildMillis = (Integer) left.getKey();
+                  Integer rightBuildMillis = (Integer) right.getKey();
+                  return Integer.compare(leftBuildMillis, rightBuildMillis);
                 })
             .collect(Collectors.toList());
 
-    for (Job job : allJobs) {
+    // extract sorted pair from pair list
+    ArrayList<Job> sortedJobs = new ArrayList<Job>();
+    for (Pair pair : sortedPairs) {
+      sortedJobs.add((Job) pair.getValue());
+    }
+
+    for (Job job : sortedJobs) {
       if (!(job instanceof WorkflowJob)) {
         continue;
       }
