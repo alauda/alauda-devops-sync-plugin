@@ -186,35 +186,29 @@ public class MultibranchProjectSyncExecutor implements Runnable {
 
     logger.info("project {}", project.getFullDisplayName());
 
-    logger.info("Jon number {}", allJobs.size());
+    logger.info("Job number {}", allJobs.size());
 
-    // init a pair list to sort all jobs
-    List<Pair> pairs = new ArrayList<>();
-
-    for (Job job : allJobs) {
-      Pair pair = Pair.of(job.getLastBuild().getStartTimeInMillis(), job);
-      pairs.add(pair);
-    }
-
-    // sort the pair list
-    List<Pair> sortedPairs =
-        pairs
+    allJobs =
+        allJobs
             .stream()
+            .map(job -> Pair.of(job, job.getLastBuild()))
             .sorted(
                 (left, right) -> {
-                  Integer leftBuildMillis = (Integer) left.getKey();
-                  Integer rightBuildMillis = (Integer) right.getKey();
-                  return Integer.compare(leftBuildMillis, rightBuildMillis);
+                  if (left.getValue() != null) {
+                    return 1;
+                  }
+                  if (right.getValue() != null) {
+                    return -1;
+                  }
+
+                  Long leftBuildMillis = left.getValue().getStartTimeInMillis();
+                  Long rightBuildMillis = right.getValue().getStartTimeInMillis();
+                  return Long.compare(leftBuildMillis, rightBuildMillis);
                 })
+            .map(Pair::getKey)
             .collect(Collectors.toList());
 
-    // extract sorted pair from pair list
-    ArrayList<Job> sortedJobs = new ArrayList<Job>();
-    for (Pair pair : sortedPairs) {
-      sortedJobs.add((Job) pair.getValue());
-    }
-
-    for (Job job : sortedJobs) {
+    for (Job job : allJobs) {
       if (!(job instanceof WorkflowJob)) {
         continue;
       }
