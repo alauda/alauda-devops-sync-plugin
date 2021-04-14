@@ -1,6 +1,7 @@
 package io.alauda.jenkins.devops.sync.event;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Map;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.Whitelisted;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -15,9 +16,16 @@ public class EventContext implements Serializable {
 
   @Whitelisted
   public boolean isCodeRepoPushEvent() {
-    return eventAction != null
-        && (eventAction.getType() == EventType.CodeRepoPush
-            || eventAction.getType() == EventType.PRBranch);
+    if (eventAction != null) {
+      ArrayList<EventType> types = new ArrayList<EventType>();
+      types.add(EventType.CodeRepoPush);
+      types.add(EventType.PRBranch);
+      types.add(EventType.TagPush);
+      if (types.contains(eventAction.getType())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Whitelisted
@@ -50,6 +58,19 @@ public class EventContext implements Serializable {
         break;
       default:
       case CodeRepoPush:
+        codeRepoPushEventContextConstructor.setBranch(
+            params.get(EventParam.CODE_REPO_EVENT_BRANCH));
+        codeRepoPushEventContextConstructor.setRepoNamespace(
+            params.get(EventParam.CODE_REPO_EVENT_REPO_NAMESPACE));
+        codeRepoPushEventContextConstructor.setRepoName(
+            params.get(EventParam.CODE_REPO_EVENT_REPO_NAME));
+        codeRepoPushEventContextConstructor.setEventType(eventAction.getType().name());
+        codeRepoPushEventContextConstructor.setSourceBranch(
+            params.get(EventParam.CODE_REPO_EVENT_BRANCH));
+        codeRepoPushEventContextConstructor.setTargetBranch(
+            params.get(EventParam.CODE_REPO_EVENT_BRANCH));
+        break;
+      case TagPush:
         codeRepoPushEventContextConstructor.setBranch(
             params.get(EventParam.CODE_REPO_EVENT_BRANCH));
         codeRepoPushEventContextConstructor.setRepoNamespace(
