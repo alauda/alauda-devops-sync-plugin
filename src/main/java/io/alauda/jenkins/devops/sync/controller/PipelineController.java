@@ -1,18 +1,11 @@
 package io.alauda.jenkins.devops.sync.controller;
 
-import static io.alauda.jenkins.devops.sync.constants.Constants.ALAUDA_SYNC_PLUGIN;
-import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_FALSE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_TRUE;
-import static io.alauda.jenkins.devops.sync.constants.Constants.CONDITION_STATUS_UNKNOWN;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_CANCELLING_FAILED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_REASON_TRIGGER_FAILED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_TYPE_CANCELLED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_TYPE_COMPLETED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CONDITION_TYPE_SYNCED;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_CREATED_BY;
-import static io.alauda.jenkins.devops.sync.constants.Constants.PIPELINE_LABELS_REPLAYED_FROM;
+import static io.alauda.jenkins.devops.sync.constants.Constants.*;
 
 import hudson.Extension;
+import hudson.model.Queue;
+import hudson.security.ACL;
+import hudson.security.ACLContext;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
 import io.alauda.devops.java.client.models.V1alpha1Condition;
 import io.alauda.devops.java.client.models.V1alpha1Pipeline;
@@ -48,6 +41,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
+import jenkins.model.Jenkins;
 import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -347,23 +341,23 @@ public class PipelineController
           cancelledCondition.setLastAttempt(DateTime.now());
           logger.debug(
               "[{}] Starting cancel Pipeline '{}/{}'", getControllerName(), namespace, name);
+          PipelineException cancelException = null;
           try {
             jenkinsClient.cancelPipeline(new NamespaceName(namespace, name));
-            cancelledCondition.setStatus(CONDITION_STATUS_TRUE);
             logger.debug(
                 "[{}] Succeed to cancel Pipeline '{}/{}'", getControllerName(), namespace, name);
           } catch (PipelineException e) {
+            cancelException = e;
             logger.error(
                 "[{}] Failed to cancel Pipeline '{}/{}, reason {}",
                 getControllerName(),
                 namespace,
                 name,
                 e);
-            cancelledCondition.setStatus(CONDITION_STATUS_FALSE);
-            cancelledCondition.setReason(PIPELINE_CONDITION_REASON_CANCELLING_FAILED);
-            cancelledCondition.setMessage(e.getMessage());
           }
-          pipelineClient.update(pipeline, pipelineCopy);
+
+          failItIfCancelFail(
+              pipeline, pipelineCopy, pipelineConfig, pipelineClient, cancelException);
           return new Result(false);
         }
 
@@ -378,12 +372,17 @@ public class PipelineController
             return new Result(false);
           }
 
+          boolean hasInQueue = hasBuildInQueueOf(job);
           WorkflowRun run = JenkinsUtils.getRun(job, pipeline);
           if (run == null) {
             logger.info(
                 "Failed to add pipeline '{}/{}' to poll queue, unable to find related run",
                 namespace,
                 name);
+
+            if (!hasInQueue) {
+              failItByQueueLost(pipeline, pipelineCopy, pipelineClient, job, completedCondition);
+            }
 
             return new Result(false);
           }
@@ -394,6 +393,166 @@ public class PipelineController
         }
 
         return new Result(false);
+      }
+    }
+
+    private void failItIfCancelFail(
+        V1alpha1Pipeline pipeline,
+        V1alpha1Pipeline pipelineCopy,
+        V1alpha1PipelineConfig pipelineConfig,
+        PipelineClient pipelineClient,
+        PipelineException e) {
+
+      V1alpha1Condition cancelledCondition =
+          ConditionUtils.getCondition(
+              pipelineCopy.getStatus().getConditions(), PIPELINE_CONDITION_TYPE_CANCELLED);
+
+      if (e != null) {
+        cancelledCondition.setStatus(CONDITION_STATUS_FALSE);
+        cancelledCondition.setReason(PIPELINE_CONDITION_REASON_CANCELLING_FAILED);
+        cancelledCondition.setMessage(e.getMessage());
+
+        logger.info(String.format("updating pipeline to failure, "));
+        pipelineClient.update(pipeline, pipelineCopy);
+        return;
+      }
+
+      // e is null, check run status, if it is in building , and more time than 2 min, will just
+      // hack to abort it
+      WorkflowJob job;
+      try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
+        job = jenkinsClient.getJob(pipeline, pipelineConfig);
+      }
+
+      if (job == null) {
+        cancelledCondition.setStatus(CONDITION_STATUS_FALSE);
+        cancelledCondition.setReason(PIPELINE_CONDITION_REASON_CANCELLING_FAILED);
+        cancelledCondition.setMessage("cannot find correspondent workflow job");
+
+        pipelineClient.update(pipeline, pipelineCopy);
+        return;
+      }
+
+      WorkflowRun run = JenkinsUtils.getRun(job, pipeline);
+      if (run == null) {
+        cancelledCondition.setStatus(CONDITION_STATUS_FALSE);
+        cancelledCondition.setReason(PIPELINE_CONDITION_REASON_CANCELLING_FAILED);
+        cancelledCondition.setMessage("cannot find correspondent workflow run");
+
+        pipelineClient.update(pipeline, pipelineCopy);
+        return;
+      }
+
+      if (!run.isBuilding()) {
+        cancelledCondition.setStatus(CONDITION_STATUS_TRUE);
+        logger.debug(
+            String.format(
+                "we are ensure the build '%s' is stopped, result: %s, pipeline: '%s'",
+                run.getFullDisplayName(), run.getResult(), pipeline.getMetadata().getName()));
+        pipelineClient.update(pipeline, pipelineCopy);
+        return;
+      }
+
+      // run is still in building
+      logger.debug(
+          String.format(
+              "jenkins build: '%s' is canceled success, but the build is still in building, pipeline: %s",
+              run.getFullDisplayName(), pipeline.getMetadata().getName()));
+      Map<String, String> annotations = pipelineCopy.getMetadata().getAnnotations();
+      String countS = annotations.getOrDefault(ANNOTATION_PIPELINE_CANCEL_RETRY.get(), "0");
+      Integer count = 0;
+      try {
+        count = Integer.parseInt(countS);
+      } catch (NumberFormatException ex) {
+        logger.debug("cannot parse cancel retry count to int, just use 0");
+        count = 0;
+      }
+
+      int maxRetryCount = 5;
+      if (count <= maxRetryCount) {
+        count = count + 1;
+        annotations.put(ANNOTATION_PIPELINE_CANCEL_RETRY.get().toString(), count.toString());
+        pipelineClient.update(pipeline, pipelineCopy);
+        return;
+      }
+
+      // got max retry count, we did not cancel it success, just set result as aborted (⊙︿⊙)
+      logger.info(
+          String.format(
+              "hack to cancel jenkins build: '%s', pipeline: %s",
+              run.getFullDisplayName(), pipeline.getMetadata().getName()));
+      run.setResult(hudson.model.Result.ABORTED);
+      cancelledCondition.setStatus(CONDITION_STATUS_TRUE);
+      cancelledCondition.setReason(PIPELINE_CONDITION_REASON_CANCELLED);
+      cancelledCondition.setMessage("already hack to cancel jenkins build");
+      pipelineClient.update(pipeline, pipelineCopy);
+    }
+
+    private boolean failItByQueueLost(
+        V1alpha1Pipeline old,
+        V1alpha1Pipeline pipelineCopy,
+        PipelineClient client,
+        WorkflowJob job,
+        V1alpha1Condition completedCondition) {
+
+      V1alpha1Condition syncedCondition =
+          ConditionUtils.getCondition(
+              pipelineCopy.getStatus().getConditions(), PIPELINE_CONDITION_TYPE_SYNCED);
+      long diff = DateTime.now().getMillis() - syncedCondition.getLastAttempt().getMillis();
+
+      if (diff / 1000 < 10 * 60) { // wait 10 min
+        // jenkins trigger build is async, when build is triggered barely, we are not ensure the
+        // status of jenkins queue.
+        // so , just return false and wait for next syncing loop
+        return false;
+      }
+
+      logger.info(
+          String.format(
+              "set pipeline to failure, because no build in queue of job '%s' , "
+                  + "but the pipeline '%s' is still in phase '%s'",
+              job.getFullName(),
+              pipelineCopy.getMetadata().getName(),
+              pipelineCopy.getStatus().getPhase()));
+      completedCondition.setStatus(CONDITION_STATUS_TRUE);
+      completedCondition.setReason(PIPELINE_CONDITION_REASON_CANCELLED);
+      completedCondition.setMessage(
+          "There is no queue and run in jenkins, may be jenkins chuck the queue data during restart");
+      return client.update(old, pipelineCopy);
+    }
+
+    private boolean hasBuildInQueueOf(WorkflowJob job) {
+      boolean hasUnknownType = false;
+
+      try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
+
+        Queue queue = Jenkins.get().getQueue();
+        Queue.Item[] items = queue.getItems();
+
+        for (Queue.Item item : items) {
+
+          if (WorkflowJob.class.isInstance(item.task.getOwnerTask())) {
+            WorkflowJob jobQ = (WorkflowJob) item.task.getOwnerTask();
+            if (jobQ.getFullName().equals(job.getFullName())) {
+              return true;
+            }
+          } else {
+            logger.debug(
+                "found unknown task in queue: task: %s, ownertask: %s",
+                item.task, item.task.getOwnerTask());
+            hasUnknownType = true;
+          }
+        }
+
+        if (hasUnknownType) {
+          return !queue.isEmpty();
+        }
+
+        logger.debug(
+            String.format(
+                "not found any build in queue of this job %s,queue len: %d",
+                job.getFullName(), items.length));
+        return false;
       }
     }
 

@@ -425,6 +425,11 @@ public class JenkinsClient {
 
       // try to cancel the build if it is in the queue
       if (buildInQueue.isPresent()) {
+        logger.debug(
+            "canceling build: %s,  pipeline: %s/%s  in queue",
+            buildInQueue.get().getDisplayName(),
+            pipelineNamespaceName.getNamespace(),
+            pipelineNamespaceName.getName());
         if (pipelineQueue.cancel(buildInQueue.get())) {
           return;
         } else {
@@ -473,10 +478,22 @@ public class JenkinsClient {
           if (run.hasntStartedYet() || run.isBuilding()) {
             terminateRun(run);
             return true;
+          } else {
+            logger.debug(
+                String.format(
+                    "run hasStartedYet:%s, isBuilding:%s, run: %s",
+                    run.hasntStartedYet(),
+                    run.isBuilding(), run.getFullDisplayName()));
           }
         }
       }
     }
+
+    logger.debug(
+        String.format(
+            "has no run in current builds of this pipeline: %s/%s",
+            namespaceName.getNamespace(),
+            namespaceName.getName()));
     return false;
   }
 
@@ -489,6 +506,7 @@ public class JenkinsClient {
                 @Override
                 public void doRun() {
                   try (ACLContext ignore = ACL.as(ACL.SYSTEM)) {
+                    logger.debug("terminate run: {}, doKill", run.getFullDisplayName());
                     run.doKill();
                   }
                 }
