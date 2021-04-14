@@ -9,7 +9,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
 import hudson.model.Job;
-import hudson.model.Run;
 import hudson.security.ACL;
 import hudson.security.ACLContext;
 import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
@@ -30,10 +29,7 @@ import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.JSON;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,6 +40,7 @@ import jenkins.scm.api.metadata.ObjectMetadataAction;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.multibranch.BranchJobProperty;
 import org.jenkinsci.plugins.workflow.multibranch.WorkflowMultiBranchProject;
@@ -189,28 +186,26 @@ public class MultibranchProjectSyncExecutor implements Runnable {
 
     logger.info("project {}", project.getFullDisplayName());
 
-    logger.info("Jon number {}", allJobs.size());
+    logger.info("Job number {}", allJobs.size());
 
-    // sort the jobs by the latest build start time
     allJobs =
         allJobs
             .stream()
+            .map(job -> Pair.of(job, job.getLastBuild()))
             .sorted(
-                (jobLeft, jobRight) -> {
-                  Run leftNewestBuild = jobLeft.getLastBuild();
-                  Run rightNewestBuild = jobRight.getLastBuild();
-
-                  if (leftNewestBuild == null) {
+                (left, right) -> {
+                  if (left.getValue() != null) {
                     return 1;
                   }
-                  if (rightNewestBuild == null) {
+                  if (right.getValue() != null) {
                     return -1;
                   }
 
-                  return Long.compare(
-                      rightNewestBuild.getStartTimeInMillis(),
-                      leftNewestBuild.getStartTimeInMillis());
+                  Long leftBuildMillis = left.getValue().getStartTimeInMillis();
+                  Long rightBuildMillis = right.getValue().getStartTimeInMillis();
+                  return Long.compare(leftBuildMillis, rightBuildMillis);
                 })
+            .map(Pair::getKey)
             .collect(Collectors.toList());
 
     for (Job job : allJobs) {
