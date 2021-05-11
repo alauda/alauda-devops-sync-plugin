@@ -19,20 +19,8 @@ import com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.plugins.git.extensions.impl.CloneOption;
-import io.alauda.devops.java.client.models.V1alpha1BranchBehaviour;
-import io.alauda.devops.java.client.models.V1alpha1CloneBehaviour;
-import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
-import io.alauda.devops.java.client.models.V1alpha1Condition;
-import io.alauda.devops.java.client.models.V1alpha1MultiBranchBehaviours;
-import io.alauda.devops.java.client.models.V1alpha1MultiBranchOrphan;
-import io.alauda.devops.java.client.models.V1alpha1MultiBranchPipeline;
-import io.alauda.devops.java.client.models.V1alpha1OriginCodeRepository;
-import io.alauda.devops.java.client.models.V1alpha1PRBehaviour;
-import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
-import io.alauda.devops.java.client.models.V1alpha1PipelineSource;
-import io.alauda.devops.java.client.models.V1alpha1PipelineStrategyJenkins;
-import io.alauda.devops.java.client.models.V1alpha1PipelineTrigger;
-import io.alauda.devops.java.client.models.V1alpha1PipelineTriggerInterval;
+import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
+import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
@@ -43,6 +31,7 @@ import io.alauda.jenkins.devops.sync.scm.RecordLastChangeLogTrait;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
+import io.kubernetes.client.openapi.ApiException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -92,7 +81,9 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
       return false;
     }
 
+    logger.debug("zpyu now multbranchjobconverter is coming");
     Map<String, String> labels = pipelineConfig.getMetadata().getLabels();
+    logger.debug("zpyu get the label is {}", labels);
     return (PIPELINECONFIG_KIND_MULTI_BRANCH.equals(labels.get(PIPELINECONFIG_KIND)));
   }
 
@@ -104,6 +95,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     mbProperty.setContextAnnotation(mbProperty.generateAnnotationAsJSON(pipelineConfig));
     mbProperty.setResourceVersion(pipelineConfig.getMetadata().getResourceVersion());
 
+    logger.debug("zpyu now in the workflowmulitbranch and mbproperty is {}", mbProperty);
     V1alpha1PipelineStrategyJenkins jenkinsStrategy =
         pipelineConfig.getSpec().getStrategy().getJenkins();
     if (jenkinsStrategy == null || StringUtils.isEmpty(jenkinsStrategy.getJenkinsfilePath())) {
@@ -111,6 +103,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           String.format(
               "Unable to update Jenkins Job %s, Jenkinsfile path is null", job.getFullName()));
     }
+    logger.debug("zpyu now in the workflowmulitbranch and mbproperty is {}", mbProperty);
 
     BranchProjectFactory factory = job.getProjectFactory();
     if (!(factory instanceof WorkflowBranchProjectFactory)) {
@@ -121,12 +114,16 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     }
     ((WorkflowBranchProjectFactory) factory).setScriptPath(jenkinsStrategy.getJenkinsfilePath());
 
+    logger.debug("get the jenkisnfilepaht is {}", jenkinsStrategy.getJenkinsfilePath());
     setupOrphanedStrategy(job, pipelineConfig);
     setupSCMSource(job, pipelineConfig);
     setUpTriggers(job, pipelineConfig);
 
     String namespace = pipelineConfig.getMetadata().getNamespace();
     String name = pipelineConfig.getMetadata().getName();
+
+    logger.debug("get the namespace is {} name is {}", namespace, name);
+
     Map<String, String> logURLs =
         Collections.singletonMap(
             ALAUDA_DEVOPS_ANNOTATIONS_MULTI_BRANCH_SCAN_LOG.get().toString(),
@@ -134,6 +131,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
                 "/job/%s/job/%s/indexing/logText/progressiveText",
                 namespace, mapper.jenkinsJobName(namespace, name)));
     addAnnotations(pipelineConfig, logURLs);
+
+    logger.debug("logURLs is {} ", logURLs);
 
     return job;
   }
@@ -158,6 +157,8 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     GitProviderMultiBranch gitProvider = null;
     SCMSource scmSource = getCurrentSCMSource(job);
 
+    logger.debug("zpyu ready to convert to multibranchWorkflow Job");
+
     if (source.getCodeRepository() == null && source.getGit() != null) {
       logger.debug("No CodeRepository configured in PipelineConfig, fallback to use plain git url");
       if (!(scmSource instanceof GitSCMSource)
@@ -169,13 +170,27 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           .reason(PIPELINE_CONFIG_CONDITION_REASON_UNSUPPORTED)
           .message("PR Discovery not support: this pipeline is using plain git url");
     } else {
-      V1alpha1CodeRepository codeRepository =
-          Clients.get(V1alpha1CodeRepository.class)
-              .lister()
-              .namespace(pipelineConfig.getMetadata().getNamespace())
-              .get(source.getCodeRepository().getName());
 
+      logger.debug("zpyu now we are going to get the codeRepositoy");
+      DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+      V1alpha1CodeRepository codeRepository;
+      try {
+        codeRepository =
+            api.readNamespacedCodeRepository(
+                source.getCodeRepository().getName(),
+                pipelineConfig.getMetadata().getNamespace(),
+                null,
+                null,
+                null);
+      } catch (ApiException e) {
+
+        throw new PipelineConfigConvertException(e.getMessage());
+      }
+
+      logger.debug("zpyu get the coderepositis {}", codeRepository);
       if (codeRepository == null) {
+        logger.debug("zpyu get the coderepositis is null");
+
         throw new PipelineConfigConvertException(
             String.format(
                 "Unable to sync PipelineConfig, No CodeRepository '%s/%s' found in platform",
@@ -189,6 +204,13 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           String.join("/", Arrays.copyOfRange(repoFullName, 0, repoFullName.length - 1));
       String codeRepoType = originCodeRepository.getCodeRepoServiceType();
       String cloneURL = originCodeRepository.getCloneURL();
+
+      logger.debug(
+          "get the repository is {}  repoOwner is {} codeRespoType is {} cloneURL is {}",
+          repository,
+          repoOwner,
+          codeRepoType,
+          cloneURL);
 
       gitProvider =
           Jenkins.get()
@@ -267,6 +289,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
         }
 
       } else {
+        logger.debug("zpyu  are you sure not support");
         // if the current SCM source is null or is not a GitSCMSource or its remote uri changed, we
         // will overwrite it
         if (!(scmSource instanceof GitSCMSource)
@@ -292,6 +315,7 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
     handleCredentials(scmSource, pipelineConfig);
     scmSource.setOwner(job);
     scmSource.afterSave();
+    logger.debug("get the scmSource is {}", scmSource);
   }
 
   private SCMSource setNewSCMSource(WorkflowMultiBranchProject job, SCMSource newSCMSource)
@@ -366,6 +390,10 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
               pipelineConfig.getMetadata().getResourceVersion());
       property.setConfiguredDefaultResume(true);
 
+      // 原来这里才是一切的根本
+      // MultiBranchProperty 实现了 property的接口
+      // alaudaglobalvaribale 其实就是从job中拿到了这个property 并且根据不同类型转成不同的perporty
+      // 然后因为在这里将所有可能用到的值都存到了job的porperty中 所以在alaudaglobalvariable中可以取到这个job所有的值
       job.addProperty(property);
     } else if (!(item instanceof WorkflowMultiBranchProject)) {
       throw new PipelineConfigConvertException(

@@ -238,30 +238,49 @@ public class JenkinsClient {
     return job.getProperties().get(MultiBranchProperty.class);
   }
 
+  // 当发现哟pipelineconfig出现的时候 就会执行reconcile到这里
+  // 然后这里会根据不同类型的pipelineconfig来调用不同的convert 来转成对应的job
+  //
   public boolean upsertJob(V1alpha1PipelineConfig pipelineConfig)
       throws IOException, PipelineConfigConvertException {
     String namespace = pipelineConfig.getMetadata().getNamespace();
     String name = pipelineConfig.getMetadata().getName();
     NamespaceName namespaceName = new NamespaceName(namespace, name);
+    logger.debug(
+        "zpyu get the pipelineconfig ns is {} name is {} is  {} ",
+        pipelineConfig.getMetadata().getName(),
+        pipelineConfig.getMetadata().getNamespace(),
+        pipelineConfig.toString());
 
     logger.debug("Starting upsert Jenkins job");
     try (ACLContext ignored = ACL.as(ACL.SYSTEM)) {
+      logger.debug("zpyu Now I am in ACL");
       Item jobInJenkins = getItem(namespaceName);
+
       if (jobInJenkins != null) {
+        logger.debug("zpyu jobInJenkins is not null and it is {}", jobInJenkins.toString());
+
         logger.debug(
             "Found correspondent Jenkins job {} for PipelineConfig '{}/{}'",
             jobInJenkins.getDisplayName(),
             namespace,
             name);
       }
+      logger.debug("zpyu start do the convefrt");
 
+      // 这里去做转换了  弄到对应的convert
       TopLevelItem jobInMemory = mapper.mapTo(pipelineConfig);
-      InputStream jobStream = new StringInputStream(new XStream2().toXML(jobInMemory));
+      logger.debug("zpyu get the jobInMermory is {}", jobInMemory);
 
+      InputStream jobStream = new StringInputStream(new XStream2().toXML(jobInMemory));
+      logger.debug("zpyu get the jobStream is {}", jobStream);
+
+      logger.debug("zpyu after before get the jobStream");
       // TODO add a checker to check if this item is valid
 
       // we should create a new job
       if (jobInJenkins == null) {
+        logger.debug("zpyu  yes we should create job");
         ItemGroup parent = jobInMemory.getParent();
         if (parent instanceof Folder) {
           ((Folder) parent)
@@ -274,6 +293,7 @@ public class JenkinsClient {
         ((AbstractItem) jobInJenkins).updateByXml(((Source) new StreamSource(jobStream)));
       }
 
+      logger.debug("zpyu before get item");
       Item item = getItem(namespaceName);
       if (item == null) {
         throw new PipelineConfigConvertException(
@@ -282,6 +302,7 @@ public class JenkinsClient {
       }
 
       TopLevelItem job = (TopLevelItem) item;
+      logger.debug("zpyu get the job is {}", job.toString());
       if (cachedJobMap.putIfAbsent(namespaceName, job) == null) {
         logger.debug(
             "Added PipelineConfig '{}/{}', phase {} to in-memory cache map",
@@ -289,7 +310,10 @@ public class JenkinsClient {
             name,
             pipelineConfig.getStatus().getPhase());
       }
+
+      logger.debug("zpyu after try");
     }
+    logger.debug("zpyu finally");
     return true;
   }
 

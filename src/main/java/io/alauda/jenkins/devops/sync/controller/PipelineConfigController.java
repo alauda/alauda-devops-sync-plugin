@@ -259,6 +259,7 @@ public class PipelineConfigController
           pipelineConfigCopy, pipelineConfigCopy.getStatus().getConditions());
       try {
         if (!jenkinsClient.hasSyncedJenkinsJob(pipelineConfigCopy)) {
+          // 从这里开始的  从这里开始插入任务  然后获取不同的convert 然后搞成jenkins的pipeline
           boolean succeedUpdated = jenkinsClient.upsertJob(pipelineConfigCopy);
           if (!succeedUpdated) {
             return new Result(false);
