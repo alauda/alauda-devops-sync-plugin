@@ -44,6 +44,8 @@ public class PipelineConfigMapper {
               "Unable to find correspondent JobConverter for PipelineConfig '%s/%s'",
               pc.getMetadata().getNamespace(), pc.getMetadata().getName()));
     }
+
+
     return converterOpt.get().convert(pc);
   }
 
