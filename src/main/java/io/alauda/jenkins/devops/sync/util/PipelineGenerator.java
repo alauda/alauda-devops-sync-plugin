@@ -84,6 +84,10 @@ public abstract class PipelineGenerator {
       if (pr != null) {
         pr.setUrl(scmURL);
         annotations.put(Annotations.MULTI_BRANCH_CATEGORY.get().toString(), "pr");
+        annotations.put(Annotations.ALAUDA_PIPELINE_PR_ID.get().toString(), pr.getId());
+        annotations.put(Annotations.ALAUDA_PIPELINE_PR_SOURCE.get().toString(), pr.getSourceBranch());
+        annotations.put(Annotations.ALAUDA_PIPELINE_PR_TARGET.get().toString(), pr.getTargetBranch());
+        annotations.put(Annotations.ALAUDA_PIPELINE_PR_TITLE.get().toString(), pr.getTitle());
         annotations.put(
             Annotations.MULTI_BRANCH_PR_DETAIL.get().toString(),
             JSONObject.fromObject(pr).toString());

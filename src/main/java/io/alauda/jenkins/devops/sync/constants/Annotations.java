@@ -44,4 +44,19 @@ public final class Annotations {
 
   public static final Supplier ALAUDA_PIPELINE_CONTEXT =
       ResourceControllerManager.getControllerManager().getFormattedAnnotation("pipelinecontext.");
+
+  public static final Supplier ALAUDA_PIPELINE_PR_ID =
+      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.pr.id");
+
+  public static final Supplier ALAUDA_PIPELINE_PR_SOURCE =
+      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.pr.source");
+
+  public static final Supplier ALAUDA_PIPELINE_PR_TARGET =
+      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.pr.target");
+
+  public static final Supplier ALAUDA_PIPELINE_PR_TITLE =
+      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.pr.title");
+
+  public static final Supplier ALAUDA_PIPELINE_PR_CREATOR =
+      ResourceControllerManager.getControllerManager().getFormattedAnnotation("jenkins.pr.creator");
 }
