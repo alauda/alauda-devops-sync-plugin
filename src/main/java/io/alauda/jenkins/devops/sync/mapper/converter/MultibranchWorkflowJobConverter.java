@@ -19,20 +19,8 @@ import com.cloudbees.hudson.plugins.folder.computed.PeriodicFolderTrigger;
 import hudson.Extension;
 import hudson.model.Item;
 import hudson.plugins.git.extensions.impl.CloneOption;
-import io.alauda.devops.java.client.models.V1alpha1BranchBehaviour;
-import io.alauda.devops.java.client.models.V1alpha1CloneBehaviour;
-import io.alauda.devops.java.client.models.V1alpha1CodeRepository;
-import io.alauda.devops.java.client.models.V1alpha1Condition;
-import io.alauda.devops.java.client.models.V1alpha1MultiBranchBehaviours;
-import io.alauda.devops.java.client.models.V1alpha1MultiBranchOrphan;
-import io.alauda.devops.java.client.models.V1alpha1MultiBranchPipeline;
-import io.alauda.devops.java.client.models.V1alpha1OriginCodeRepository;
-import io.alauda.devops.java.client.models.V1alpha1PRBehaviour;
-import io.alauda.devops.java.client.models.V1alpha1PipelineConfig;
-import io.alauda.devops.java.client.models.V1alpha1PipelineSource;
-import io.alauda.devops.java.client.models.V1alpha1PipelineStrategyJenkins;
-import io.alauda.devops.java.client.models.V1alpha1PipelineTrigger;
-import io.alauda.devops.java.client.models.V1alpha1PipelineTriggerInterval;
+import io.alauda.devops.java.client.apis.DevopsAlaudaIoV1alpha1Api;
+import io.alauda.devops.java.client.models.*;
 import io.alauda.devops.java.client.utils.DeepCopyUtils;
 import io.alauda.jenkins.devops.sync.MultiBranchProperty;
 import io.alauda.jenkins.devops.sync.client.Clients;
@@ -43,6 +31,7 @@ import io.alauda.jenkins.devops.sync.scm.RecordLastChangeLogTrait;
 import io.alauda.jenkins.devops.sync.util.ConditionUtils;
 import io.alauda.jenkins.devops.sync.util.CredentialsUtils;
 import io.alauda.jenkins.devops.sync.util.NamespaceName;
+import io.kubernetes.client.openapi.ApiException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -169,11 +158,21 @@ public class MultibranchWorkflowJobConverter implements JobConverter<WorkflowMul
           .reason(PIPELINE_CONFIG_CONDITION_REASON_UNSUPPORTED)
           .message("PR Discovery not support: this pipeline is using plain git url");
     } else {
-      V1alpha1CodeRepository codeRepository =
-          Clients.get(V1alpha1CodeRepository.class)
-              .lister()
-              .namespace(pipelineConfig.getMetadata().getNamespace())
-              .get(source.getCodeRepository().getName());
+
+      DevopsAlaudaIoV1alpha1Api api = new DevopsAlaudaIoV1alpha1Api();
+      V1alpha1CodeRepository codeRepository;
+      try {
+        codeRepository =
+            api.readNamespacedCodeRepository(
+                source.getCodeRepository().getName(),
+                pipelineConfig.getMetadata().getNamespace(),
+                null,
+                null,
+                null);
+      } catch (ApiException e) {
+
+        throw new PipelineConfigConvertException(e.getMessage());
+      }
 
       if (codeRepository == null) {
         throw new PipelineConfigConvertException(
