@@ -245,7 +245,7 @@ public class ResourceControllerManager implements KubernetesClusterConfiguration
     return managerStatus;
   }
 
-  // TODO: should throw Expection or something can warn us when baseDomain is wrong
+  // TODO: should throw Exception or something can warn us when baseDomain is wrong
   public Supplier<String> getFormattedAnnotation(String annotation) {
     return new Supplier<String>() {
       @Override
