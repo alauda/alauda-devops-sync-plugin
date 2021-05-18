@@ -1,10 +1,10 @@
 package io.alauda.jenkins.devops.sync.listener;
 
-import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_BRANCH;
-import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_PR;
-import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_STALE_BRANCH;
-import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_STALE_PR;
-
+// import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_BRANCH;
+// import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_PR;
+// import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_STALE_BRANCH;
+// import static io.alauda.jenkins.devops.sync.constants.Annotations.MULTI_BRANCH_STALE_PR;
+import io.alauda.jenkins.devops.sync.constants.Annotations;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import hudson.init.InitMilestone;
 import hudson.init.Initializer;
@@ -48,6 +48,7 @@ import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 public class MultibranchProjectSyncExecutor implements Runnable {
 
@@ -249,6 +250,10 @@ public class MultibranchProjectSyncExecutor implements Runnable {
                     .get()
                 + annotationKeySpec(branchName),
             toJSON(pr));
+        putIfNotEmpty(meta, Annotations.ALAUDA_PIPELINE_PR_ID.get().toString(), pr.getId());
+        putIfNotEmpty(meta, Annotations.ALAUDA_PIPELINE_PR_SOURCE.get().toString(), pr.getSourceBranch());
+        putIfNotEmpty(meta, Annotations.ALAUDA_PIPELINE_PR_TARGET.get().toString(), pr.getTargetBranch());
+        putIfNotEmpty(meta, Annotations.ALAUDA_PIPELINE_PR_TITLE.get().toString(), pr.getTitle());
       } else {
         putIfNotEmpty(
             meta,
@@ -274,11 +279,11 @@ public class MultibranchProjectSyncExecutor implements Runnable {
 
     logger.info("branch items {}", new JSON().serialize(branchItem));
 
-    putIfNotEmpty(meta, MULTI_BRANCH_PR.get().toString(), branchItem.getPrList());
-    putIfNotEmpty(meta, MULTI_BRANCH_STALE_PR.get().toString(), branchItem.getStalePRList());
-    putIfNotEmpty(meta, MULTI_BRANCH_BRANCH.get().toString(), branchItem.getBranchList());
+    putIfNotEmpty(meta, Annotations.MULTI_BRANCH_PR.get().toString(), branchItem.getPrList());
+    putIfNotEmpty(meta, Annotations.MULTI_BRANCH_STALE_PR.get().toString(), branchItem.getStalePRList());
+    putIfNotEmpty(meta, Annotations.MULTI_BRANCH_BRANCH.get().toString(), branchItem.getBranchList());
     putIfNotEmpty(
-        meta, MULTI_BRANCH_STALE_BRANCH.get().toString(), branchItem.getStaleBranchList());
+        meta, Annotations.MULTI_BRANCH_STALE_BRANCH.get().toString(), branchItem.getStaleBranchList());
 
     logger.debug("Starting to update PipelineConfig, old {}, \n new {}", oldPC, newPC);
     Clients.get(V1alpha1PipelineConfig.class).update(oldPC, newPC);
