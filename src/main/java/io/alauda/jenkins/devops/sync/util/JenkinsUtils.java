@@ -472,6 +472,19 @@ public abstract class JenkinsUtils {
         eventAction = new EventAction(EventType.CodeRepoPush, params);
         triggerActions.add(eventAction);
         break;
+      case PIPELINE_CAUSE_TYPE_EVENT_TAG_PUSH:
+        if (codeTriggerParameter == null) {
+          return triggerActions;
+        }
+
+        params.put(EventParam.CODE_REPO_EVENT_BRANCH, codeTriggerParameter.getBranch());
+        params.put(EventParam.CODE_REPO_EVENT_REPO_NAME, codeTriggerParameter.getRepoName());
+        params.put(
+            EventParam.CODE_REPO_EVENT_REPO_NAMESPACE, codeTriggerParameter.getRepoNamespace());
+
+        eventAction = new EventAction(EventType.TagPush, params);
+        triggerActions.add(eventAction);
+        break;
       case PIPELINE_CAUSE_TYPE_EVENT_PULL_REQUEST_BRANCH:
       case PIPELINE_CAUSE_TYPE_EVENT_PULL_REQUEST:
         if (codeTriggerParameter == null) {

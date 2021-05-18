@@ -250,6 +250,7 @@ public final class Constants {
   public static final String PIPELINE_CONDITION_REASON_CANCELLING_FAILED = "CancellingFailed";
 
   public static final String PIPELINE_CAUSE_TYPE_EVENT_CODE_PUSH = "codePushEvent";
+  public static final String PIPELINE_CAUSE_TYPE_EVENT_TAG_PUSH = "tagEvent";
   public static final String PIPELINE_CAUSE_TYPE_EVENT_PULL_REQUEST_BRANCH =
       "pullRequestBranchEvent";
   public static final String PIPELINE_CAUSE_TYPE_EVENT_PULL_REQUEST = "pullRequestEvent";
