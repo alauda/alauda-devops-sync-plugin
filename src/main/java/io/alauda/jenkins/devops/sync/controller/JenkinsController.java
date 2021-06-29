@@ -42,6 +42,7 @@ import jenkins.plugins.linkedjobs.model.LabelAtomData;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.csanchez.jenkins.plugins.kubernetes.KubernetesSlave;
 
 @Extension
 public class JenkinsController
@@ -278,6 +279,13 @@ public class JenkinsController
               .filter(node -> node.getNumExecutors() <= 0)
               .flatMap(node -> Label.parse(node.getLabelString()).stream().map(Label::getName))
               .collect(Collectors.toList());
+
+      for(int i=0;i<nodes.size();i++) {
+        Node node = nodes.get(i);
+        if (node instanceof KubernetesSlave) {
+          unavailableFromStaticNodes.add(node.getDisplayName());
+        }
+      }
 
       logger.debug("labels {}", unavailableFromStaticNodes);
 
