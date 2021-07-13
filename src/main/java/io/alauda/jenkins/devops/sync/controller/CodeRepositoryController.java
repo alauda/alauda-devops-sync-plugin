@@ -72,9 +72,7 @@ public class CodeRepositoryController
                         .withOnUpdateFilter(
                             (oldCodeRepository, newCodeRepository) -> {
                               logger.debug(
-                                      "zpyu get the  oldCodeRepository{}   newCodeRepository{} oldCodeRepository.getMetadata().getResourceVersion() {}  newCodeRepository.getMetadata().getResourceVersion() {}",
-                                      oldCodeRepository,
-                                      newCodeRepository,
+                                      "zpyu get the   oldCodeRepository.getMetadata().getResourceVersion() {}  newCodeRepository.getMetadata().getResourceVersion() {}",
                                       oldCodeRepository.getMetadata().getResourceVersion(),
                                       newCodeRepository.getMetadata().getResourceVersion());
                               if (!oldCodeRepository
