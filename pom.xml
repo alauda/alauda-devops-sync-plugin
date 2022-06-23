@@ -275,7 +275,7 @@
     <dependency>
       <groupId>org.csanchez.jenkins.plugins</groupId>
       <artifactId>kubernetes</artifactId>
-      <version>1.12.1</version>
+      <version>1.27.4</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
